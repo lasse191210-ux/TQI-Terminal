@@ -17,6 +17,59 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.5.0/echarts.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/echarts-gl@2.0.9/dist/echarts-gl.min.js" onload="window.__gl=1" onerror="window.__gl=0"></script>
+<script>/* I18N-BEGIN */window.TQI_I18N_V="20261107-175202";
+/* TQI Sprach-Engine: Deutsch ist Standard. Andere Sprachen übersetzen Texte, Attribute und Chart-Beschriftungen zur Laufzeit. */
+(function(){
+  var LANGS=[["de","Deutsch"],["en","English"],["es","Español"],["fr","Français"]];
+  var LOCS={de:"de-DE",en:"en-GB",es:"es-ES",fr:"fr-FR",pt:"pt-BR",it:"it-IT",tr:"tr-TR",ru:"ru-RU",zh:"zh-CN",ja:"ja-JP"};
+  var st={}; try{ st=JSON.parse(localStorage.getItem("ft-settings")||"{}"); }catch(e){}
+  var L = LOCS[st.lang]? st.lang : "de";
+  window.LOC = LOCS[L]; window.I18N = {lang:L, langs:LANGS};
+  document.documentElement.lang = L;
+  if(L==="de") return;
+  function load(l){ try{ var x=new XMLHttpRequest(); x.open("GET","i18n/"+l+".json?v="+(window.TQI_I18N_V||""),false); x.send(); if(x.status===200||x.status===0) return JSON.parse(x.responseText); }catch(e){} return null; }
+  var base = load("en")||{}, D = L==="en"? base : Object.assign({}, base, load(L)||{});
+  var TOK=/#[0-9a-fA-F]{6}\b|#[0-9a-fA-F]{3}\b|\b(?:BTC|ETH)-(?:\d{1,2}[A-Z]{3}\d{2}|PERPETUAL|PERP)(?:-\d+-[CP])?\b|\b\d{1,2}[A-Z]{3}\d{2}\b|\d+(?:[.,:]\d+)*/g;
+  var cache=new Map();
+  function tr(s){
+    if(!s || typeof s!=="string") return s; var c=cache.get(s); if(c!==undefined) return c;
+    var m=/^(\s*)([\s\S]*?)(\s*)$/.exec(s), core=m[2], out=s, v=D[core];
+    if(v===undefined && core){ var toks=[], key=core.replace(TOK,function(t){ toks.push(t); return "#"; });
+      if(toks.length){ v=D[key]; if(v!==undefined){ var i=0; v=v.replace(/#/g,function(){ return i<toks.length? toks[i++] : "#"; }); } } }
+    if(v!==undefined) out=m[1]+v+m[3];
+    if(cache.size>30000) cache.clear(); cache.set(s,out); return out;
+  }
+  function trHtml(h){ return h.replace(/(^|>)([^<]+)(?=<|$)/g,function(all,a,t){ var r=tr(t); if(r===t && t.indexOf(":")>0){ var i=t.indexOf(":"); r=tr(t.slice(0,i))+t.slice(i); } return a+r; }); }
+  window.tr=tr; window.trHtml=trHtml;
+  // DOM
+  var ATTR=["placeholder","aria-label","title"], seen=new WeakMap();
+  function tNode(n){ var v=n.nodeValue; if(seen.get(n)===v) return; var t=tr(v); seen.set(n,t); if(t!==v) n.nodeValue=t; }
+  function tEl(el){ if(!el.getAttribute) return; for(var i=0;i<ATTR.length;i++){ var v=el.getAttribute(ATTR[i]); if(v){ var t=tr(v); if(t!==v) el.setAttribute(ATTR[i],t); } } }
+  function skip(el){ var tg=el&&el.tagName; return tg==="SCRIPT"||tg==="STYLE"||tg==="TEXTAREA"; }
+  function walk(r){ if(r.nodeType===3){ if(!skip(r.parentNode)) tNode(r); return; } if(r.nodeType!==1||skip(r)) return; tEl(r);
+    var w=document.createTreeWalker(r,5,null), n; while((n=w.nextNode())){ if(n.nodeType===3){ if(!skip(n.parentNode)) tNode(n); } else tEl(n); } }
+  new MutationObserver(function(ms){ for(var i=0;i<ms.length;i++){ var m=ms[i]; if(m.type==="characterData") { if(!skip(m.target.parentNode)) tNode(m.target); } else if(m.type==="attributes") tEl(m.target); else for(var j=0;j<m.addedNodes.length;j++) walk(m.addedNodes[j]); } })
+    .observe(document.documentElement,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:ATTR});
+  document.addEventListener("DOMContentLoaded",function(){ walk(document.body); });
+  // Charts
+  var KEYS={name:1,text:1,subtext:1,formatter:1};
+  function trOpt(o,k,d){
+    if(d>9||o==null) return o;
+    if(typeof o==="string") return (KEYS[k]||k==="__d")? tr(o) : o;
+    if(Array.isArray(o)){ if(o.length>400) return o; var ch=false, out=o.map(function(x){ var y=trOpt(x,k==="data"?"__d":k,d+1); if(y!==x) ch=true; return y; }); return ch?out:o; }
+    if(typeof o==="object" && Object.getPrototypeOf(o)===Object.prototype){ var res=null;
+      for(var key in o){ var v=o[key], y=v;
+        if(typeof v==="function"){ if(key==="formatter" && !v.__tr){ y=(function(f){ var g=function(){ var r=f.apply(this,arguments); return typeof r==="string"? trHtml(r) : r; }; g.__tr=1; return g; })(v); } }
+        else if(typeof v==="string"||(v&&typeof v==="object")) y=trOpt(v,key,d+1);
+        if(y!==v){ if(!res) res=Object.assign({},o); res[key]=y; } }
+      return res||o; }
+    return o;
+  }
+  function patch(){ if(!window.echarts||echarts.__i18n) return false; echarts.__i18n=1;
+    var oi=echarts.init; echarts.init=function(){ var c=oi.apply(this,arguments), os=c.setOption; c.setOption=function(opt){ var a=[].slice.call(arguments); try{ a[0]=trOpt(opt,"",0); }catch(e){} return os.apply(this,a); }; return c; }; return true; }
+  if(!patch()){ var hook=setInterval(function(){ if(patch()) clearInterval(hook); },1); }
+})();
+/* I18N-END */</script>
 <style>
 /* Layout: Kopfzeile, Kennzahlenleiste, links Seitenleiste mit Abteilungen, rechts Panel-Raster der aktiven Abteilung */
 :root{
@@ -600,10 +653,10 @@ const $ = id => { if(REMAP){ const m=REMAP[id]; return m? document.getElementByI
 const $$ = sel => [...document.querySelectorAll(sel)];
 const fmtUsd = v => { if(v==null||!isFinite(v)) return "–"; const a=Math.abs(v), s=v<0?"-":""; if(a>=1e9) return s+"$"+(a/1e9).toFixed(2)+"B"; if(a>=1e6) return s+"$"+(a/1e6).toFixed(2)+"M"; if(a>=1e3) return s+"$"+(a/1e3).toFixed(1)+"K"; return s+"$"+a.toFixed(0); };
 const fmtSigned = v => (v>0?"+":"")+fmtUsd(v);
-const fmtNum = (v,d=0) => v==null||!isFinite(v)?"–":v.toLocaleString("de-DE",{minimumFractionDigits:d,maximumFractionDigits:d});
+const fmtNum = (v,d=0) => v==null||!isFinite(v)?"–":v.toLocaleString(LOC,{minimumFractionDigits:d,maximumFractionDigits:d});
 const fmtPct = (v,d=1) => v==null||!isFinite(v)?"–":v.toFixed(d)+" %";
-const fmtTime = ts => new Date(ts).toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
-const fmtDT = ts => new Date(ts).toLocaleString("de-DE",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});
+const fmtTime = ts => new Date(ts).toLocaleTimeString(LOC,{hour:"2-digit",minute:"2-digit",second:"2-digit"});
+const fmtDT = ts => new Date(ts).toLocaleString(LOC,{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});
 const cls = v => v>0?"pos":v<0?"neg":"";
 const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
@@ -1009,7 +1062,7 @@ function bucketize(list){
     if(t.cp==="C") call[i]+=v; else put[i]+=v; if(t.idx>0) px[i]=t.idx; }
   let last=null; for(let i=0;i<n;i++){ if(px[i]==null) px[i]=last; else last=px[i]; }
   const multi = S.win!=="day" && S.win!=="24h";
-  const labels=[]; for(let i=0;i<n;i++){ const d=new Date(s+i*step); labels.push(multi? d.toLocaleString("de-DE",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}) : d.toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"})); }
+  const labels=[]; for(let i=0;i<n;i++){ const d=new Date(s+i*step); labels.push(multi? d.toLocaleString(LOC,{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}) : d.toLocaleTimeString(LOC,{hour:"2-digit",minute:"2-digit"})); }
   return {labels,call,put,px};
 }
 function renderNetflow(id, list){
@@ -1458,7 +1511,7 @@ function rSpot(lb,lv){
   const e0=frontExp(lb), mp=e0?maxPain(lb,e0):null;
   const lines=[["Spot",spot,css("--accent")],["Flip",lv.flip,css("--warn")],["Call Wall",lv.call,css("--bull")],["Put Wall",lv.put,css("--bear")],["Max Pain",mp,css("--muted")]].filter(x=>x[1]);
   c.setOption({...o,legend:{show:false},grid:{...o.grid,right:74},tooltip:{...o.tooltip,valueFormatter:v=>typeof v==="number"?"$"+fmtNum(v):v},dataZoom:[{type:"inside",start:40,end:100}],
-    xAxis:ax(o,{type:"category",data:candles.t.map(t=>new Date(t).toLocaleString("de-DE",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})),splitLine:{show:false}}),
+    xAxis:ax(o,{type:"category",data:candles.t.map(t=>new Date(t).toLocaleString(LOC,{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})),splitLine:{show:false}}),
     yAxis:ax(o,{type:"value",scale:true,position:"right",axisLabel:{...o._axis.axisLabel,formatter:v=>fmtNum(v)}}),
     series:[{type:"candlestick",name:S.cur+"-PERP",data:candles.t.map((_,i)=>{ const c=candles.c[i], o=(candles.o||[])[i]??c; return [o,c,(candles.l||[])[i]??Math.min(o,c),(candles.h||[])[i]??Math.max(o,c)]; }),
       itemStyle:{color:css("--bull"),color0:css("--bear"),borderColor:css("--bull"),borderColor0:css("--bear")},
@@ -1903,7 +1956,7 @@ async function loadHistory(){
 function syncHistUi(){
   const on=!!S.histDate; $("hist-date").value=S.histDate||""; $("hist-live").setAttribute("aria-pressed",String(!on));
   $$("[data-win]").forEach(b=>b.disabled=on); document.documentElement.classList.toggle("hist",on);
-  $("hist-badge").hidden=!on; $("hist-badge").textContent = on? `Historie ${new Date(histStart()).toLocaleDateString("de-DE")} · nur Deribit · OI/Greeks aktuell` : "";
+  $("hist-badge").hidden=!on; $("hist-badge").textContent = on? `Historie ${new Date(histStart()).toLocaleDateString(LOC)} · nur Deribit · OI/Greeks aktuell` : "";
 }
 
 /* ---------- Trade Tape (eigene Seite) ---------- */
@@ -1957,7 +2010,7 @@ function rVolTime(list){
   const c=ch("n-voltime"); if(!c) return; const o=base(), step=S.nfInt*60e3, s=windowStart(), n=Math.max(1,Math.ceil((windowEnd()-s)/step)), cv=new Array(n).fill(0), pv=new Array(n).fill(0), px=new Array(n).fill(null);
   for(const t of list){ const i=Math.min(n-1,Math.max(0,Math.floor((t.ts-s)/step))); if(t.cp==="C") cv[i]+=t.amt; else pv[i]+=t.amt; if(t.idx>0) px[i]=t.idx; }
   let last=null; for(let i=0;i<n;i++){ if(px[i]==null) px[i]=last; else last=px[i]; }
-  const lab=[...Array(n)].map((_,i)=>{ const d=new Date(s+i*step); return S.win==="day"||S.win==="24h"||S.histDate? d.toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"}) : d.toLocaleString("de-DE",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}); });
+  const lab=[...Array(n)].map((_,i)=>{ const d=new Date(s+i*step); return S.win==="day"||S.win==="24h"||S.histDate? d.toLocaleTimeString(LOC,{hour:"2-digit",minute:"2-digit"}) : d.toLocaleString(LOC,{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}); });
   c.setOption({...o,tooltip:{...o.tooltip,valueFormatter:v=>typeof v==="number"?fmtNum(v,1):v},dataZoom:[{type:"inside"}],xAxis:ax(o,{type:"category",data:lab,splitLine:{show:false}}),
     yAxis:[ax(o,{type:"value",name:S.cur,nameTextStyle:{color:o.textStyle.color,fontSize:10}}),ax(o,{type:"value",scale:true,position:"right",splitLine:{show:false},axisLabel:{...o._axis.axisLabel,formatter:v=>fmtNum(v)}})],
     series:[{name:"Call-Volumen",type:"bar",stack:"v",data:cv,itemStyle:{color:css("--bull")},barMaxWidth:8},{name:"Put-Volumen",type:"bar",stack:"v",data:pv,itemStyle:{color:css("--bear")},barMaxWidth:8},
@@ -2066,7 +2119,7 @@ function renderBlocks(){
     series:[{type:"pie",radius:["45%","72%"],center:["34%","50%"],itemStyle:{borderColor:css("--panel"),borderWidth:2},label:{show:false},data:sd.map(([n,v],i)=>({name:n,value:Math.round(v),itemStyle:{color:pal[i%pal.length]}}))}]},true);
   const step=3600e3, s=windowStart(), n=Math.max(1,Math.ceil((windowEnd()-s)/step)), ser={bull:new Array(n).fill(0),neutral:new Array(n).fill(0),bear:new Array(n).fill(0)};
   L.forEach(b=>{ const i=Math.min(n-1,Math.max(0,Math.floor((b.ts-s)/step))); ser[b.bias][i]+=b.prem; });
-  const lab=[...Array(n)].map((_,i)=>new Date(s+i*step).toLocaleString("de-DE",n>30?{day:"2-digit",month:"2-digit",hour:"2-digit"}:{hour:"2-digit",minute:"2-digit"}));
+  const lab=[...Array(n)].map((_,i)=>new Date(s+i*step).toLocaleString(LOC,n>30?{day:"2-digit",month:"2-digit",hour:"2-digit"}:{hour:"2-digit",minute:"2-digit"}));
   const c2=ch("c-blktime"); if(c2) c2.setOption({...o,tooltip:{...o.tooltip,valueFormatter:v=>typeof v==="number"?fmtUsd(v):v},xAxis:ax(o,{type:"category",data:lab,splitLine:{show:false}}),yAxis:ax(o,{type:"value",axisLabel:{...o._axis.axisLabel,formatter:fmtUsd}}),
     series:["bull","neutral","bear"].map(k=>({name:BN[k],type:"bar",stack:"b",data:ser[k],itemStyle:{color:BC[k]},barMaxWidth:18}))},true);
   const row=b=>`<tr><td>${fmtDT(b.ts)}</td><td class="l">${vb(b)}${esc(b.strategy)}</td><td class="l" style="white-space:normal;min-width:260px">${legTxt(b)}</td><td>${fmtNum(b.amount,1)}</td><td>${fmtUsd(b.prem)}</td><td class="${cls(-b.net)}">${b.net>=0?"Debit "+fmtUsd(b.net):"Credit "+fmtUsd(-b.net)}</td><td class="${cls(b.delta)}">${(b.delta>0?"+":"")+fmtNum(b.delta,2)}</td><td><span class="tag ${b.bias==="bull"?"bull":b.bias==="bear"?"bear":"blk"}">${BN[b.bias].toUpperCase()}</span></td></tr>`;
@@ -2366,7 +2419,7 @@ function renderDvolPage(){
     series:[{name:"DVOL (implizit)",type:"line",data:dvolMin.map(d=>[d[0],d[4]]),showSymbol:false,lineStyle:{color:css("--accent"),width:2}},{name:"RV 60 Min (realisiert)",type:"line",data:rv,showSymbol:false,lineStyle:{color:css("--warn"),width:1.4}},
       {name:S.cur+"-Perp",type:"line",yAxisIndex:1,data:t.map((x,i)=>[x,c[i]]),showSymbol:false,lineStyle:{color:css("--muted"),width:1,type:"dashed"}}]},true);
   const c2=ch("c-dvolh"); if(c2){ const d=dvolHour; c2.setOption({...o,legend:{show:false},grid:{...o.grid,right:60},tooltip:{...o.tooltip},dataZoom:[{type:"inside",start:50,end:100}],
-    xAxis:ax(o,{type:"category",data:d.map(x=>new Date(x[0]).toLocaleString("de-DE",{day:"2-digit",month:"2-digit",hour:"2-digit"})),splitLine:{show:false}}),yAxis:ax(o,{type:"value",scale:true,position:"right"}),
+    xAxis:ax(o,{type:"category",data:d.map(x=>new Date(x[0]).toLocaleString(LOC,{day:"2-digit",month:"2-digit",hour:"2-digit"})),splitLine:{show:false}}),yAxis:ax(o,{type:"value",scale:true,position:"right"}),
     series:[{type:"candlestick",name:"DVOL 1 h",data:d.map(x=>[x[1],x[4],x[3],x[2]]),itemStyle:{color:css("--bull"),color0:css("--bear"),borderColor:css("--bull"),borderColor0:css("--bear")},
       markLine:{symbol:"none",silent:true,data:dvolHist.length?[{yAxis:Math.max(...dvolHist.map(x=>x[1])),label:{formatter:"52W-Hoch",color:css("--bear")},lineStyle:{color:css("--bear"),type:"dashed"}},{yAxis:Math.min(...dvolHist.map(x=>x[1])),label:{formatter:"52W-Tief",color:css("--bull")},lineStyle:{color:css("--bull"),type:"dashed"}}]:[]}}]},true); }
   const first=dvolMin.length?dvolMin[0][4]:null, chg=first&&dvol?dvol-first:null, rvNow=rv.length?rv[rv.length-1][1]:null;
@@ -2383,7 +2436,7 @@ function renderRegime(lb){
   const el=$("rg-cards"); if(el) el.innerHTML = cardH("Aktuelles Regime",REG[cur][0],"DVOL-Perzentil "+pct(v[v.length-1][1]).toFixed(0)+" %",["pos","","wrn","neg"][cur])+cardH("Seit",curRun+" Tagen","Ø Dauer "+(runs[cur].length?(runs[cur].reduce((a,b)=>a+b,0)/runs[cur].length).toFixed(1):"–")+" Tage")+
     REG.map((r,i)=>cardH("Morgen: "+r[0],(tp[cur][i]*100).toFixed(0)+" %","empirische Übergangswahrscheinlichkeit",i===cur?"":["pos","","wrn","neg"][i])).join("")+
     cardH("Term-Struktur",contango==null?"–":contango?"Contango":"Backwardation",contango==null?"":contango?"normal, keine akute Angst":"Stress am kurzen Ende",contango==null?"":contango?"pos":"neg")+cardH("VRP",vrp!=null?(vrp>0?"+":"")+vrp.toFixed(1):"–",vrp!=null?(vrp>0?"Vola teuer, Verkäufer im Vorteil":"Vola günstig, Käufer im Vorteil"):"",vrp!=null?(vrp>0?"wrn":"pos"):"");
-  const c1=ch("c-regime"); if(c1) c1.setOption({...o,legend:{show:false},grid:{...o.grid,right:24},tooltip:{...o.tooltip,formatter:p=>`${new Date(p[0].value[0]).toLocaleDateString("de-DE")}<br>DVOL ${p[0].value[1].toFixed(1)} · <b>${REG[seq[p[0].dataIndex]][0]}</b>`},xAxis:ax(o,{type:"time",splitLine:{show:false}}),yAxis:ax(o,{type:"value",scale:true}),
+  const c1=ch("c-regime"); if(c1) c1.setOption({...o,legend:{show:false},grid:{...o.grid,right:24},tooltip:{...o.tooltip,formatter:p=>`${new Date(p[0].value[0]).toLocaleDateString(LOC)}<br>DVOL ${p[0].value[1].toFixed(1)} · <b>${REG[seq[p[0].dataIndex]][0]}</b>`},xAxis:ax(o,{type:"time",splitLine:{show:false}}),yAxis:ax(o,{type:"value",scale:true}),
     series:[{type:"bar",data:v.map((x,i)=>({value:[x[0],x[1]],itemStyle:{color:col[seq[i]]+"cc"}})),barCategoryGap:"0%",barWidth:"100%"}]},true);
   const t=$("rg-t"); if(t) t.innerHTML = REG.map((r,i)=>`<tr><td class="l" style="color:${col[i]};font-weight:600">${r[0]}</td>${REG.map((_,j)=>`<td class="${i===cur&&j===cur?"wrn":""}">${(tp[i][j]*100).toFixed(0)} %</td>`).join("")}<td>${seq.filter(x=>x===i).length}</td><td>${runs[i].length?(runs[i].reduce((a,b)=>a+b,0)/runs[i].length).toFixed(1):"–"}</td></tr>`).join("");
 }
@@ -2734,7 +2787,7 @@ window.addEventListener("beforeunload", saveX);
     const hgt=Math.min(4,Math.abs(v)*4), w=100/N; out+=`<rect x="${i*w+w*0.18}" y="${v>=0?4-hgt:4}" width="${w*0.64}" height="${hgt}" fill="var(${v>=0?"--bull":"--bear"})"/>`; }
   el.innerHTML=out; })();
 /* S3-BEGIN */
-const TQI_BUILD="20261107-173632";
+const TQI_BUILD="20261107-175202";
 /* ====================== Session 3: Infrastruktur ====================== */
 const V3 = {}, R3 = {}, NB3 = new Set();   // Seiten-HTML, Renderer, Seiten ohne Optionskette
 function nav3(group, items, afterKey){
@@ -3051,7 +3104,7 @@ R3.liq = () => {
   const mn=+(S.lqMin||10000); $("lq-t").innerHTML = tbl3(["Zeit","Börse","Seite","Menge","Preis","Wert"], w.filter(x=>x.usd>=mn).slice(-200).reverse().map(x=>`<tr><td class="l">${new Date(x.ts).toLocaleTimeString(LOC3,{hour:"2-digit",minute:"2-digit",second:"2-digit"})}</td><td>${x.venue}</td><td class="${x.side==="long"?"neg":"pos"}">${x.side==="long"?"Long liquidiert":"Short liquidiert"}</td><td>${fmtNum(x.qty,3)}</td><td>$${fmtNum(x.px,1)}</td><td>${fmtUsd(x.usd)}</td></tr>`));
 };
 document.addEventListener("change",e=>{ if(e.target.id==="lq-min"){ S.lqMin=+e.target.value||0; save(); render(); } });
-const LOC3="de-DE";
+const LOC3=window.LOC||"de-DE";
 
 /* --- Long/Short & Taker --- */
 V3.lsr = P2("Long/Short-Verhältnis","Anteil der Konten long vs. short",'<div class="form">'+seg3("k3","lsPer",[["5m","5m"],["15m","15m"],["1h","1h"],["4h","4h"],["1d","1T"]])+'</div><div class="cards" id="ls-cards"></div><div class="chart" id="c-ls"></div>',"wide")+
@@ -3616,6 +3669,11 @@ syncInst();
 // Neue Version auf GitHub? Alle 15 Minuten prüfen und Hinweis zum Neuladen zeigen.
 setInterval(async()=>{ if(location.protocol!=="https:") return; try{ const r=await fetch("index.html?v="+Date.now(),{cache:"no-store"}); const t=await r.text(); const m=/TQI_BUILD="([^"]+)"/.exec(t);
   if(m && m[1]!==TQI_BUILD && !window.__updShown){ window.__updShown=true; toast('Neue TQI-Version verfügbar · <a href="#" onclick="location.reload();return false" style="color:var(--accent)">jetzt neu laden</a>'); } }catch(e){} }, 15*60000);
+/* ---------- Sprachauswahl (Standard Deutsch) ---------- */
+(function(){ const d=$("drawer"); if(!d||$("set-lang")||!window.I18N) return; const h=d.querySelector("h3");
+  const html='<div class="sec">Sprache · Language</div><div class="row"><span>🌐</span><select id="set-lang" class="chip" style="min-width:150px">'+I18N.langs.map(([k,n])=>`<option value="${k}"${k===I18N.lang?" selected":""}>${n}</option>`).join("")+'</select></div>';
+  if(h) h.insertAdjacentHTML("afterend",html); else d.insertAdjacentHTML("afterbegin",html); })();
+document.addEventListener("change",e=>{ if(e.target.id!=="set-lang") return; S.lang=e.target.value; save(); location.reload(); });
 
 /* S3-END */
 applyOrder(); applyLook();
