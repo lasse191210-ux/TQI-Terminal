@@ -17,7 +17,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.5.0/echarts.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/echarts-gl@2.0.9/dist/echarts-gl.min.js" onload="window.__gl=1" onerror="window.__gl=0"></script>
-<script>/* I18N-BEGIN */window.TQI_I18N_V="20261107-183224";
+<script>/* I18N-BEGIN */window.TQI_I18N_V="20261107-225457";
 /* TQI Sprach-Engine: Deutsch ist Standard. Andere Sprachen übersetzen Texte, Attribute und Chart-Beschriftungen zur Laufzeit. */
 (function(){
   var LANGS=[["de","Deutsch"],["en","English"],["es","Español"],["fr","Français"]];
@@ -1213,7 +1213,7 @@ function renderKpis(lb, lv, list){
     ["RV 30T", rv30?rv30.toFixed(1)+" %":"–", "realisiert",""],
     ["VRP", iv30&&rv30?(iv30-rv30>0?"+":"")+(iv30-rv30).toFixed(1):"–", iv30&&rv30?(iv30>rv30?"Vola teuer":"Vola günstig"):"IV minus RV", iv30&&rv30?(iv30>rv30?"wrn":"pos"):""],
     ["25Δ RR ~30T", rr!=null?(rr>0?"+":"")+rr.toFixed(1):"–", rr!=null?(rr<0?"Put-Skew":"Call-Skew"):"", rr!=null?cls(rr):""],
-    ["Netto-GEX", fmtSigned(netG), netG<0?"short Gamma, verstärkt Moves":"long Gamma, dämpft Moves", cls(netG)],
+    ["Netto-GEX", fmtSigned(netG), netG<0?"Short Gamma":"Long Gamma", cls(netG)],
     ["Gamma-Flip", lv.flip?"$"+fmtNum(lv.flip):"–", pct(lv.flip),"wrn"],
     ["Call Wall", lv.call?"$"+fmtNum(lv.call):"–", pct(lv.call),"pos"],
     ["Put Wall", lv.put?"$"+fmtNum(lv.put):"–", pct(lv.put),"neg"],
@@ -2787,12 +2787,23 @@ window.addEventListener("beforeunload", saveX);
     const hgt=Math.min(4,Math.abs(v)*4), w=100/N; out+=`<rect x="${i*w+w*0.18}" y="${v>=0?4-hgt:4}" width="${w*0.64}" height="${hgt}" fill="var(${v>=0?"--bull":"--bear"})"/>`; }
   el.innerHTML=out; })();
 /* S3-BEGIN */
-const TQI_BUILD="20261107-183224";
+const TQI_BUILD="20261107-225457";
 /* ====================== Session 3: Infrastruktur ====================== */
 const V3 = {}, R3 = {}, NB3 = new Set();   // Seiten-HTML, Renderer, Seiten ohne Optionskette
 // Legenden- und Tooltip-Marker in der Linienfarbe zeichnen (sonst Palettenfarbe)
+// CSS color-mix() kann ECharts nicht interpretieren (Hover/Klick ließ Linien verschwinden) → in rgba() umrechnen
+const CM3=/color-mix\(in srgb,\s*([^,]+?)\s+(\d+(?:\.\d+)?)%\s*,\s*transparent\)/;
+function cm2rgba(s){ const m=CM3.exec(s); if(!m) return s; const col=m[1].trim(), a=+m[2]/100; let r,g,b,a0=1,x;
+  if((x=/^#([0-9a-f]{3})$/i.exec(col))){ const h=x[1]; r=parseInt(h[0]+h[0],16); g=parseInt(h[1]+h[1],16); b=parseInt(h[2]+h[2],16); }
+  else if((x=/^#([0-9a-f]{6})([0-9a-f]{2})?$/i.exec(col))){ const n=parseInt(x[1],16); r=n>>16&255; g=n>>8&255; b=n&255; if(x[2]) a0=parseInt(x[2],16)/255; }
+  else if((x=/^rgba?\(([^)]+)\)$/i.exec(col))){ const p=x[1].split(/[\s,\/]+/).filter(Boolean).map(parseFloat); [r,g,b]=p; if(p.length>3) a0=p[3]; } else return s;
+  return `rgba(${r},${g},${b},${+(a*a0).toFixed(3)})`; }
+function deCM(o,d){ if(d>9||o==null) return o; if(typeof o==="string") return o.indexOf("color-mix(")>=0? cm2rgba(o) : o;
+  if(Array.isArray(o)){ if(!o.length) return o; const f=o[0]; if(typeof f==="number"||(Array.isArray(f)&&typeof f[0]==="number")) return o; for(let i=0;i<o.length;i++){ const v=o[i]; if(typeof v==="string"){ if(v.indexOf("color-mix(")>=0) o[i]=cm2rgba(v); } else if(v&&typeof v==="object") deCM(v,d+1); } return o; }
+  if(typeof o==="object"){ if(o.nodeType||typeof o.then==="function") return o; if(Array.isArray(o.colorStops)){ for(const cs of o.colorStops) if(cs&&typeof cs.color==="string"&&cs.color.indexOf("color-mix(")>=0) cs.color=cm2rgba(cs.color); return o; }
+    for(const k in o){ const v=o[k]; if(typeof v==="string"){ if(v.indexOf("color-mix(")>=0) o[k]=cm2rgba(v); } else if(v&&typeof v==="object") deCM(v,d+1); } } return o; }
 (function(){ if(!window.echarts||echarts.__colfix) return; echarts.__colfix=1; const oi=echarts.init;
-  const fix=o=>{ if(!o||!o.series) return; for(const s of (Array.isArray(o.series)?o.series:[o.series])){ if(!s||typeof s!=="object"||s.color) continue; const lc=s.lineStyle&&typeof s.lineStyle.color==="string"?s.lineStyle.color:null; if(lc && !(s.itemStyle&&s.itemStyle.color)) s.itemStyle=Object.assign({},s.itemStyle,{color:lc}); } };
+  const fix=o=>{ try{ deCM(o,0); }catch(e){} if(!o||!o.series) return; for(const s of (Array.isArray(o.series)?o.series:[o.series])){ if(!s||typeof s!=="object"||s.color) continue; const lc=s.lineStyle&&typeof s.lineStyle.color==="string"?s.lineStyle.color:null; if(lc && !(s.itemStyle&&s.itemStyle.color)) s.itemStyle=Object.assign({},s.itemStyle,{color:lc}); } };
   echarts.init=function(){ const c=oi.apply(this,arguments), os=c.setOption; c.setOption=function(opt){ try{ fix(opt); }catch(e){} return os.apply(this,arguments); }; return c; };
   $$(".chart").forEach(el=>{ const c=echarts.getInstanceByDom(el); if(c) c.dispose(); });
 })();
@@ -2856,7 +2867,7 @@ function start3(){
       else { setSpot("deribitp",p.data.mark_price,p.data.timestamp); PERP.deribit={mark:p.data.mark_price,index:p.data.index_price,fund8h:p.data.funding_8h,oi:p.data.open_interest,ts:Date.now()}; } },
     JSON.stringify({jsonrpc:"2.0",id:9,method:"public/test",params:{}}));
   // Binance USDⓈ-M: Mark/Index/Funding 1 s, Trades (CVD), Liquidationen
-  ws3("binance3",`wss://fstream.binance.com/stream?streams=${c}usdt@markPrice@1s/${c}usdt@aggTrade/${c}usdt@forceOrder`, ()=>{},
+  ws3("binance3",`wss://fstream.binance.com/market/stream?streams=${c}usdt@markPrice@1s/${c}usdt@aggTrade/${c}usdt@forceOrder`, ()=>{},
     m=>{ const d=m.data||{}; if(d.e==="markPriceUpdate"){ setSpot("binance",d.p,d.E); PERP.binance={...PERP.binance,mark:+d.p,index:+d.i,fund:+d.r,next:+d.T,ts:Date.now()}; }
       else if(d.e==="aggTrade"){ const q=+d.q, px=+d.p; if(d.m){ CVD.sell+=q; CVD.cum-=q; } else { CVD.buy+=q; CVD.cum+=q; } const mn=Math.floor(d.T/60000)*60000; if(mn!==CVD.lastMin){ CVD.lastMin=mn; CVD.t.push(mn); CVD.v.push(CVD.cum); if(CVD.t.length>1440){ CVD.t.shift(); CVD.v.shift(); } } else CVD.v[CVD.v.length-1]=CVD.cum; PERP.binance.last=px; if(window.ofTrade) try{ ofTrade("bnp",+d.T,px,q,d.m?"sell":"buy"); }catch(e){} }
       else if(d.e==="forceOrder"){ const o=d.o||{}; const q=+o.q, px=+(o.ap||o.p); LIQ.push({ts:+o.T,venue:"binance",side:o.S==="SELL"?"long":"short",qty:q,px,usd:q*px}); } });
@@ -3195,7 +3206,7 @@ function renderPNF(id, list){
   const ser = net? [{name:"Calls − Puts",type:"line",smooth:0.25,showSymbol:false,data:N,lineStyle:{color:acc,width:2.2},itemStyle:{color:acc},areaStyle:{color:grad(acc)}}]
     : [{name:"Netto-Calls",type:"line",smooth:0.25,showSymbol:false,data:C,lineStyle:{color:bull,width:2.2},itemStyle:{color:bull},areaStyle:{color:grad(bull),origin:0}},{name:"Netto-Puts",type:"line",smooth:0.25,showSymbol:false,data:P,lineStyle:{color:bear,width:2.2},itemStyle:{color:bear},areaStyle:{color:grad(bear),origin:0}}];
   ser.push({name:S.cur+" Kurs",type:"line",yAxisIndex:1,smooth:0.2,showSymbol:false,data:X,lineStyle:{color:css("--fg"),width:1.2,opacity:.85},itemStyle:{color:css("--fg")}});
-  c.setOption({...o,legend:{...o.legend},grid:{...o.grid,top:40},tooltip:{...o.tooltip,trigger:"axis",valueFormatter:v=>typeof v==="number"?(Math.abs(v)>1000&&v>10000&&v<1e6?"$"+fmtNum(v):vol?fmtNum(v,1):fmtUsd(v)):v},
+  c.setOption({...o,legend:{...o.legend},grid:{...o.grid,top:40},tooltip:{...o.tooltip,trigger:"axis",formatter:ps=>{ if(!ps||!ps.length) return ""; return fmtDT(ps[0].axisValue)+"<br>"+ps.map(p=>{ const v=Array.isArray(p.value)?p.value[1]:p.value, px=p.seriesIndex===ser.length-1; return `${p.marker} ${p.seriesName} <b>${v==null?"–":px?"$"+fmtNum(v):vol?fmtNum(v,1)+" "+S.cur:fmtUsd(v)}</b>`; }).join("<br>"); }},
     xAxis:ax(o,{type:"time",splitLine:{show:false}}),yAxis:[ax(o,{type:"value",axisLabel:{...o._axis.axisLabel,formatter:v=>vol?fmtNum(v):fmtUsd(v)}}),ax(o,{type:"value",scale:true,position:"right",splitLine:{show:false},axisLabel:{...o._axis.axisLabel,formatter:v=>fmtNum(v)}})],
     series:ser.map((s,i)=>i===0?{...s,markLine:{symbol:"none",silent:true,data:[{yAxis:0,lineStyle:{color:css("--muted"),type:"dashed",width:1},label:{show:false}}]}}:s)},true);
 }
@@ -3419,66 +3430,103 @@ function ckFit(x,s,e,ms){ let lo=Infinity, hi=-Infinity, vm=0;
   if(!isFinite(lo)){ lo=Math.min(...x.l); hi=Math.max(...x.h); }
   const pad=Math.max((hi-lo)*0.08, hi*0.0008); return {lo:lo-pad, hi:hi+pad, vm:vm||1};
 }
-// Volumenprofil der sichtbaren Kerzen (Volumen gleichmäßig über Hoch–Tief verteilt)
-function vpOf(x,s,e,ms,nb=48){ const f=ckFit(x,s,e,ms), lo=f.lo, st=(f.hi-f.lo)/nb||1, vp=new Array(nb).fill(0);
+// Volumenprofil der sichtbaren Kerzen (Volumen gleichmäßig über Hoch–Tief verteilt) mit POC und Value Area
+function vpOf(x,s,e,ms,nb=48,vaPct=68){ const f=ckFit(x,s,e,ms), lo=f.lo, st=(f.hi-f.lo)/nb||1, vp=new Array(nb).fill(0);
   for(let i=0;i<x.t.length;i++){ const t=x.t[i]; if(t+ms<s||t>e) continue; const v=x.v[i]||0; if(!v) continue; const a=Math.max(0,Math.floor((x.l[i]-lo)/st)), b=Math.min(nb-1,Math.floor((x.h[i]-lo)/st)); const n=b-a+1; for(let j=a;j<=b;j++) vp[j]+=v/n; }
-  return vp.map((v,i)=>[lo+st*(i+.5),v]).filter(r=>r[1]>0); }
+  let poc=0; for(let i=1;i<nb;i++) if(vp[i]>vp[poc]) poc=i; const tot=vp.reduce((a,b)=>a+b,0); let lo2=poc, hi2=poc, acc=vp[poc];
+  while(acc<tot*vaPct/100 && (lo2>0||hi2<nb-1)){ const up=hi2<nb-1?vp[hi2+1]:-1, dn=lo2>0?vp[lo2-1]:-1; if(up>=dn){ hi2++; acc+=up; } else { lo2--; acc+=dn; } }
+  return {st, rows:vp.map((v,i)=>[lo+st*(i+.5),v,i>=lo2&&i<=hi2?1:0,i===poc?1:0]).filter(r=>r[1]>0), poc:lo+st*(poc+.5), vah:lo+st*(hi2+1), val:lo+st*lo2}; }
+/* Chart-Einstellungen (wie bei ATAS: alles anpassbar, gilt für alle Kerzen-Charts) */
+const CK_DEF={style:"candle",up:"",dn:"",grid:1,pline:1,cross:1,gex:1,gexW:10,gexA:55,gexLbl:1,vp:1,vpW:16,vpBins:56,vpVA:68,vpLines:1,lvCall:1,lvPut:1,lvFlip:1,lvMp:1,lvExp:1,lvOther:1,volH:20};
+const ckCfg=()=>Object.assign({},CK_DEF,S.ckCfg||{});
+const CK_UI=[["Kerzen",[["style","sel","Darstellung",[["candle","Kerzen"],["hollow","Hohle Kerzen"],["line","Linie"]]],["up","col","Farbe steigend"],["dn","col","Farbe fallend"],["grid","chk","Gitterlinien"],["pline","chk","Preislinie mit Preis"],["cross","chk","Fadenkreuz"],["volH","num","Volumen-Höhe %",5,40,1]]],
+  ["GEX-Profil",[["gex","chk","anzeigen"],["gexW","num","Breite %",3,30,1],["gexA","num","Deckkraft %",10,100,5],["gexLbl","chk","Werte der 3 größten Strikes"]]],
+  ["Volumenprofil",[["vp","chk","anzeigen"],["vpW","num","Breite %",5,40,1],["vpBins","num","Preisstufen",16,160,4],["vpVA","num","Value Area %",50,95,1],["vpLines","chk","POC, VAH, VAL als Linien"]]],
+  ["Levels",[["lvCall","chk","Call Walls"],["lvPut","chk","Put Walls"],["lvFlip","chk","Gamma Flip"],["lvMp","chk","Max Pain"],["lvExp","chk","Erwartete Tagesspanne"],["lvOther","chk","Absolute Gamma, Hedge Wall"]]]];
+const ckSetBtn=key=>`<button class="btn ghost cksetb" data-ckset="${key}" aria-label="Chart-Einstellungen" title="Chart-Einstellungen"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg> Einstellungen</button>`;
+function ckSetPanel(){ const c=ckCfg(); return '<div class="ckset" role="dialog" aria-label="Chart-Einstellungen"><div class="cksh"><b>Chart-Einstellungen</b><span class="mut">gelten für alle Kerzen-Charts</span><button class="iconbtn" data-ckclose aria-label="Schließen">✕</button></div><div class="cksg">'+CK_UI.map(([g,items])=>`<fieldset><legend>${g}</legend>`+items.map(([k,t,l,a,b2,s2])=>{
+    if(t==="chk") return `<label class="ckr"><input type="checkbox" data-ckc="${k}" ${+c[k]?"checked":""}> ${l}</label>`;
+    if(t==="num") return `<label class="ckr">${l} <input type="number" class="chip num" data-ckc="${k}" min="${a}" max="${b2}" step="${s2}" value="${c[k]}" style="width:66px"></label>`;
+    if(t==="col") return `<label class="ckr">${l} <input type="color" data-ckc="${k}" value="${c[k]||hex3(css(k==="up"?"--bull":"--bear"))}"> <button class="btn ghost" data-ckdef="${k}" type="button">Theme</button></label>`;
+    return `<label class="ckr">${l} <select data-ckc="${k}">${a.map(([v,n])=>`<option value="${v}"${c[k]===v?" selected":""}>${n}</option>`).join("")}</select></label>`; }).join("")+"</fieldset>").join("")+'</div><div class="cksf"><button class="btn ghost" data-ckall="reset" type="button">Alles zurücksetzen</button></div></div>'; }
+document.addEventListener("click",e=>{ const b=e.target.closest("[data-ckset]"); if(b){ const p=b.closest(".panel"); const ex=p.querySelector(".ckset"); if(ex){ ex.remove(); return; } document.querySelectorAll(".ckset").forEach(x=>x.remove()); p.style.position="relative"; p.insertAdjacentHTML("beforeend",ckSetPanel()); return; }
+  if(e.target.closest("[data-ckclose]")){ e.target.closest(".ckset").remove(); return; }
+  const d=e.target.closest("[data-ckdef]"); if(d){ const k=d.dataset.ckdef; S.ckCfg=Object.assign({},S.ckCfg,{[k]:""}); save(); render(); return; }
+  if(e.target.closest("[data-ckall]")){ S.ckCfg={}; save(); const p=e.target.closest(".panel"); p.querySelector(".ckset").remove(); p.insertAdjacentHTML("beforeend",ckSetPanel()); render(); } });
+document.addEventListener("change",e=>{ const k=e.target.dataset&&e.target.dataset.ckc; if(!k) return; const el=e.target; let v=el.type==="checkbox"?(el.checked?1:0):el.type==="number"?Math.max(+el.min,Math.min(+el.max,+el.value||CK_DEF[k])):el.value; S.ckCfg=Object.assign({},S.ckCfg,{[k]:v}); save(); render(); });
 /* Zeichnet einen Kerzen-Chart mit freiem Zoom (Mausrad / Pinch), Verschieben (Ziehen), Auto-Skalierung der Preisachse.
-   o2: {levels:[[name,wert,farbe,gestrichelt]], prof:[[preis,wert]], profFn:(s,e)=>prof, profMode:"gex"|"vol", heat:{data,dk,mx,rel}, vol:bool, show:anzahl} */
+   o2: {levels:[[name,wert,farbe,gestrichelt]], prof:[[strike,gex]], heat:{data,dk,mx,rel}, vol:bool, vp:bool, show:anzahl} */
+function lvKind(n){ return /^Call/.test(n)?"lvCall":/^Put/.test(n)?"lvPut":/Flip|Vol Trigger/.test(n)?"lvFlip":/^Max Pain/.test(n)?"lvMp":/^Erw\./.test(n)?"lvExp":"lvOther"; }
 function ckDraw(elId,key,x,tf,o2={}){
-  const c=ch(elId); if(!c||!x||!x.t.length) return null; const o=base(), ms=TFMS3[tf], n=x.t.length, lastT=x.t[n-1];
+  const c=ch(elId); if(!c||!x||!x.t.length) return null; const o=base(), ms=TFMS3[tf], n=x.t.length, lastT=x.t[n-1], cf=ckCfg();
   let z=ZS[key]; if(!z||z.tf!==tf||z.cur!==S.cur){ z=ZS[key]={tf,cur:S.cur,s:x.t[Math.max(0,n-(o2.show||110))],e:lastT+ms*6,lastT}; }
   else if(lastT>z.lastT){ if(z.e>=z.lastT-ms*0.5){ const d=lastT-z.lastT; z.s+=d; z.e+=d; } z.lastT=lastT; }
-  const f=ckFit(x,z.s,z.e,ms), up=css("--bull"), dn=css("--bear"), acc=css("--accent"), fg=css("--fg"), mut=css("--muted"), line=css("--line"), last=x.c[n-1];
+  const f=ckFit(x,z.s,z.e,ms), up=cf.up||css("--bull"), dn=cf.dn||css("--bear"), acc=css("--accent"), fg=css("--fg"), mut=css("--muted"), line=css("--line"), warn=css("--warn"), last=x.c[n-1];
   const series=[]; let heatIdx=-1;
   if(o2.heat && o2.heat.data.length){ const H=o2.heat; heatIdx=series.length;
     series.push({id:"heat",type:"custom",name:"GEX",clip:true,z:1,silent:true,encode:{x:0,y:1},data:H.data,
       renderItem:(p,api)=>{ const t=api.value(0), k=api.value(1), w=api.value(3); const a=api.coord([t,k+H.dk/2]), b=api.coord([t+w,k-H.dk/2]); return {type:"rect",shape:{x:a[0],y:a[1],width:Math.max(1,b[0]-a[0]),height:Math.max(1,b[1]-a[1])},style:{fill:api.visual("color")}}; }}); }
-  const lvm=new Map(); for(const l of (o2.levels||[])){ if(!l[1]) continue; const k=Math.round(l[1]*100); if(lvm.has(k)) lvm.get(k)[0]+=" · "+l[0]; else lvm.set(k,[l[0],l[1],l[2],l[3]]); }
+  const lvm=new Map(); for(const l of (o2.levels||[])){ if(!l[1]||!+cf[lvKind(l[0])]) continue; const k=Math.round(l[1]*100); if(lvm.has(k)) lvm.get(k)[0]+=" · "+l[0]; else lvm.set(k,[l[0],l[1],l[2],l[3]]); }
   const lv=[...lvm.values()].map(([nm,v,col,dash])=>({yAxis:v,lineStyle:{color:col,type:dash?"dashed":"solid",width:1.1,opacity:.95},label:{formatter:nm+"  "+fmtNum(v),position:"insideStartTop",color:col,fontSize:10,fontFamily:"IBM Plex Mono"}}));
-  lv.push({yAxis:last,lineStyle:{color:acc,type:"dotted",width:1},label:{formatter:fmtNum(last,last<100?2:0),position:"end",color:css("--on-accent"),backgroundColor:acc,padding:[2,4],borderRadius:2,fontSize:10.5,fontFamily:"IBM Plex Mono"}});
-  series.push({id:"cdl",type:"candlestick",name:S.cur+"-PERP",z:3,clip:true,barMaxWidth:16,data:x.t.map((t,i)=>[t,x.o[i],x.c[i],x.l[i],x.h[i]]),
-    itemStyle:{color:up,color0:dn,borderColor:up,borderColor0:dn},markLine:{symbol:"none",silent:true,animation:false,data:lv}});
+  // Volumenprofil links
+  const vpOn=o2.vp!==false && +cf.vp && o2.vp, V=vpOn? vpOf(x,z.s,z.e,ms,+cf.vpBins,+cf.vpVA) : null;
+  if(V && +cf.vpLines){ lv.push({yAxis:V.poc,lineStyle:{color:warn,type:"dashed",width:1},label:{formatter:"VPOC  "+fmtNum(V.poc),position:"insideEndTop",color:warn,fontSize:10,fontFamily:"IBM Plex Mono"}});
+    lv.push({yAxis:V.vah,lineStyle:{color:mut,type:"dotted",width:1},label:{formatter:"VAH  "+fmtNum(V.vah),position:"insideEndTop",color:mut,fontSize:10,fontFamily:"IBM Plex Mono"}});
+    lv.push({yAxis:V.val,lineStyle:{color:mut,type:"dotted",width:1},label:{formatter:"VAL  "+fmtNum(V.val),position:"insideEndBottom",color:mut,fontSize:10,fontFamily:"IBM Plex Mono"}}); }
+  if(window.pxAlertLines) try{ for(const a of pxAlertLines()) lv.push(a); }catch(e){}
+  if(+cf.pline) lv.push({yAxis:last,lineStyle:{color:acc,type:"dotted",width:1},label:{formatter:fmtNum(last,last<100?2:0),position:"end",color:css("--on-accent"),backgroundColor:acc,padding:[2,4],borderRadius:2,fontSize:10.5,fontFamily:"IBM Plex Mono"}});
+  if(cf.style==="line") series.push({id:"cdl",type:"line",name:S.cur+"-PERP",z:3,showSymbol:false,data:x.t.map((t,i)=>[t,x.c[i]]),lineStyle:{color:fg,width:1.5},itemStyle:{color:fg},markLine:{symbol:"none",silent:true,animation:false,data:lv}});
+  else series.push({id:"cdl",type:"candlestick",name:S.cur+"-PERP",z:3,clip:true,barMaxWidth:16,data:x.t.map((t,i)=>[t,x.o[i],x.c[i],x.l[i],x.h[i]]),
+    itemStyle:{color:cf.style==="hollow"?"transparent":up,color0:dn,borderColor:up,borderColor0:dn,borderWidth:1},markLine:{symbol:"none",silent:true,animation:false,data:lv}});
   if(o2.vol) series.push({id:"vol",type:"bar",name:"Volumen",yAxisIndex:1,z:2,barMaxWidth:16,silent:true,data:x.t.map((t,i)=>({value:[t,x.v[i]||0],itemStyle:{color:rgba3(x.c[i]>=x.o[i]?up:dn,.32)}}))});
-  const prof=o2.profFn? o2.profFn(z.s,z.e) : o2.prof;
-  if(prof && prof.length){ const ks=prof.map(p=>p[0]).sort((a,b)=>a-b); let dk=Infinity; for(let i=1;i<ks.length;i++) dk=Math.min(dk,ks[i]-ks[i-1]); if(!isFinite(dk)) dk=last*0.005; const pm=Math.max(...prof.map(p=>Math.abs(p[1])),1e-9), vol=o2.profMode==="vol";
-    CKX[key]={dk,vol};
-    series.push({id:"prof",type:"custom",name:vol?"Volumenprofil":"GEX-Profil",clip:true,z:4,silent:true,encode:{y:1},data:prof.map(([k,v])=>[lastT,k,v]),
-      renderItem:(p,api)=>{ const cs=p.coordSys, k=api.value(1), v=api.value(2), P=CKX[key]||{dk}, ya=api.coord([lastT,k+P.dk*0.45])[1], yb=api.coord([lastT,k-P.dk*0.45])[1], m=(P.pm||pm), len=Math.abs(v)/m*cs.width*(vol?0.22:0.18);
-        return {type:"rect",shape:{x:cs.x+cs.width-len,y:Math.min(ya,yb),width:len,height:Math.max(1,Math.abs(yb-ya))},style:{fill:vol?rgba3(acc,.35):rgba3(v>=0?up:dn,.5)}}; }}); CKX[key].pm=pm; }
+  if(V){ const vm=Math.max(...V.rows.map(r=>r[1]),1e-9); CKX[key]=Object.assign(CKX[key]||{},{vpm:vm,vpst:V.st});
+    series.push({id:"vp",type:"custom",name:"Volumenprofil",clip:true,z:2,silent:true,encode:{y:1},data:V.rows.map(r=>[lastT,...r]),
+      renderItem:(p,api)=>{ const cs=p.coordSys, P=CKX[key]||{}, k=api.value(1), v=api.value(2), va=api.value(3), pc=api.value(4), ya=api.coord([lastT,k+P.vpst*0.46])[1], yb=api.coord([lastT,k-P.vpst*0.46])[1], len=v/(P.vpm||1)*cs.width*(+ckCfg().vpW/100);
+        return {type:"rect",shape:{x:cs.x,y:Math.min(ya,yb),width:len,height:Math.max(1,Math.abs(yb-ya))},style:{fill:pc?rgba3(css("--warn"),.75):va?rgba3(css("--accent"),.42):rgba3(css("--accent"),.16)}}; }}); }
+  // GEX-Profil rechts (schmale Balken wie bei Derivatives Monkey)
+  const prof=+cf.gex? o2.prof : null;
+  if(prof && prof.length){ const ks=prof.map(p=>p[0]).sort((a,b)=>a-b); let dk=Infinity; for(let i=1;i<ks.length;i++) dk=Math.min(dk,ks[i]-ks[i-1]); if(!isFinite(dk)) dk=last*0.005; const pm=Math.max(...prof.map(p=>Math.abs(p[1])),1e-9);
+    CKX[key]=Object.assign(CKX[key]||{},{dk,pm}); const top3=new Set([...prof].sort((a,b)=>Math.abs(b[1])-Math.abs(a[1])).slice(0,3).map(p=>p[0]));
+    series.push({id:"prof",type:"custom",name:"GEX-Profil",clip:true,z:4,silent:true,encode:{y:1},data:prof.map(([k,v])=>[lastT,k,v,top3.has(k)?1:0]),
+      renderItem:(p,api)=>{ const cs=p.coordSys, P=CKX[key]||{}, C2=ckCfg(), k=api.value(1), v=api.value(2), y=api.coord([lastT,k])[1], h=Math.max(2,Math.min(7,Math.abs(api.coord([lastT,k+P.dk])[1]-y)*0.35)), len=Math.abs(v)/(P.pm||1)*cs.width*(+C2.gexW/100), col=rgba3(v>=0?(C2.up||css("--bull")):(C2.dn||css("--bear")),+C2.gexA/100);
+        const kids=[{type:"rect",shape:{x:cs.x+cs.width-len,y:y-h/2,width:len,height:h},style:{fill:col}}];
+        if(api.value(3)&&+C2.gexLbl) kids.push({type:"text",style:{text:fmtUsd(v),x:cs.x+cs.width-len-4,y,align:"right",verticalAlign:"middle",fill:v>=0?(C2.up||css("--bull")):(C2.dn||css("--bear")),font:"600 10px IBM Plex Mono, monospace"}});
+        return {type:"group",children:kids}; }}); }
   const opt={backgroundColor:"transparent",animation:false,textStyle:o.textStyle,
     grid:{left:10,right:74,top:o2.heat?34:14,bottom:26},
-    tooltip:{...o.tooltip,trigger:"axis",axisPointer:{type:"cross",label:{backgroundColor:css("--panel-2"),color:fg,fontFamily:"IBM Plex Mono",fontSize:10.5,formatter:p=>p.axisDimension==="y"?fmtNum(p.value,p.value<100?2:0):fmtDT(p.value)}},
-      formatter:ps=>{ const p=(ps||[]).find(q=>q.seriesId==="cdl"); if(!p) return ""; const v=p.value||p.data, a=v.slice(-4), t=typeof p.axisValue==="number"?p.axisValue:v[0], op=a[0], cl=a[1], lo=a[2], hi=a[3], i=x.t.indexOf(t), ch2=op?(cl/op-1)*100:0;
-        return `<b>${fmtDT(t)}</b><br>O ${fmtNum(op)} &nbsp;H ${fmtNum(hi)}<br>L ${fmtNum(lo)} &nbsp;C <b style="color:${cl>=op?up:dn}">${fmtNum(cl)}</b> (${ch2>=0?"+":""}${ch2.toFixed(2)} %)`+(i>=0&&x.v[i]?`<br>Volumen ${fmtNum(x.v[i],1)}`:""); }},
-    xAxis:{type:"time",axisLine:{lineStyle:{color:line}},axisTick:{show:false},axisLabel:{color:mut,fontSize:10.5,hideOverlap:true},splitLine:{show:true,lineStyle:{color:line,opacity:.45}}},
-    yAxis:[{type:"value",position:"right",min:f.lo,max:f.hi,axisLine:{show:false},axisTick:{show:false},axisLabel:{color:mut,fontSize:10.5,formatter:v=>fmtNum(v,v<100?2:0)},splitLine:{lineStyle:{color:line,opacity:.45}}},
-      {type:"value",show:false,min:0,max:f.vm*5,axisPointer:{show:false}}],
+    tooltip:{...o.tooltip,trigger:"axis",axisPointer:{type:+cf.cross?"cross":"line",label:{backgroundColor:css("--panel-2"),color:fg,fontFamily:"IBM Plex Mono",fontSize:10.5,formatter:p=>p.axisDimension==="y"?fmtNum(p.value,p.value<100?2:0):fmtDT(p.value)}},
+      formatter:ps=>{ const p=(ps||[]).find(q=>q.seriesId==="cdl"); if(!p) return ""; const t=typeof p.axisValue==="number"?p.axisValue:(p.value||[])[0], i=x.t.indexOf(t); if(i<0) return fmtDT(t); const op=x.o[i], cl=x.c[i], lo=x.l[i], hi=x.h[i], ch2=op?(cl/op-1)*100:0;
+        return `<b>${fmtDT(t)}</b><br>O ${fmtNum(op)} &nbsp;H ${fmtNum(hi)}<br>L ${fmtNum(lo)} &nbsp;C <b style="color:${cl>=op?up:dn}">${fmtNum(cl)}</b> (${ch2>=0?"+":""}${ch2.toFixed(2)} %)`+(x.v[i]?`<br>Volumen ${fmtNum(x.v[i],1)}`:""); }},
+    xAxis:{type:"time",axisLine:{lineStyle:{color:line}},axisTick:{show:false},axisLabel:{color:mut,fontSize:10.5,hideOverlap:true},splitLine:{show:!!+cf.grid,lineStyle:{color:line,opacity:.45}}},
+    yAxis:[{type:"value",position:"right",min:f.lo,max:f.hi,axisLine:{show:false},axisTick:{show:false},axisLabel:{color:mut,fontSize:10.5,formatter:v=>fmtNum(v,v<100?2:0)},splitLine:{show:!!+cf.grid,lineStyle:{color:line,opacity:.45}}},
+      {type:"value",show:false,min:0,max:f.vm*100/Math.max(5,+cf.volH),axisPointer:{show:false}}],
     dataZoom:[{type:"inside",xAxisIndex:0,filterMode:"none",startValue:z.s,endValue:z.e,zoomOnMouseWheel:true,moveOnMouseMove:true,moveOnMouseWheel:false,preventDefaultMouseMove:true,minValueSpan:ms*8}],
     series};
-  if(heatIdx>=0){ const H=o2.heat; opt.visualMap={show:true,orient:"horizontal",left:12,top:4,itemHeight:120,itemWidth:9,min:-H.mx||-1,max:H.mx||1,dimension:2,seriesIndex:heatIdx,calculable:false,text:[H.rel?"+max":fmtUsd(H.mx),H.rel?"−max":fmtUsd(-H.mx)],textStyle:{color:mut,fontSize:10},
-    inRange:{color:[rgba3(dn,.6),rgba3(dn,.16),rgba3(css("--panel-2")||"#000",0),rgba3(up,.16),rgba3(up,.6)]}}; }
+  if(heatIdx>=0){ const H=o2.heat; opt.visualMap={show:true,orient:"horizontal",left:12,top:4,itemHeight:120,itemWidth:9,min:H.pos?0:(-H.mx||-1),max:H.mx||1,dimension:2,seriesIndex:heatIdx,calculable:false,text:[(H.lbl?H.lbl+" ":"")+(H.rel?"+max":H.pos?fmtNum(H.mx,0):fmtUsd(H.mx)),H.pos?"0":H.rel?"−max":fmtUsd(-H.mx)],textStyle:{color:mut,fontSize:10},
+    inRange:{color:H.pos?[rgba3(acc,0),rgba3(acc,.22),rgba3(acc,.6)]:[rgba3(dn,.6),rgba3(dn,.16),rgba3(css("--panel-2")||"#000",0),rgba3(up,.16),rgba3(up,.6)]}}; }
   c.setOption(opt,true); CKX[key]=Object.assign(CKX[key]||{},{x,ms,tf,o2});
   if(!c.__ck){ c.__ck=key;
-    c.on("datazoom",()=>{ const k2=c.__ck, zz=ZS[k2], X=CKX[k2]; if(!zz||!X) return; const dz=(c.getOption().dataZoom||[])[0]; if(!dz) return; zz.s=dz.startValue; zz.e=dz.endValue; const ff=ckFit(X.x,zz.s,zz.e,X.ms);
-      const upd={yAxis:[{min:ff.lo,max:ff.hi},{max:ff.vm*5}]}; if(X.o2.profFn){ const pr=X.o2.profFn(zz.s,zz.e); const pm=Math.max(...pr.map(p=>Math.abs(p[1])),1e-9); X.pm=pm; upd.series=[{id:"prof",data:pr.map(([k,v])=>[X.x.t[X.x.t.length-1],k,v])}]; }
+    c.on("datazoom",()=>{ const k2=c.__ck, zz=ZS[k2], X=CKX[k2]; if(!zz||!X) return; const dz=(c.getOption().dataZoom||[])[0]; if(!dz) return; zz.s=dz.startValue; zz.e=dz.endValue; const ff=ckFit(X.x,zz.s,zz.e,X.ms), C2=ckCfg();
+      const upd={yAxis:[{min:ff.lo,max:ff.hi},{max:ff.vm*100/Math.max(5,+C2.volH)}]};
+      if(X.o2.vp && +C2.vp){ const V2=vpOf(X.x,zz.s,zz.e,X.ms,+C2.vpBins,+C2.vpVA); X.vpm=Math.max(...V2.rows.map(r=>r[1]),1e-9); X.vpst=V2.st; const lt=X.x.t[X.x.t.length-1]; upd.series=[{id:"vp",data:V2.rows.map(r=>[lt,...r])}]; }
       c.setOption(upd); });
-    c.getZr().on("dblclick",()=>{ delete ZS[c.__ck]; render(); }); }
+    c.getZr().on("dblclick",()=>{ delete ZS[c.__ck]; render(); });
+    c.getDom().addEventListener("contextmenu",ev=>{ ev.preventDefault(); try{ const r=c.getDom().getBoundingClientRect(), px=c.convertFromPixel({yAxisIndex:0},ev.clientY-r.top); if(px>0&&window.addPxAlert) addPxAlert(Math.round(px),"cross","aus Chart"); }catch(e){} }); }
   return c;
 }
 
 /* --- GEX-Profil: Kerzen + Gamma-Oberfläche im Zeitverlauf + GEX je Strike am rechten Rand --- */
-V3.gexprof = P2("GEX-Profil","Kerzen mit Gamma-Oberfläche im Zeitverlauf, GEX je Strike am rechten Rand",'<div class="form">'+tfBar3("gp")+seg3("k3","gpScale",[["abs","Absolut"],["rel","Relativ"]])+tog3("gpProf","GEX-Profil")+tog3("gpVol","Volumen")+resetBtn3("gp")+'</div><div class="cards" id="gp-cards"></div><div class="chart" id="c-gpheat" style="height:min(74vh,680px)"></div><div class="note" id="gp-note"></div>',"wide")+
+V3.gexprof = P2("GEX-Profil","Kerzen mit Gamma-Oberfläche im Zeitverlauf, GEX je Strike am rechten Rand",'<div class="form">'+tfBar3("gp")+seg3("k3","gpScale",[["abs","Absolut"],["rel","Relativ"]])+tog3("gpVol","Volumen")+resetBtn3("gp")+ckSetBtn("gp")+'</div><div class="cards" id="gp-cards"></div><div class="chart" id="c-gpheat" style="height:min(74vh,680px)"></div><div class="note" id="gp-note"></div>',"wide")+
   P2("GEX je Strike","aktueller Snapshot mit Call Wall, Put Wall, Spot und Flip",'<div class="form"><label>Verfall <select id="gp-exp"></select></label></div><div class="chart tall" id="c-gpbar"></div>',"wide");
 R3.gexprof = (lb,lv) => {
   const tf=tfOf("gp","15"), rel=S.gpScale==="rel", x=CND[S.cur+tf]; loadTF(tf); if(x) liveTF(x,tf);
   const K=keyLevels(lb,lv); $("gp-cards").innerHTML = cardH("Netto-GEX",sgn3(K.net),K.regime,cls3(K.net))+cardH("Call Wall",K.calls[0]?"$"+fmtNum(K.calls[0][0]):"–",K.calls[0]?pct3((K.calls[0][0]/spot-1)*100,1)+" vom Spot":"","pos")+cardH("Put Wall",K.puts[0]?"$"+fmtNum(K.puts[0][0]):"–",K.puts[0]?pct3((K.puts[0][0]/spot-1)*100,1)+" vom Spot":"","neg")+cardH("GEX Flip",K.flip?"$"+fmtNum(K.flip):"–",K.flip?pct3((K.flip/spot-1)*100,1)+" vom Spot":"","warn")+cardH("Spot","$"+fmtNum(spot),"");
   const now=Date.now(), lo=spot*0.7, hi=spot*1.3, data=[]; let mx=0;
-  snaps.forEach((s,j)=>{ const w=(snaps[j+1]?snaps[j+1].t:now)-s.t; if(w>3*3600e3) return; s.ks.forEach((k,i)=>{ if(k<lo||k>hi) return; const v=s.st.gex[i]; if(!v) return; data.push([s.t,k,v,w]); mx=Math.max(mx,Math.abs(v)); }); });
+  const gk=S.gpGreek||"gex"; snaps.forEach((s,j)=>{ const w=(snaps[j+1]?snaps[j+1].t:now)-s.t; if(w>3*3600e3) return; const vals=snapVal3(s,gk); s.ks.forEach((k,i)=>{ if(k<lo||k>hi) return; const v=vals[i]; if(!v) return; data.push([s.t,k,v,w]); mx=Math.max(mx,Math.abs(v)); }); });
   if(rel){ const byT=new Map(); data.forEach(d=>byT.set(d[0],Math.max(byT.get(d[0])||0,Math.abs(d[2])))); data.forEach(d=>d[2]=d[2]/(byT.get(d[0])||1)); mx=1; }
   const ks=[...new Set(lb.map(b=>b.strike))].filter(k=>k>=lo&&k<=hi).sort((a,b)=>a-b), dk=ks.length>1? Math.max(100,Math.min(...ks.slice(1).map((k,i)=>k-ks[i]))) : spot*0.01;
   const levels=[["Call Wall",K.calls[0]&&K.calls[0][0],css("--bull")],["Put Wall",K.puts[0]&&K.puts[0][0],css("--bear")],["Flip",K.flip,css("--warn"),1]];
-  if(x&&x.t.length) ckDraw("c-gpheat","gp",x,tf,{heat:{data,dk,mx,rel},prof:+(S.gpProf??1)?K.g:null,levels,vol:!!+(S.gpVol??0)});
+  if(x&&x.t.length) ckDraw("c-gpheat","gp",x,tf,{heat:{data,dk,mx,rel,pos:gk==="oi",lbl:{gex:"GEX",dex:"DEX",vex:"VEX",chex:"CHEX",oi:"OI"}[gk]},prof:K.g,vp:false,levels,vol:!!+(S.gpVol??0)});
   $("gp-note").textContent = (snaps.length? `${snaps.length} Gamma-Snapshots gespeichert (alle 5 Minuten, solange das Terminal offen ist). Grün = Dealer long Gamma (bremst), rot = short Gamma (beschleunigt). `:"Die Gamma-Oberfläche entsteht aus Snapshots alle 5 Minuten; lass das Terminal offen, dann füllt sie sich. ")+"Mausrad = Zoom, Ziehen = Verschieben, Doppelklick = Ansicht zurücksetzen.";
   const exps=expiries(lb); if(S.gpExp!=="all" && !exps.includes(S.gpExp)) S.gpExp="all"; fillOne("gp-exp",["all"].concat(exps),S.gpExp||"all"); const se=$("gp-exp"); if(se&&se.options[0]) se.options[0].text="Alle Verfälle";
   const g=gexByStrike(S.gpExp==="all"?lb:lb.filter(b=>b.exp===S.gpExp),0.15), o=base(), c2=ch("c-gpbar");
@@ -3487,7 +3535,7 @@ R3.gexprof = (lb,lv) => {
 };
 
 /* --- Key Levels: Kerzen mit allen GEX-Levels und GEX-Profil --- */
-V3.keylv = P2("Key Levels","GEX-gewichtet, alle Verfälle",'<div class="cards" id="kl-cards"></div><div class="form">'+tfBar3("kl")+tog3("klProf","GEX-Profil")+tog3("klVol","Volumen")+resetBtn3("kl")+'</div><div class="chart" id="c-kl" style="height:min(70vh,620px)"></div><div class="note">Mausrad = Zoom, Ziehen = Verschieben, Doppelklick = Ansicht zurücksetzen. Die Preisachse passt sich dem sichtbaren Bereich an.</div>',"wide")+
+V3.keylv = P2("Key Levels","GEX-gewichtet, alle Verfälle",'<div class="cards" id="kl-cards"></div><div class="form">'+tfBar3("kl")+tog3("klVol","Volumen")+resetBtn3("kl")+ckSetBtn("kl")+'</div><div class="chart" id="c-kl" style="height:min(70vh,620px)"></div><div class="note">Mausrad = Zoom, Ziehen = Verschieben, Doppelklick = Ansicht zurücksetzen. Die Preisachse passt sich dem sichtbaren Bereich an.</div>',"wide")+
   P2("Level-Tabelle","mit Abstand zum Spot und GEX-Stärke",'<div id="kl-t"></div><div class="note">Call Wall = größte positive GEX (Widerstand), Put Wall = größte negative GEX (Unterstützung), Flip = Netto-GEX kreuzt null. Absolute Gamma = Strike mit dem größten Betrag. Hedge Wall = stärkste negative GEX unter dem Spot. Vol Trigger ≈ Flip: darunter steigt die Volatilität tendenziell.</div>',"wide");
 R3.keylv = (lb,lv) => {
   const tf=tfOf("kl","60"), x=CND[S.cur+tf]; loadTF(tf); if(x) liveTF(x,tf);
@@ -3496,27 +3544,39 @@ R3.keylv = (lb,lv) => {
   const rows=[...K.calls.map((x,i)=>["Call Wall "+(i+1),x,"pos"]),["GEX Flip",K.flip?[K.flip,null]:null,"warn"],["Vol Trigger",K.flip?[K.flip,null]:null,"warn"],...(K.abs?[["Absolute Gamma",K.abs,""]]:[]),...(K.hedge?[["Hedge Wall",K.hedge,"neg"]]:[]),...K.puts.map((x,i)=>["Put Wall "+(i+1),x,"neg"])].filter(r=>r[1]);
   $("kl-t").innerHTML = tbl3(["Level","Strike","vs. Spot","GEX","Stärke"], rows.map(([n,x,c])=>`<tr><td class="l ${c}">${n}</td><td>$${fmtNum(x[0])}</td><td>${pct3((x[0]/spot-1)*100,1)}</td><td>${x[1]==null?"–":fmtUsd(x[1])}</td><td class="l"><span class="bar ${c}" style="display:inline-block;height:8px;border-radius:3px;width:${x[1]==null?0:Math.round(Math.abs(x[1])/mx*120)}px;background:var(--${c==="pos"?"bull":c==="neg"?"bear":"warn"})"></span></td></tr>`),"free");
   const col={pos:css("--bull"),neg:css("--bear"),warn:css("--warn"),"":css("--accent")};
-  if(x&&x.t.length) ckDraw("c-kl","kl",x,tf,{levels:rows.filter(r=>r[0]!=="Vol Trigger").map(([n,v,cc])=>[n,v[0],col[cc],n.indexOf("Flip")>=0]),prof:+(S.klProf??1)?K.g:null,vol:!!+(S.klVol??1)});
+  const e1=nearestExpTo(lb,1), iv1=e1?atmIv(lb,e1):null, sd=iv1?iv1/100/Math.sqrt(365):null, eh=sd?spot*Math.exp(sd):null, el=sd?spot*Math.exp(-sd):null;
+  if(eh) $("kl-cards").insertAdjacentHTML("beforeend",cardH("Erwartete Tagesspanne",`${fmtNum(el)} – ${fmtNum(eh)}`,`±${(sd*100).toFixed(2)} % (1σ, ATM IV ${iv1.toFixed(1)} %)`));
+  if(x&&x.t.length) ckDraw("c-kl","kl",x,tf,{levels:rows.filter(r=>r[0]!=="Vol Trigger").map(([n,v,cc])=>[n,v[0],col[cc],n.indexOf("Flip")>=0]).concat(eh?[["Erw. Hoch 1T",eh,css("--muted"),1],["Erw. Tief 1T",el,css("--muted"),1]]:[]),prof:K.g,vp:true,vol:!!+(S.klVol??1)});
 };
 
 /* --- Dashboard-Kurs-Chart (Panel „Kurs mit Levels“) --- */
 rSpot = function(lb,lv){
   const el=document.getElementById(REMAP&&REMAP["n-spot"]?REMAP["n-spot"]:"n-spot"); if(!el) return;
-  if(!el.previousElementSibling || !el.previousElementSibling.classList.contains("ckbar")){ el.insertAdjacentHTML("beforebegin",'<div class="form ckbar">'+tfBar3("ds")+resetBtn3("ds")+'</div>'); sync3(); }
+  if(!el.previousElementSibling || !el.previousElementSibling.classList.contains("ckbar")){ el.insertAdjacentHTML("beforebegin",'<div class="form ckbar">'+tfBar3("ds")+resetBtn3("ds")+ckSetBtn("ds")+'</div>'); sync3(); }
   const tf=tfOf("ds","15"), x=CND[S.cur+tf]; loadTF(tf); if(!x||!x.t.length) return; liveTF(x,tf);
   const e0=frontExp(lb), mp=e0?maxPain(lb,e0):null;
-  ckDraw("n-spot","ds",x,tf,{levels:[["Flip",lv.flip,css("--warn"),1],["Call Wall",lv.call,css("--bull")],["Put Wall",lv.put,css("--bear")],["Max Pain",mp,css("--muted"),1]],vol:true});
+  const K2=keyLevels(lb,lv); ckDraw("n-spot","ds",x,tf,{levels:[["Flip",lv.flip,css("--warn"),1],["Call Wall",lv.call,css("--bull")],["Put Wall",lv.put,css("--bear")],["Max Pain",mp,css("--muted"),1]],vol:true,vp:true,prof:K2.g});
 };
 
 /* --- Spot-Seite: Kerzen mit Volumenprofil des sichtbaren Bereichs --- */
-V3.spot = V3.spot.replace(seg3("k3","spRes",[["15","15m"],["60","1h"],["240","4h"],["1D","1D"]]), tfBar3("sp")+tog3("spVol","Volumen")+resetBtn3("sp"));
+V3.spot = V3.spot.replace(seg3("k3","spRes",[["15","15m"],["60","1h"],["240","4h"],["1D","1D"]]), tfBar3("sp")+tog3("spVol","Volumen")+resetBtn3("sp")+ckSetBtn("sp"));
 function spCandle3(){ const tf=tfOf("sp","60"), x=CND[S.cur+tf]; loadTF(tf); if(!x||!x.t.length) return; liveTF(x,tf); const ms=TFMS3[tf];
-  ckDraw("c-spcandle","sp",x,tf,{profFn:(s,e)=>vpOf(x,s,e,ms),profMode:"vol",vol:!!+(S.spVol??1)}); }
+  ckDraw("c-spcandle","sp",x,tf,{vp:true,vol:!!+(S.spVol??1)}); }
 S.gpProf??=1; S.gpVol??=0; S.klProf??=1; S.klVol??=1; S.spVol??=1; S.tf_gp??="15"; S.tf_kl??="60"; S.tf_ds??="15"; S.tf_sp??="60";
 document.head.insertAdjacentHTML("beforeend",`<style>
 .lbl3{font-size:11px;color:var(--muted);margin:0 2px 0 8px;align-self:center}
 .ckbar{margin:0 0 6px}
 .ckreset{font-size:11.5px;padding:4px 10px}
+</style>`);
+
+document.head.insertAdjacentHTML("beforeend",`<style>
+.cksetb{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;padding:4px 10px}
+.ckset{position:absolute;right:12px;top:48px;z-index:40;width:min(560px,calc(100% - 24px));max-height:min(70vh,620px);overflow:auto;background:var(--panel);border:1px solid var(--edge);border-radius:12px;box-shadow:0 18px 50px rgba(0,0,0,.35);padding:12px 14px}
+.cksh{display:flex;align-items:center;gap:10px;margin-bottom:8px}.cksh .mut{font-size:11px}.cksh .iconbtn{margin-left:auto}
+.cksg{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px}
+.ckset fieldset{border:1px solid var(--line);border-radius:9px;padding:8px 10px;margin:0}.ckset legend{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:0 4px}
+.ckr{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12.5px;padding:3px 0}.ckr input[type=color]{width:38px;height:22px;border:1px solid var(--line);border-radius:5px;padding:0;background:none}
+.ckr select{background:var(--panel-2);color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:3px 6px}.cksf{margin-top:10px;display:flex;justify-content:flex-end}
 </style>`);
 
 /* ====================== Orderflow: Time & Sales, DOM, Orderbuch-Heatmap, Footprint, Market Profile ====================== */
@@ -3585,7 +3645,7 @@ function tsStop(){ tsGen++; for(const k in TSW){ if(k==="cur") continue; try{ TS
 /* ---------- Orderbuch (Binance Perp, Diff-Stream + Snapshot) ---------- */
 const OB = {ws:null,bids:new Map(),asks:new Map(),ready:false,buf:[],sym:"",pu:null,on:false,use:0,t:0};
 function obStart(){ OB.use=Date.now(); if(OB.on && OB.sym===S.cur) return; obStop(); OB.on=true; OB.sym=S.cur; OB.ready=false; OB.buf=[]; OB.bids.clear(); OB.asks.clear(); OB.pu=null;
-  let w; try{ w=new WebSocket(`wss://fstream.binance.com/ws/${S.cur.toLowerCase()}usdt@depth@100ms`); }catch(e){ OB.on=false; return; } OB.ws=w;
+  let w; try{ w=new WebSocket(`wss://fstream.binance.com/public/ws/${S.cur.toLowerCase()}usdt@depth@100ms`); }catch(e){ OB.on=false; return; } OB.ws=w;
   w.onmessage=e=>{ let m; try{ m=JSON.parse(e.data); }catch(x){ return; } if(m.e!=="depthUpdate") return; if(!OB.ready){ OB.buf.push(m); if(OB.buf.length>600) OB.buf.shift(); return; } obApply(m); };
   w.onclose=()=>{ if(OB.ws===w && OB.on){ OB.on=false; setTimeout(()=>{ if(OF_VIEWS.has(S.view)||Date.now()-OB.use<180e3) obStart(); },3000); } };
   w.onerror=()=>{}; setTimeout(obSnap,700); }
@@ -3636,17 +3696,17 @@ function fpAgg(tfMs,mul){ const out=new Map();
 const ofWrap=(id,h="min(74vh,700px)")=>`<div class="ofwrap" style="height:${h}"><canvas id="${id}"></canvas></div>`;
 V3.tape2 = P2("Time & Sales","Trades aller Börsen in Echtzeit (Futures und Spot)",'<div class="form" id="ts-ven"></div><div class="form">'+num3("ts-min",S.tsMin??10000,1000,"Min. Größe $",110)+num3("ts-big",S.tsBig??250000,10000,"Großer Trade ab $",120)+seg3("k3","tsAgg",[[1,"Zusammengefasst"],[0,"Einzeln"]])+seg3("k3","tsPause",[[0,"Live"],[1,"Pause"]])+'</div><div class="cards" id="ts-cards"></div><div class="tw tsw"><table class="ts"><thead><tr><th class="l">Zeit</th><th class="l">Börse</th><th>Preis</th><th>Größe</th><th>Wert</th><th class="l">Seite</th></tr></thead><tbody id="ts-t"></tbody></table></div><div class="note">Zusammengefasst: Teil-Ausführungen derselben Börse und Seite innerhalb von 100 ms werden wie in einem Smart Tape zu einer Order gebündelt.</div>',"wide");
 V3.dom = P2("DOM","Orderbuch Binance Perp mit gehandeltem Volumen je Preis",'<div class="form">'+seg3("k3","domMul",[[1,"Stufe 1×"],[2,"2×"],[5,"5×"],[10,"10×"],[20,"20×"]])+'<button class="btn ghost" id="dom-center">Zentrieren</button><button class="btn ghost" id="dom-reset">Volumen zurücksetzen</button><span class="mut" id="dom-info"></span></div>'+ofWrap("dom-cv")+'<div class="note">Mausrad = Leiter verschieben, Doppelklick = wieder auf den aktuellen Preis zentrieren. Gekauft/Verkauft = aggressive Market-Orders seit dem Öffnen der Seite bzw. dem letzten Zurücksetzen.</div>',"wide");
-V3.heatmap = P2("Orderbuch-Heatmap","Liquidität im Orderbuch über die Zeit, Binance Perp, mit Trades als Blasen",'<div class="form">'+seg3("k3","hmSpan",[[300,"5 min"],[900,"15 min"],[1800,"30 min"]])+seg3("k3","hmCon",[[1,"Kontrast niedrig"],[2,"mittel"],[3,"hoch"]])+num3("hm-bub",S.hmBub??50000,10000,"Blasen ab $",110)+'<button class="btn ghost" id="hm-follow">Preis folgen</button></div>'+ofWrap("hm-cv")+'<div class="note" id="hm-note">Die Aufzeichnung startet mit dem Öffnen dieser Seite (eine Spalte pro Sekunde, bis 30 Minuten). Mausrad = Preis-Zoom, Umschalt + Mausrad = Zeit-Zoom, Ziehen = Verschieben, Doppelklick = zurücksetzen.</div>',"wide");
+V3.heatmap = P2("Orderbuch-Heatmap","Liquidität im Orderbuch über die Zeit, Binance Perp, Trades als Blasen, Farbe nach Template",'<div class="form">'+seg3("k3","hmSpan",[[300,"5 min"],[900,"15 min"],[1800,"30 min"]])+seg3("k3","hmCon",[[1,"Kontrast niedrig"],[2,"mittel"],[3,"hoch"]])+num3("hm-bub",S.hmBub??50000,10000,"Blasen ab $",110)+'<button class="btn ghost" id="hm-follow">Preis folgen</button></div>'+ofWrap("hm-cv")+'<div class="note" id="hm-note">Die Aufzeichnung startet mit dem Öffnen dieser Seite (eine Spalte pro Sekunde, bis 30 Minuten). Mausrad = Preis-Zoom, Umschalt + Mausrad = Zeit-Zoom, Ziehen = Verschieben, Doppelklick = zurücksetzen.</div>',"wide");
 V3.footprint = P2("Footprint","Cluster-Chart: Verkäufe × Käufe je Preis, Binance Perp",'<div class="form">'+seg3("k3","fpTf",[[1,"1m"],[5,"5m"],[15,"15m"],[30,"30m"],[60,"1h"]])+seg3("k3","fpMul",[[1,"Cluster 1×"],[2,"2×"],[5,"5×"],[10,"10×"],[20,"20×"]])+seg3("k3","fpMode",[["ba","Bid × Ask"],["delta","Delta"],["vol","Volumen"]])+seg3("k3","fpImb",[[0,"Imbalance aus"],[3,"Imbalance 300 %"],[4,"400 %"]])+'</div>'+ofWrap("fp-cv")+'<div class="note" id="fp-note">Der Footprint wird live aus allen Trades aufgebaut und lokal gespeichert (8 Stunden). Beim Öffnen werden die letzten Minuten nachgeladen. Mausrad = Zoom, Umschalt + Mausrad = Preis-Zoom, Ziehen = Verschieben, Doppelklick = zurücksetzen.</div>',"wide");
-V3.tpo = P2("Market Profile (TPO)","30-Minuten-Perioden je Tag (UTC), Binance Perp",'<div class="form">'+seg3("k3","tpoDays",[[3,"3 Tage"],[5,"5 Tage"],[10,"10 Tage"]])+seg3("k3","tpoMul",[[5,"TPO 5×"],[10,"10×"],[20,"20×"],[50,"50×"]])+seg3("k3","tpoStyle",[["l","Buchstaben"],["b","Blöcke"]])+tog3("tpoNaked","Naked POCs")+'</div><div class="cards" id="tpo-cards"></div>'+ofWrap("tpo-cv","min(76vh,760px)")+'<div class="note">POC = Preis mit den meisten TPOs, Value Area = 70 % der TPOs um den POC, IB = Initial Balance (erste Stunde), Single Prints = nur eine Periode. Naked POCs = POCs früherer Tage, die seitdem nicht mehr gehandelt wurden. Mausrad/Ziehen verschiebt die Ansicht, Doppelklick setzt zurück.</div>',"wide");
+V3.tpo = P2("Market Profile (TPO)","30-Minuten-Perioden je Tag (UTC), Binance Perp",'<div class="form">'+seg3("k3","tpoDays",[[3,"3 Tage"],[5,"5 Tage"],[10,"10 Tage"]])+seg3("k3","tpoMul",[[5,"TPO 5×"],[10,"10×"],[20,"20×"],[50,"50×"]])+seg3("k3","tpoStyle",[["l","Buchstaben"],["b","Blöcke"]])+tog3("tpoComp","Composite")+tog3("tpoNaked","nPOC (Volumen)")+num3("tpo-va",S.tpoVA??68,1,"Value Area %",60)+'</div><div class="cards" id="tpo-cards"></div>'+ofWrap("tpo-cv","min(76vh,760px)")+'<div class="note">POC = Preis mit den meisten TPOs, Value Area = 68 % der TPOs um den POC (innerhalb Akzentfarbe, außerhalb zweite Template-Farbe), IB = Initial Balance (erste Stunde). Composite = Volumenprofil über alle angezeigten Tage mit cVAH, cPOC und cVAL. nPOC = Volumen-POC eines Tages, der seitdem nicht mehr gehandelt wurde. Mausrad/Ziehen verschiebt die Ansicht, Doppelklick setzt zurück.</div>',"wide");
 for(const v of OF_VIEWS) NB3.add(v);
-S.tsAgg??=1; S.tsPause??=0; S.domMul??=2; S.hmSpan??=900; S.hmCon??=2; S.fpTf??=1; S.fpMul??=2; S.fpMode??="ba"; S.fpImb??=3; S.tpoDays??=5; S.tpoMul??=10; S.tpoStyle??="l"; S.tpoNaked??=1;
+S.tsAgg??=1; S.tsPause??=0; S.domMul??=2; S.hmSpan??=900; S.hmCon??=2; S.fpTf??=1; S.fpMul??=2; S.fpMode??="ba"; S.fpImb??=3; S.tpoDays??=5; S.tpoMul??=10; S.tpoStyle??="l"; S.tpoNaked??=1; S.tpoComp??=1; S.tpoVA??=68;
 S.tsVen=Object.assign({bnp:1,byp:1,okp:1,drp:1,bns:1,cbs:1},S.tsVen||{});
 
 /* --- Time & Sales --- */
 R3.tape2 = () => { tsStart(); const box=$("ts-ven"); if(box && !box.dataset.ok){ box.dataset.ok=1; box.innerHTML='<span class="lbl3">Börsen</span>'+Object.entries(TSV).map(([k,n])=>`<button class="chip tsv" data-tsv="${k}" aria-pressed="${!!S.tsVen[k]}">${n}</button>`).join(""); } ofKick(); };
 document.addEventListener("click",e=>{ const b=e.target.closest("[data-tsv]"); if(!b) return; const k=b.dataset.tsv; S.tsVen[k]=S.tsVen[k]?0:1; b.setAttribute("aria-pressed",String(!!S.tsVen[k])); save(); ofNow(); });
-document.addEventListener("change",e=>{ const id=e.target.id; if(id==="ts-min"){ S.tsMin=Math.max(0,+e.target.value||0); save(); ofNow(); } else if(id==="ts-big"){ S.tsBig=Math.max(0,+e.target.value||0); save(); ofNow(); } else if(id==="hm-bub"){ S.hmBub=Math.max(0,+e.target.value||0); save(); ofNow(); } });
+document.addEventListener("change",e=>{ const id=e.target.id; if(id==="ts-min"){ S.tsMin=Math.max(0,+e.target.value||0); save(); ofNow(); } else if(id==="ts-big"){ S.tsBig=Math.max(0,+e.target.value||0); save(); ofNow(); } else if(id==="hm-bub"){ S.hmBub=Math.max(0,+e.target.value||0); save(); ofNow(); } else if(id==="tpo-va"){ S.tpoVA=Math.max(50,Math.min(95,+e.target.value||68)); save(); ofNow(); } });
 let tsLastHtml="";
 OF_DRAW.tape2 = () => {
   const now=Date.now(), en=S.tsVen, mn=S.tsMin??10000, big=S.tsBig??250000;
@@ -3660,7 +3720,7 @@ OF_DRAW.tape2 = () => {
     if(+S.tsAgg){ if(agg && agg.v===x.v && agg.side===x.side && agg.ts-x.ts<=100){ agg.q+=x.q; agg.usd+=x.usd; agg.n++; continue; } flush(); agg={...x,n:1}; }
     else if(x.usd>=mn) rows.push(x); }
   flush();
-  const html=rows.map(x=>{ const B=x.usd>=big; return `<tr class="${x.side==="buy"?"tsb":"tss"}${B?" tsbig":""}"><td class="l">${new Date(x.ts).toLocaleTimeString(LOC,{hour:"2-digit",minute:"2-digit",second:"2-digit"})}.${String(x.ts%1000).padStart(3,"0").slice(0,2)}</td><td class="l">${TSV[x.v]}</td><td>${fmtNum(x.px,dec)}</td><td>${fq(x.q)}${x.n>1?` <span class="mut">(${x.n})</span>`:""}</td><td>${fUsd0(x.usd)}</td><td class="l">${x.side==="buy"?"Kauf":"Verkauf"}</td></tr>`; }).join("") || '<tr><td colspan="6" class="empty">Warte auf Trades über der Mindestgröße …</td></tr>';
+  const html=rows.map(x=>{ const B=x.usd>=big, HG=x.usd>=big*4; return `<tr class="${B?(x.side==="buy"?"tsbb":"tsbs"):(x.side==="buy"?"tsb":"tss")}${HG?" tshuge":""}"><td class="l">${new Date(x.ts).toLocaleTimeString(LOC,{hour:"2-digit",minute:"2-digit",second:"2-digit"})}.${String(x.ts%1000).padStart(3,"0").slice(0,2)}</td><td class="l">${TSV[x.v]}</td><td>${fmtNum(x.px,dec)}</td><td>${fq(x.q)}${x.n>1?` <span class="mut">(${x.n})</span>`:""}</td><td>${fUsd0(x.usd)}</td><td class="l">${x.side==="buy"?"▲ Kauf":"▼ Verkauf"}${B?" · groß":""}</td></tr>`; }).join("") || '<tr><td colspan="6" class="empty">Warte auf Trades über der Mindestgröße …</td></tr>';
   if(html!==tsLastHtml){ tsLastHtml=html; $("ts-t").innerHTML=html; }
 };
 
@@ -3677,7 +3737,7 @@ OF_DRAW.dom = () => {
   for(const [p,q] of OB.bids){ const b=Math.floor(p/st); if(b<=top&&b>top-rows) bid.set(b,(bid.get(b)||0)+q); }
   for(const [p,q] of OB.asks){ const b=Math.floor(p/st); if(b<=top&&b>top-rows) ask.set(b,(ask.get(b)||0)+q); }
   for(const [b0,v] of DOMT.m){ const b=Math.floor(b0*base/st+1e-9); if(b<=top&&b>top-rows){ const a=tr.get(b)||[0,0]; a[0]+=v[0]; a[1]+=v[1]; tr.set(b,a); } }
-  const mxB=Math.max(1e-9,...bid.values(),...ask.values()), mxT=Math.max(1e-9,...[...tr.values()].map(a=>Math.max(a[0],a[1])));
+  const mxB=Math.max(1e-9,...bid.values(),...ask.values()), mxT=Math.max(1e-9,...[...tr.values()].map(a=>Math.max(a[0],a[1]))), allq=[...bid.values(),...ask.values()].sort((a,b)=>a-b), bigQ=Math.max(allq.length?allq[Math.floor(allq.length/2)]*4:Infinity,1e-9), BB=css("--big-buy"), BS=css("--big-sell");
   const cols=[["Verkauft",0.17],["Bid",0.19],["Preis",0.18],["Ask",0.19],["Gekauft",0.17],["Delta",0.10]], X=[]; let xx=0; for(const [,w] of cols){ X.push([xx,w*W]); xx+=w*W; }
   g.font="600 11px IBM Plex Sans, sans-serif"; g.fillStyle=c.bg2; g.fillRect(0,0,W,hdr); g.fillStyle=c.mut; g.textAlign="center"; cols.forEach(([n],i)=>g.fillText(n,X[i][0]+X[i][1]/2,hdr/2)); g.textAlign="left";
   g.font="500 11.5px IBM Plex Mono, monospace"; const lastB=Math.floor(last/st), bbB=Math.floor(bb/st), baB=Math.floor(ba/st), now=Date.now();
@@ -3685,8 +3745,8 @@ OF_DRAW.dom = () => {
   for(let r=0;r<rows;r++){ const b=top-r, y=hdr+r*rh, cy=y+rh/2, p=b*st;
     if(r%2===0){ g.fillStyle=rgba3(c.fg,.025); g.fillRect(0,y,W,rh); }
     const qb=bid.get(b)||0, qa=ask.get(b)||0, t=tr.get(b)||[0,0]; sb+=qb; sa+=qa;
-    if(qb){ const w=qb/mxB*(X[1][1]-6); g.fillStyle=rgba3(c.up,b===bbB?.55:.28); g.fillRect(X[1][0]+X[1][1]-3-w,y+2,w,rh-4); g.fillStyle=c.fg; g.textAlign="right"; g.fillText(fq(qb),X[1][0]+X[1][1]-6,cy); }
-    if(qa){ const w=qa/mxB*(X[3][1]-6); g.fillStyle=rgba3(c.dn,b===baB?.55:.28); g.fillRect(X[3][0]+3,y+2,w,rh-4); g.fillStyle=c.fg; g.textAlign="left"; g.fillText(fq(qa),X[3][0]+6,cy); }
+    if(qb){ const w=qb/mxB*(X[1][1]-6), bg=qb>=bigQ; g.fillStyle=bg?rgba3(BB,.75):rgba3(c.up,b===bbB?.55:.28); g.fillRect(X[1][0]+X[1][1]-3-w,y+2,w,rh-4); g.fillStyle=c.fg; g.font=(bg?"700 ":"500 ")+"11.5px IBM Plex Mono, monospace"; g.textAlign="right"; g.fillText(fq(qb),X[1][0]+X[1][1]-6,cy); }
+    if(qa){ const w=qa/mxB*(X[3][1]-6), bg=qa>=bigQ; g.fillStyle=bg?rgba3(BS,.75):rgba3(c.dn,b===baB?.55:.28); g.fillRect(X[3][0]+3,y+2,w,rh-4); g.fillStyle=c.fg; g.font=(bg?"700 ":"500 ")+"11.5px IBM Plex Mono, monospace"; g.textAlign="left"; g.fillText(fq(qa),X[3][0]+6,cy); } g.font="500 11.5px IBM Plex Mono, monospace";
     if(t[0]){ const w=t[0]/mxT*(X[0][1]-6); g.fillStyle=rgba3(c.dn,.22); g.fillRect(X[0][0]+X[0][1]-3-w,y+3,w,rh-6); g.fillStyle=c.mut; g.textAlign="right"; g.fillText(fq(t[0]),X[0][0]+X[0][1]-6,cy); }
     if(t[1]){ const w=t[1]/mxT*(X[4][1]-6); g.fillStyle=rgba3(c.up,.22); g.fillRect(X[4][0]+3,y+3,w,rh-6); g.fillStyle=c.mut; g.textAlign="left"; g.fillText(fq(t[1]),X[4][0]+6,cy); }
     const d=t[1]-t[0]; if(t[0]||t[1]){ g.fillStyle=d>=0?c.up:c.dn; g.textAlign="right"; g.fillText((d>=0?"+":"-")+fq(d),X[5][0]+X[5][1]-6,cy); }
@@ -3698,46 +3758,53 @@ OF_DRAW.dom = () => {
   const imb=sb+sa?((sb-sa)/(sb+sa)*100):0; const info=$("dom-info"); if(info) info.innerHTML=`Bid ${fq(sb)} · Ask ${fq(sa)} · Ungleichgewicht <b class="${cls3(imb)}">${imb>=0?"+":""}${imb.toFixed(1)} %</b> · Spread ${fmtNum(ba-bb,ofDec(base)+1)} · Stufe $${fmtNum(st,dec)}`;
 };
 
-/* --- Orderbuch-Heatmap --- */
-const HV = {follow:true,center:0,range:0.006,off:0,hy:null,hx:null};
+/* --- Orderbuch-Heatmap (ATAS-Stil, Farbe folgt dem Template) --- */
+const HV = {follow:true,center:0,range:0.004,off:0,hy:null,hx:null};
+let HMLUT={k:"",L:null};
+function themeLut(){ const c=ofc(), heat=css("--heat")||c.acc, k=heat+"|"+c.light; if(HMLUT.k===k) return HMLUT.L;
+  const h=hex3(heat), r=parseInt(h.slice(1,3),16), g=parseInt(h.slice(3,5),16), b=parseInt(h.slice(5,7),16), mix=(t,R,G,B)=>[r+(R-r)*t,g+(G-g)*t,b+(B-b)*t];
+  const st=c.light? [[0,[r,g,b,0]],[0.08,[...mix(.82,255,255,255),110]],[0.3,[...mix(.45,255,255,255),205]],[0.6,[r,g,b,240]],[0.85,[...mix(.32,0,0,0),250]],[1,[...mix(.55,0,0,0),255]]]
+                   : [[0,[r,g,b,0]],[0.08,[...mix(.6,0,0,0),105]],[0.3,[...mix(.15,0,0,0),190]],[0.6,[r,g,b,235]],[0.85,[...mix(.55,255,255,255),245]],[1,[255,255,255,255]]];
+  const L=new Uint8ClampedArray(1024); for(let i=0;i<256;i++){ const t=i/255; let j=0; while(j<st.length-2&&t>st[j+1][0]) j++; const [t0,c0]=st[j],[t1,c1]=st[j+1], f=(t-t0)/((t1-t0)||1); for(let q=0;q<4;q++) L[i*4+q]=c0[q]+(c1[q]-c0[q])*f; }
+  HMLUT={k,L}; return L; }
 R3.heatmap = () => { obStart(); const cv=$("hm-cv"); ofInteract(cv,{
-  wheel:e=>{ if(e.shiftKey){ const v=[300,900,1800]; let i=v.indexOf(+S.hmSpan||900); i=Math.max(0,Math.min(2,i+(e.deltaY>0?1:-1))); S.hmSpan=v[i]; sync3(); } else HV.range=Math.max(0.0008,Math.min(0.015,HV.range*(e.deltaY>0?1.15:1/1.15))); },
-  drag:(dx,dy)=>{ const C=$("hm-cv"); if(!C) return; const H=C.clientHeight-20; if(HV.follow){ const l=OBH.cols[OBH.cols.length-1]; HV.center=l?(l.bb+l.ba)/2:spot; HV.follow=false; } HV.center+=dy/H*2*HV.range*HV.center; const span=+S.hmSpan||900, W=C.clientWidth-160; HV.off=Math.max(0,Math.min(OBH.cols.length-10,HV.off+Math.round(dx/W*span))); },
-  hover:(x,y)=>{ HV.hx=x; HV.hy=y; }, reset:()=>{ HV.follow=true; HV.off=0; HV.range=0.006; } }); ofKick(); };
+  wheel:e=>{ if(e.shiftKey){ const v=[300,900,1800]; let i=v.indexOf(+S.hmSpan||900); i=Math.max(0,Math.min(2,i+(e.deltaY>0?1:-1))); S.hmSpan=v[i]; sync3(); } else HV.range=Math.max(0.0006,Math.min(0.015,HV.range*(e.deltaY>0?1.15:1/1.15))); },
+  drag:(dx,dy)=>{ const C=$("hm-cv"); if(!C) return; const H=C.clientHeight-20; if(HV.follow){ const l=OBH.cols[OBH.cols.length-1]; HV.center=l?(l.bb+l.ba)/2:spot; HV.follow=false; } HV.center+=dy/H*2*HV.range*HV.center; const span=+S.hmSpan||900, W=C.clientWidth-150; HV.off=Math.max(0,Math.min(OBH.cols.length-10,HV.off+Math.round(dx/W*span))); },
+  hover:(x,y)=>{ HV.hx=x; HV.hy=y; }, reset:()=>{ HV.follow=true; HV.off=0; HV.range=0.004; } }); ofKick(); };
 OF_DRAW.heatmap = () => {
   const C=cvSetup("hm-cv"); if(!C) return; const {g,W,H}=C, c=ofc(); g.clearRect(0,0,W,H);
   const cols=OBH.cols; if(!OB.ready||cols.length<2){ cvMsg(g,W,H,OB.ready?"Aufzeichnung läuft, die ersten Sekunden sammeln sich …":"Verbinde mit dem Binance-Orderbuch …"); return; }
-  const axR=74, prW=86, axB=20, pw=W-axR-prW, ph=H-axB; const span=Math.min(+S.hmSpan||900,cols.length), off=Math.min(HV.off,Math.max(0,cols.length-span)), s0=cols.length-span-off, L=cols[cols.length-1-off];
-  const mid=HV.follow?(L.bb+L.ba)/2:HV.center, hb=OBH.hb, pLo=mid*(1-HV.range), pHi=mid*(1+HV.range), b0=Math.floor(pLo/hb), nb=Math.ceil(pHi/hb)-b0+1, merge=Math.max(1,Math.ceil(nb/ph)), rows=Math.ceil(nb/merge), top=(b0+rows*merge)*hb;
-  const yOf=p=>(top-p)/(rows*merge*hb)*ph;
-  // Kontrast: Perzentil der sichtbaren Werte
-  const smp=[]; for(let x=0;x<span;x+=Math.max(1,Math.floor(span/120))){ const col=cols[s0+x]; for(let r=0;r<rows;r+=2){ let v=0; for(let k=0;k<merge;k++){ const i=b0+r*merge+k-col.lo; if(i>=0&&i<col.q.length) v+=col.q[i]; } if(v>0) smp.push(v); } }
-  smp.sort((a,b)=>a-b); const pc={1:0.995,2:0.975,3:0.93}[+S.hmCon||2], vmax=smp.length?smp[Math.min(smp.length-1,Math.floor(smp.length*pc))]:1;
-  if(!HV.off2||HV.off2.width!==span||HV.off2.height!==rows){ HV.off2=document.createElement("canvas"); HV.off2.width=span; HV.off2.height=rows; }
-  const og=HV.off2.getContext("2d"), img=og.createImageData(span,rows), D=img.data;
-  for(let x=0;x<span;x++){ const col=cols[s0+x], q=col.q, lo=col.lo; for(let r=0;r<rows;r++){ let v=0; const bs=b0+r*merge-lo; for(let k=0;k<merge;k++){ const i=bs+k; if(i>=0&&i<q.length) v+=q[i]; } if(v<=0) continue;
-      const t=Math.min(1,Math.pow(v/vmax,0.6)), li=Math.round(t*255)*4, o=((rows-1-r)*span+x)*4; D[o]=OBH_LUT[li]; D[o+1]=OBH_LUT[li+1]; D[o+2]=OBH_LUT[li+2]; D[o+3]=OBH_LUT[li+3]; } }
-  og.putImageData(img,0,0); g.imageSmoothingEnabled=false; g.drawImage(HV.off2,0,0,span,rows,0,0,pw,ph);
-  const xs=pw/span; g.lineWidth=1.4;
-  // Best Bid/Ask + letzter Preis
-  const line=(key,col,w)=>{ g.strokeStyle=col; g.lineWidth=w; g.beginPath(); for(let x=0;x<span;x++){ const v=cols[s0+x][key], X=x*xs, Y=yOf(v); if(x===0) g.moveTo(X,Y); else { g.lineTo(X,Y); } g.lineTo(X+xs,Y); } g.stroke(); };
-  line("bb",rgba3(c.up,.7),1); line("ba",rgba3(c.dn,.7),1); line("last",c.light?"#111":"#ffffff",1.6);
-  // Trade-Blasen
-  const bub=S.hmBub??50000; for(let x=0;x<span;x++){ const col=cols[s0+x], v=col.buy+col.sell; if(v<bub||!v) continue; const r=Math.max(3,Math.min(24,Math.sqrt(v/bub)*4)), sh=col.buy/v;
-    g.beginPath(); g.arc(x*xs+xs/2,yOf(col.last),r,0,Math.PI*2); g.fillStyle=rgba3(sh>0.6?c.up:sh<0.4?c.dn:c.warn,.55); g.fill(); g.strokeStyle=rgba3(c.fg,.7); g.lineWidth=0.8; g.stroke(); }
-  // aktuelles Orderbuch rechts
+  const axR=74, prW=70, axB=20, pw=W-axR-prW, ph=H-axB, heat=css("--heat")||c.acc; const span=Math.min(+S.hmSpan||900,cols.length), off=Math.min(HV.off,Math.max(0,cols.length-span)), s0=cols.length-span-off, L=cols[cols.length-1-off];
+  const mid=HV.follow?(L.bb+L.ba)/2:HV.center, hb=OBH.hb, pLo=mid*(1-HV.range), pHi=mid*(1+HV.range), b0=Math.floor(pLo/hb), nb=Math.ceil(pHi/hb)-b0+1, merge=Math.max(1,Math.ceil(nb*3/ph)), rows=Math.ceil(nb/merge), top=(b0+rows*merge)*hb, yOf=p=>(top-p)/(rows*merge*hb)*ph, rh=ph/rows;
+  const V=new Float32Array(span*rows), smp=[];
+  for(let x=0;x<span;x++){ const col=cols[s0+x], q=col.q, lo=col.lo; for(let r=0;r<rows;r++){ let v=0; const bs=b0+r*merge-lo; for(let k=0;k<merge;k++){ const i=bs+k; if(i>=0&&i<q.length) v+=q[i]; } V[x*rows+r]=v; if(v>0&&(x%4===0)) smp.push(v); } }
+  smp.sort((a,b)=>a-b); const pc={1:0.997,2:0.985,3:0.95}[+S.hmCon||2], vmax=smp.length?smp[Math.min(smp.length-1,Math.floor(smp.length*pc))]:1, thr=vmax*0.035, LUT=themeLut();
+  const IH=rows*4; if(!HV.off2||HV.off2.width!==span||HV.off2.height!==IH){ HV.off2=document.createElement("canvas"); HV.off2.width=span; HV.off2.height=IH; }
+  const og=HV.off2.getContext("2d"), img=og.createImageData(span,IH), D=img.data;
+  for(let x=0;x<span;x++) for(let r=0;r<rows;r++){ const v=V[x*rows+r]; if(v<=thr) continue; const t=Math.min(1,Math.pow((v-thr)/(vmax-thr||1),0.55)), li=Math.round(t*255)*4, y0=(rows-1-r)*4; for(let yy=0;yy<3;yy++){ const o=((y0+yy)*span+x)*4; D[o]=LUT[li]; D[o+1]=LUT[li+1]; D[o+2]=LUT[li+2]; D[o+3]=LUT[li+3]; } }
+  og.putImageData(img,0,0); g.imageSmoothingEnabled=false; g.drawImage(HV.off2,0,0,span,IH,0,0,pw,ph);
+  const xs=pw/span;
+  // Preislinie (letzter Trade)
+  g.lineJoin="round"; const pl=c.light?"#111111":"#ffffff"; for(const [w,col] of [[4,rgba3(c.bg,.85)],[1.8,pl]]){ g.strokeStyle=col; g.lineWidth=w; g.beginPath(); for(let x=0;x<span;x++){ const Y=yOf(cols[s0+x].last), X=x*xs; if(x===0) g.moveTo(X,Y); else g.lineTo(X,Y); g.lineTo(X+xs,Y); } g.stroke(); }
+  // Trades als Blasen
+  const bub=S.hmBub??50000; g.textAlign="center"; for(let x=0;x<span;x++){ const col=cols[s0+x], v=col.buy+col.sell; if(v<bub||!v) continue; const r=Math.max(3.5,Math.min(26,Math.sqrt(v/bub)*4.5)), sh=col.buy/v, X=x*xs+xs/2, Y=yOf(col.last);
+    g.beginPath(); g.arc(X,Y,r,0,Math.PI*2); g.fillStyle=rgba3(sh>=0.5?c.up:c.dn,.78); g.fill(); g.strokeStyle=rgba3(pl,.9); g.lineWidth=1; g.stroke();
+    if(r>=12){ g.fillStyle=c.light?"#ffffff":"#000000"; g.font="700 9.5px IBM Plex Mono, monospace"; g.fillText(fUsd0(v).replace("$",""),X,Y); } }
+  g.textAlign="left";
+  // aktuelles Orderbuch rechts + große Orders beschriften
   const qb=new Float64Array(rows), qa=new Float64Array(rows); let mq=1e-9; for(let r=0;r<rows;r++){ for(let k=0;k<merge;k++){ const i=b0+r*merge+k-L.lo; if(i>=0&&i<L.q.length){ const p=(b0+r*merge+k)*hb; if(p<=L.bb) qb[r]+=L.q[i]; else qa[r]+=L.q[i]; } } mq=Math.max(mq,qb[r],qa[r]); }
-  const rh=ph/rows; for(let r=0;r<rows;r++){ const y=ph-(r+1)*rh; if(qb[r]){ g.fillStyle=rgba3(c.up,.5); g.fillRect(pw+2,y,qb[r]/mq*(prW-6),Math.max(1,rh-0.5)); } if(qa[r]){ g.fillStyle=rgba3(c.dn,.5); g.fillRect(pw+2,y,qa[r]/mq*(prW-6),Math.max(1,rh-0.5)); } }
+  for(let r=0;r<rows;r++){ const y=ph-(r+1)*rh; if(qb[r]){ g.fillStyle=rgba3(c.up,.55); g.fillRect(pw+2,y+rh*0.15,qb[r]/mq*(prW-6),Math.max(1,rh*0.7)); } if(qa[r]){ g.fillStyle=rgba3(c.dn,.55); g.fillRect(pw+2,y+rh*0.15,qa[r]/mq*(prW-6),Math.max(1,rh*0.7)); } }
+  const bigs=[...Array(rows).keys()].map(r=>[r,qb[r]+qa[r]]).filter(x=>x[1]>0).sort((a,b)=>b[1]-a[1]).slice(0,6); g.font="600 10px IBM Plex Mono, monospace";
+  for(const [r,q] of bigs){ if(q<mq*0.25) continue; const y=ph-(r+0.5)*rh, t=fq(q); const tw=g.measureText(t).width+8; g.fillStyle=rgba3(c.bg,.8); g.fillRect(pw-tw-4,y-8,tw,16); g.fillStyle=heat; g.fillText(t,pw-tw,y); }
   // Achsen
   g.fillStyle=c.bg; g.fillRect(pw+prW,0,axR,H); g.fillRect(0,ph,W,axB); g.strokeStyle=c.line; g.lineWidth=1; g.beginPath(); g.moveTo(pw+.5,0); g.lineTo(pw+.5,ph); g.moveTo(pw+prW+.5,0); g.lineTo(pw+prW+.5,ph); g.moveTo(0,ph+.5); g.lineTo(W,ph+.5); g.stroke();
   g.font="500 10.5px IBM Plex Mono, monospace"; g.fillStyle=c.mut; const dec=ofDec(hb); const stp=Math.pow(10,Math.floor(Math.log10((pHi-pLo)/6))), nice=[1,2,2.5,5,10].map(m=>m*stp).find(s=>(pHi-pLo)/s<=8)||stp*10;
-  for(let p=Math.ceil(pLo/nice)*nice;p<=pHi;p+=nice){ const y=yOf(p); if(y<6||y>ph-6) continue; g.fillText(fmtNum(p,nice<1?dec:0),pw+prW+6,y); g.strokeStyle=rgba3(c.fg,.06); g.beginPath(); g.moveTo(0,y); g.lineTo(pw,y); g.stroke(); }
-  const lp=L.last, ly=yOf(lp); g.fillStyle=c.acc; g.fillRect(pw+prW+1,ly-8,axR-2,16); g.fillStyle=c.onacc; g.font="700 10.5px IBM Plex Mono, monospace"; g.fillText(fmtNum(lp,dec),pw+prW+5,ly);
+  for(let p=Math.ceil(pLo/nice)*nice;p<=pHi;p+=nice){ const y=yOf(p); if(y<6||y>ph-6) continue; g.fillText(fmtNum(p,nice<1?dec:0),pw+prW+6,y); }
+  const lp=L.last, ly=yOf(lp); g.fillStyle=heat; g.fillRect(pw+prW+1,ly-8,axR-2,16); g.fillStyle=c.light?"#ffffff":"#000000"; g.font="700 10.5px IBM Plex Mono, monospace"; g.fillText(fmtNum(lp,dec),pw+prW+5,ly);
   g.fillStyle=c.mut; g.font="500 10px IBM Plex Mono, monospace"; const tstep=Math.max(1,Math.round(span/6)); for(let x=0;x<span;x+=tstep){ const t=cols[s0+x].t; g.fillText(new Date(t).toLocaleTimeString(LOC,{hour:"2-digit",minute:"2-digit",second:"2-digit"}),x*xs+2,ph+axB/2); }
-  if(HV.hy!=null && HV.hx<pw && HV.hy<ph){ const p=top-HV.hy/ph*(rows*merge*hb), xi=Math.min(span-1,Math.max(0,Math.floor(HV.hx/xs))), col=cols[s0+xi]; let v=0; const bi=Math.floor(p/hb)-col.lo; for(let k=-Math.floor(merge/2);k<=Math.floor(merge/2);k++){ const i=bi+k; if(i>=0&&i<col.q.length) v+=col.q[i]; }
+  if(HV.hy!=null && HV.hx<pw && HV.hy<ph){ const p=top-HV.hy/ph*(rows*merge*hb), xi=Math.min(span-1,Math.max(0,Math.floor(HV.hx/xs))), r=Math.min(rows-1,Math.max(0,Math.floor((p-b0*hb)/(merge*hb)))), v=V[xi*rows+r], col=cols[s0+xi];
     g.strokeStyle=rgba3(c.fg,.4); g.setLineDash([4,4]); g.beginPath(); g.moveTo(0,HV.hy); g.lineTo(pw,HV.hy); g.moveTo(HV.hx,0); g.lineTo(HV.hx,ph); g.stroke(); g.setLineDash([]);
     const tx=`${fmtNum(p,dec)} · ${fq(v)} ${S.cur} · ${new Date(col.t).toLocaleTimeString(LOC)}`; g.font="600 11px IBM Plex Mono, monospace"; const tw=g.measureText(tx).width+12, bx=Math.min(HV.hx+10,pw-tw-4), by=Math.max(4,HV.hy-26); g.fillStyle=c.bg2; g.fillRect(bx,by,tw,20); g.fillStyle=c.fg; g.fillText(tx,bx+6,by+10); }
-  const n=$("hm-note"); if(n && !n.dataset.s){ n.dataset.s=1; }
 };
 
 /* --- Footprint --- */
@@ -3779,58 +3846,70 @@ OF_DRAW.footprint = () => {
   if(FV.hy!=null && FV.hx<pw && FV.hy<ph){ g.strokeStyle=rgba3(c.fg,.35); g.setLineDash([4,4]); g.beginPath(); g.moveTo(0,FV.hy); g.lineTo(pw,FV.hy); g.stroke(); g.setLineDash([]); const p=(topB+1-FV.hy/rh)*st; g.fillStyle=c.bg2; g.fillRect(pw+1,FV.hy-8,axR-2,16); g.fillStyle=c.fg; g.font="600 10.5px IBM Plex Mono, monospace"; g.fillText(fmtNum(p,dec),pw+5,FV.hy); }
 };
 
-/* --- Market Profile (TPO) --- */
+/* --- Market Profile (TPO) mit Composite-Volumenprofil und nPOCs aus dem Volumenprofil --- */
 const TPO = {k:"",at:0,kl:[]}; const TPV={dy:0,hy:null,hx:null};
 async function tpoLoad(){ const days=+S.tpoDays||5, k=S.cur+days; if(TPO.k===k && Date.now()-TPO.at<60000) return; TPO.at=Date.now();
-  const r=await getJ3(`https://fapi.binance.com/fapi/v1/klines?symbol=${S.cur}USDT&interval=30m&limit=${Math.min(1500,days*48+48)}`); if(Array.isArray(r)){ TPO.kl=r.map(x=>[+x[0],+x[1],+x[2],+x[3],+x[4],+x[5]]); TPO.k=k; ofNow(); } }
+  const r=await getJ3(`https://fapi.binance.com/fapi/v1/klines?symbol=${S.cur}USDT&interval=30m&limit=${Math.min(1500,days*48+48+96)}`); if(Array.isArray(r)){ TPO.kl=r.map(x=>[+x[0],+x[1],+x[2],+x[3],+x[4],+x[5]]); TPO.k=k; ofNow(); } }
 const TPO_L="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuv";
-function tpoProfiles(){ const days=+S.tpoDays||5, st=ofBase()*(+S.tpoMul||10), by=new Map();
+function vaOf(map,lo,hi,pct){ let poc=lo, pm=-1, tot=0; const mid=(hi+lo)/2; for(const [b,v] of map){ tot+=v; if(v>pm||(v===pm&&Math.abs(b-mid)<Math.abs(poc-mid))){ pm=v; poc=b; } }
+  let vah=poc, val=poc, acc=pm; while(acc<tot*pct && (vah<hi||val>lo)){ const up=vah<hi?(map.get(vah+1)||0):-1, dn=val>lo?(map.get(val-1)||0):-1; if(up>=dn){ vah++; acc+=Math.max(up,0); } else { val--; acc+=Math.max(dn,0); } } return {poc,vah,val}; }
+function tpoProfiles(){ const days=+S.tpoDays||5, st=ofBase()*(+S.tpoMul||10), pct=(+S.tpoVA||68)/100, by=new Map();
   for(const k of TPO.kl){ const d=Math.floor(k[0]/864e5)*864e5; if(!by.has(d)) by.set(d,[]); by.get(d).push(k); }
-  const ds=[...by.keys()].sort((a,b)=>a-b).slice(-days);
-  return ds.map(d=>{ const ks=by.get(d), lv=new Map(); let tot=0, hi=-Infinity, lo=Infinity, vol=new Map();
-    ks.forEach(k=>{ const per=Math.floor((k[0]-d)/18e5), b0=Math.floor(k[3]/st), b1=Math.floor(k[2]/st); for(let b=b0;b<=b1;b++){ if(!lv.has(b)) lv.set(b,[]); lv.get(b).push(per); tot++; vol.set(b,(vol.get(b)||0)+k[5]/(b1-b0+1)); } hi=Math.max(hi,b1); lo=Math.min(lo,b0); });
-    let poc=lo, pm=-1; const mid=(hi+lo)/2; for(const [b,a] of lv){ if(a.length>pm||(a.length===pm&&Math.abs(b-mid)<Math.abs(poc-mid))){ pm=a.length; poc=b; } }
-    let vah=poc, val=poc, acc=pm; while(acc<tot*0.7 && (vah<hi||val>lo)){ const up=vah<hi?(lv.get(vah+1)||[]).length:-1, dn=val>lo?(lv.get(val-1)||[]).length:-1; if(up>=dn){ vah++; acc+=up; } else { val--; acc+=dn; } }
-    let vpoc=poc, vm=-1; for(const [b,v] of vol) if(v>vm){ vm=v; vpoc=b; }
+  const ds=[...by.keys()].sort((a,b)=>a-b).slice(-days), comp=new Map(); let cLo=Infinity, cHi=-Infinity;
+  const P=ds.map(d=>{ const ks=by.get(d), lv=new Map(), cnt=new Map(), vol=new Map(); let hi=-Infinity, lo=Infinity;
+    ks.forEach(k=>{ const per=Math.floor((k[0]-d)/18e5), b0=Math.floor(k[3]/st), b1=Math.floor(k[2]/st); for(let b=b0;b<=b1;b++){ if(!lv.has(b)) lv.set(b,[]); lv.get(b).push(per); cnt.set(b,(cnt.get(b)||0)+1); const v=k[5]/(b1-b0+1); vol.set(b,(vol.get(b)||0)+v); comp.set(b,(comp.get(b)||0)+v); } hi=Math.max(hi,b1); lo=Math.min(lo,b0); });
+    cLo=Math.min(cLo,lo); cHi=Math.max(cHi,hi); const T=vaOf(cnt,lo,hi,pct), Vv=vaOf(vol,lo,hi,pct);
     const ib=ks.filter(k=>k[0]-d<36e5); const ibH=ib.length?Math.max(...ib.map(k=>k[2])):null, ibL=ib.length?Math.min(...ib.map(k=>k[3])):null;
-    return {d,lv,tot,hi,lo,poc,vah,val,vpoc,ibH,ibL,open:ks[0][1],close:ks[ks.length-1][4],maxN:Math.max(...[...lv.values()].map(a=>a.length)),st}; }); }
+    return {d,lv,hi,lo,poc:T.poc,vah:T.vah,val:T.val,vpoc:Vv.poc,ibH,ibL,open:ks[0][1],close:ks[ks.length-1][4],maxN:Math.max(...[...lv.values()].map(a=>a.length)),st}; });
+  const C=vaOf(comp,cLo,cHi,pct);
+  // nPOC nur aus dem Volumenprofil: VPOC eines Tages, den der Preis seitdem nicht mehr gehandelt hat
+  const naked=[]; for(const p of P.slice(0,-1)){ const lo=p.vpoc*st, hi=lo+st, end=p.d+864e5; if(!TPO.kl.some(k=>k[0]>=end&&k[3]<=hi&&k[2]>=lo)) naked.push({d:p.d,b:p.vpoc}); }
+  return {P,st,comp,C,cLo,cHi,naked}; }
 R3.tpo = () => { tpoLoad(); const cv=$("tpo-cv"); ofInteract(cv,{wheel:e=>{ TPV.dy+=e.deltaY>0?-3:3; },drag:(dx,dy)=>{ TPV.dy+=dy/12; },hover:(x,y)=>{ TPV.hx=x; TPV.hy=y; },reset:()=>{ TPV.dy=0; }}); ofKick(); };
 OF_DRAW.tpo = () => {
-  tpoLoad(); const C=cvSetup("tpo-cv"); if(!C) return; const {g,W,H}=C, c=ofc(); g.clearRect(0,0,W,H);
+  tpoLoad(); const Cv=cvSetup("tpo-cv"); if(!Cv) return; const {g,W,H}=Cv, c=ofc(); g.clearRect(0,0,W,H);
   if(!TPO.kl.length){ cvMsg(g,W,H,"Lade 30-Minuten-Kerzen von Binance …"); return; }
-  const P=tpoProfiles(), st=P[0].st, dec=ofDec(st), axR=72, top=24, bot=34, pw=W-axR, ph=H-top-bot, last=TPO.kl[TPO.kl.length-1][4];
-  const hiB=Math.max(...P.map(p=>p.hi)), loB=Math.min(...P.map(p=>p.lo)), nRows=hiB-loB+1, rh=Math.max(5,Math.min(15,ph/nRows)), rowsVis=Math.floor(ph/rh);
+  const R=tpoProfiles(), P=R.P, st=R.st, dec=ofDec(st), axR=78, cpW=+S.tpoComp?110:0, top=24, bot=40, pw=W-axR-cpW, ph=H-top-bot, last=TPO.kl[TPO.kl.length-1][4];
+  const inC=css("--accent"), outC=css("--big-buy"), fg=c.fg, warn=c.warn;
+  const hiB=R.cHi, loB=R.cLo, nRows=hiB-loB+1, rh=Math.max(5,Math.min(15,ph/nRows)), rowsVis=Math.floor(ph/rh);
   let topB=nRows<=rowsVis? hiB+Math.floor((rowsVis-nRows)/2) : Math.min(hiB, Math.floor(last/st)+Math.floor(rowsVis/2)); topB+=Math.round(TPV.dy);
-  const yB=b=>top+(topB-b)*rh, gap=16, sumN=P.reduce((a,p)=>a+p.maxN,0), cw=Math.max(2.5,Math.min(10,(pw-gap*(P.length+1)-P.length*10)/sumN)), letters=S.tpoStyle!=="b"&&cw>=6.5&&rh>=9.5;
-  g.font=`600 ${Math.min(11,rh-2)}px IBM Plex Mono, monospace`; let x=gap;
-  const cols=["#4f7cff","#5b6cff","#7a5cff","#9a4dff","#c04dd8","#e0509a","#ef6a6a","#f08a4b","#f0b64b","#c9d14f","#7fd36a","#3fcf9a"];
-  const naked=[]; P.forEach((p,i)=>{ const later=P.slice(i+1); const hit=later.some(q=>q.lo<=p.poc&&q.hi>=p.poc)||(i===P.length-1); if(!hit) naked.push(p); });
-  P.forEach((p,i)=>{ const x0=x+10;
-    for(let b=p.val;b<=p.vah;b++){ const y=yB(b); if(y<top-rh||y>top+ph) continue; g.fillStyle=rgba3(c.acc,.10); g.fillRect(x0,y,p.maxN*cw,rh); }
-    if(p.ibH!=null){ const y1=yB(Math.floor(p.ibH/st)), y2=yB(Math.floor(p.ibL/st))+rh; g.fillStyle=c.acc; g.fillRect(x0-7,y1,3,y2-y1); }
-    for(const [b,a] of p.lv){ const y=yB(b); if(y<top-rh||y>top+ph) continue; const single=a.length===1&&b<p.hi&&b>p.lo;
-      a.forEach((per,j)=>{ const xx=x0+j*cw, col=cols[Math.floor(per/4)%cols.length];
-        if(letters){ g.fillStyle=b===p.poc?c.warn:single?c.up:col; g.textAlign="left"; g.fillText(TPO_L[per]||"·",xx,y+rh/2); }
-        else { g.fillStyle=b===p.poc?c.warn:single?rgba3(c.up,.85):rgba3(col,.75); g.fillRect(xx+0.5,y+0.5,Math.max(1,cw-1),Math.max(1,rh-1)); } }); }
-    const yp=yB(p.poc)+rh/2; g.strokeStyle=c.warn; g.lineWidth=1; g.beginPath(); g.moveTo(x0,yp); g.lineTo(x0+p.maxN*cw,yp); g.stroke();
-    const yo=yB(Math.floor(p.open/st))+rh/2, yc=yB(Math.floor(p.close/st))+rh/2; g.fillStyle=c.fg; g.beginPath(); g.moveTo(x0-3,yo-3); g.lineTo(x0,yo); g.lineTo(x0-3,yo+3); g.fill(); g.fillStyle=c.dn; g.fillRect(x0-4,yc-1.5,4,3);
-    g.textAlign="left"; g.fillStyle=c.fg; g.font="600 10.5px IBM Plex Sans, sans-serif"; g.fillText(new Date(p.d).toLocaleDateString(LOC,{weekday:"short",day:"2-digit",month:"2-digit"}),x0,12);
-    g.font="500 9.5px IBM Plex Mono, monospace"; g.fillStyle=c.mut; g.fillText(`POC ${fmtNum(p.poc*st,dec)}`,x0,H-bot+11); g.fillText(`VA ${fmtNum(p.val*st,dec)}–${fmtNum((p.vah+1)*st,dec)}`,x0,H-bot+24);
-    g.font=`600 ${Math.min(11,rh-2)}px IBM Plex Mono, monospace`; x=x0+p.maxN*cw+gap; });
-  if(+S.tpoNaked) for(const p of naked){ const y=yB(p.poc)+rh/2; g.strokeStyle=rgba3(c.warn,.85); g.setLineDash([6,4]); g.lineWidth=1.2; g.beginPath(); g.moveTo(10+gap,y); g.lineTo(pw,y); g.stroke(); g.setLineDash([]); g.fillStyle=c.warn; g.font="600 9.5px IBM Plex Mono, monospace"; g.textAlign="right"; g.fillText("nPOC "+new Date(p.d).toLocaleDateString(LOC,{day:"2-digit",month:"2-digit"}),pw-4,y-7); g.textAlign="left"; }
-  g.fillStyle=c.bg; g.fillRect(pw,0,axR,H); g.strokeStyle=c.line; g.beginPath(); g.moveTo(pw+.5,0); g.lineTo(pw+.5,H); g.stroke(); g.font="500 10.5px IBM Plex Mono, monospace"; const ev=Math.max(1,Math.ceil(14/rh));
-  for(let b=topB;b>topB-rowsVis;b--){ if(b%ev) continue; g.fillStyle=c.mut; g.fillText(fmtNum(b*st,dec),pw+6,yB(b)+rh/2); }
-  const ly=yB(Math.floor(last/st))+rh/2; g.fillStyle=c.acc; g.fillRect(pw+1,ly-8,axR-2,16); g.fillStyle=c.onacc; g.font="700 10.5px IBM Plex Mono, monospace"; g.fillText(fmtNum(last,ofDec(ofBase())),pw+5,ly);
-  const cur=P[P.length-1], ib=cur.ibH!=null?`${fmtNum(cur.ibL,dec)}–${fmtNum(cur.ibH,dec)}`:"–";
-  const ca=$("tpo-cards"); if(ca) ca.innerHTML = cardH("POC heute","$"+fmtNum(cur.poc*st,dec),"TPO-Größe $"+fmtNum(st,dec),"warn")+cardH("Value Area heute",`${fmtNum(cur.val*st,dec)}–${fmtNum((cur.vah+1)*st,dec)}`,last>(cur.vah+1)*st?"Preis über der VA":last<cur.val*st?"Preis unter der VA":"Preis in der VA")+cardH("Volumen-POC heute","$"+fmtNum(cur.vpoc*st,dec),"aus 30-Minuten-Volumen")+cardH("Initial Balance",ib,"erste Stunde (UTC)")+cardH("Naked POCs",String(naked.length),naked.slice(-2).map(p=>"$"+fmtNum(p.poc*st,dec)).join(" · ")||"keine");
+  const yB=b=>top+(topB-b)*rh, gap=22, sumN=P.reduce((a,p)=>a+p.maxN,0), cw=Math.max(2.5,Math.min(10,(pw-gap*(P.length+1)-P.length*44)/sumN)), letters=S.tpoStyle!=="b"&&cw>=6.5&&rh>=9.5;
+  let x=gap; const fs=Math.min(11,rh-2);
+  P.forEach(p=>{ const x0=x+10, wid=p.maxN*cw;
+    for(let b=p.val;b<=p.vah;b++){ const y=yB(b); if(y<top-rh||y>top+ph) continue; g.fillStyle=rgba3(inC,c.light?.08:.12); g.fillRect(x0,y,wid,rh); }
+    if(p.ibH!=null){ const y1=yB(Math.floor(p.ibH/st)), y2=yB(Math.floor(p.ibL/st))+rh; g.fillStyle=inC; g.fillRect(x0-7,y1,3,y2-y1); }
+    for(const [b,a] of p.lv){ const y=yB(b); if(y<top-rh||y>top+ph) continue; const inVA=b>=p.val&&b<=p.vah, col=inVA?inC:outC, isP=b===p.poc;
+      a.forEach((per,j)=>{ const xx=x0+j*cw; if(letters){ g.fillStyle=col; g.font=`${isP?800:600} ${fs}px IBM Plex Mono, monospace`; g.textAlign="left"; g.fillText(TPO_L[per]||"·",xx,y+rh/2); }
+        else { g.fillStyle=rgba3(col,isP?1:.85); g.fillRect(xx+0.5,y+0.5,Math.max(1,cw-1),Math.max(1,rh-1)); } }); }
+    const yp=yB(p.poc)+rh/2; g.strokeStyle=fg; g.lineWidth=1.2; g.beginPath(); g.moveTo(x0,yp); g.lineTo(x0+wid,yp); g.stroke();
+    const yo=yB(Math.floor(p.open/st))+rh/2, yc=yB(Math.floor(p.close/st))+rh/2; g.fillStyle=fg; g.beginPath(); g.moveTo(x0-3,yo-3); g.lineTo(x0,yo); g.lineTo(x0-3,yo+3); g.fill(); g.fillStyle=outC; g.fillRect(x0-4,yc-1.5,4,3);
+    g.font="500 9.5px IBM Plex Mono, monospace"; g.textAlign="left"; const lx=x0+wid+4; for(const [b,t,col2] of [[p.vah+1,"VAH",inC],[p.poc,"POC",fg],[p.val,"VAL",inC]]){ const y=b===p.poc?yp:yB(b)+(t==="VAH"?rh:0); if(y<top||y>top+ph) continue; g.fillStyle=col2; g.fillText(`${t} ${fmtNum(b*st+(t==="POC"?st/2:0),dec)}`,lx,y); }
+    g.fillStyle=fg; g.font="600 10.5px IBM Plex Sans, sans-serif"; g.fillText(new Date(p.d).toLocaleDateString(LOC,{weekday:"short",day:"2-digit",month:"2-digit"}),x0,12);
+    g.font="500 9.5px IBM Plex Mono, monospace"; g.fillStyle=c.mut; g.fillText(`POC ${fmtNum(p.poc*st+st/2,dec)}`,x0,H-bot+12); g.fillText(`VA ${fmtNum(p.val*st,dec)}–${fmtNum((p.vah+1)*st,dec)}`,x0,H-bot+26);
+    x=x0+wid+44+gap-10; });
+  // Composite-Volumenprofil rechts
+  if(cpW){ const cx0=pw+4, mv=Math.max(...R.comp.values(),1e-9); for(const [b,v] of R.comp){ const y=yB(b); if(y<top-rh||y>top+ph) continue; const inVA=b>=R.C.val&&b<=R.C.vah; g.fillStyle=b===R.C.poc?rgba3(warn,.9):rgba3(inVA?inC:outC,inVA?.6:.45); g.fillRect(cx0,y+rh*0.1,v/mv*(cpW-10),Math.max(1,rh*0.8)); }
+    g.fillStyle=c.mut; g.font="600 9.5px IBM Plex Sans, sans-serif"; g.fillText("Composite",cx0,12); }
+  const hline=(b,lbl,col,dash,w)=>{ const y=yB(b)+rh/2; if(y<top||y>top+ph) return; g.strokeStyle=col; g.lineWidth=w||1.1; g.setLineDash(dash||[]); g.beginPath(); g.moveTo(gap,y); g.lineTo(pw+cpW,y); g.stroke(); g.setLineDash([]); const tw=g.measureText(lbl).width+8; g.fillStyle=rgba3(c.bg,.85); g.fillRect(pw+cpW-tw-2,y-8,tw,15); g.fillStyle=col; g.textAlign="right"; g.font="700 9.5px IBM Plex Mono, monospace"; g.fillText(lbl,pw+cpW-6,y); g.textAlign="left"; };
+  if(+S.tpoComp){ hline(R.C.vah,`cVAH ${fmtNum((R.C.vah+1)*st,dec)}`,inC,[6,4]); hline(R.C.poc,`cPOC ${fmtNum(R.C.poc*st+st/2,dec)}`,warn,[],1.4); hline(R.C.val,`cVAL ${fmtNum(R.C.val*st,dec)}`,inC,[6,4]); }
+  if(+S.tpoNaked) for(const n of R.naked) hline(n.b,`nPOC ${new Date(n.d).toLocaleDateString(LOC,{day:"2-digit",month:"2-digit"})} ${fmtNum(n.b*st+st/2,dec)}`,outC,[3,3],1.3);
+  g.fillStyle=c.bg; g.fillRect(pw+cpW,0,axR,H); g.strokeStyle=c.line; g.beginPath(); g.moveTo(pw+cpW+.5,0); g.lineTo(pw+cpW+.5,H); g.stroke(); g.font="500 10.5px IBM Plex Mono, monospace"; const ev=Math.max(1,Math.ceil(14/rh));
+  for(let b=topB;b>topB-rowsVis;b--){ if(b%ev) continue; g.fillStyle=c.mut; g.fillText(fmtNum(b*st,dec),pw+cpW+6,yB(b)+rh/2); }
+  const ly=yB(Math.floor(last/st))+rh/2; g.fillStyle=c.acc; g.fillRect(pw+cpW+1,ly-8,axR-2,16); g.fillStyle=c.onacc; g.font="700 10.5px IBM Plex Mono, monospace"; g.fillText(fmtNum(last,ofDec(ofBase())),pw+cpW+5,ly);
+  const cur=P[P.length-1], ib=cur.ibH!=null?`${fmtNum(cur.ibL,dec)}–${fmtNum(cur.ibH,dec)}`:"–", nn=R.naked.map(n=>n.b*st+st/2).sort((a,b)=>Math.abs(a-last)-Math.abs(b-last));
+  const ca=$("tpo-cards"); if(ca) ca.innerHTML = cardH("POC heute","$"+fmtNum(cur.poc*st+st/2,dec),"TPO-Größe $"+fmtNum(st,dec),"warn")+cardH("Value Area heute ("+(+S.tpoVA||68)+" %)",`${fmtNum(cur.val*st,dec)}–${fmtNum((cur.vah+1)*st,dec)}`,last>(cur.vah+1)*st?"Preis über der VA":last<cur.val*st?"Preis unter der VA":"Preis in der VA")+
+    cardH("Composite POC","$"+fmtNum(R.C.poc*st+st/2,dec),`cVAH ${fmtNum((R.C.vah+1)*st,dec)} · cVAL ${fmtNum(R.C.val*st,dec)}`)+cardH("Initial Balance",ib,"erste Stunde (UTC)")+cardH("nPOCs (Volumen)",String(R.naked.length),nn.slice(0,2).map(v=>"$"+fmtNum(v,dec)).join(" · ")||"keine");
 };
+
 document.head.insertAdjacentHTML("beforeend",`<style>
 .ofwrap{position:relative;width:100%;border-radius:8px;overflow:hidden;background:var(--panel)}
 .ofwrap canvas{position:absolute;inset:0;touch-action:none;cursor:crosshair}
 .tsw{max-height:min(62vh,620px);overflow:auto}
 table.ts td,table.ts th{font-family:var(--f-mono);font-size:11.5px;padding:3px 8px;white-space:nowrap}
 table.ts tr.tsb td{color:var(--bull)} table.ts tr.tss td{color:var(--bear)}
-table.ts tr.tsbig td{font-weight:700;background:color-mix(in srgb,currentColor 12%,transparent)}
+table.ts tr.tsbb td{color:var(--big-buy);font-weight:700;background:color-mix(in srgb,var(--big-buy) 16%,transparent)}
+table.ts tr.tsbs td{color:var(--big-sell);font-weight:700;background:color-mix(in srgb,var(--big-sell) 16%,transparent)}
+table.ts tr.tshuge td{background:color-mix(in srgb,currentColor 30%,transparent)}
 .chip.tsv[aria-pressed="false"]{opacity:.45}
 </style>`);
 
@@ -3908,13 +3987,414 @@ R3.earnings = () => { loadER(); const q=String(($("er-q")||{}).value||"").trim()
 };
 document.head.insertAdjacentHTML("beforeend",`<style>
 .calbox{height:min(76vh,780px);border-radius:8px;overflow:hidden;background:var(--panel)}
+.calbox iframe{color-scheme:light}
 .nwi.hot{border-left:3px solid var(--warn)}
 .nwh .tag{font-size:10px;padding:1px 6px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
 .nwh .tag.mac{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 45%,transparent)}
 tr.hl td{background:color-mix(in srgb,var(--accent) 10%,transparent)}
 .chip.calc[aria-pressed="false"]{opacity:.45}
-label.grow{flex:1;display:flex;gap:6px;align-items:center}
+label.grow{flex:1;display:flex;gap:6px;align-items:center;min-width:0}
+@media (max-width:700px){label.grow{flex-wrap:wrap}label.grow input{min-width:0!important;width:100%}}
 </style>`);
+
+/* ====================== Abgleich DM / Quant Data / SpotGamma / UW: zusätzliche Analysen ====================== */
+const ser3 = a => a.reduce((s,x)=>s+x,0);
+const pctl3 = (arr,p) => { const a=[...arr].sort((x,y)=>x-y); return a.length? a[Math.min(a.length-1,Math.max(0,Math.round(p*(a.length-1))))] : null; };
+function corr3(a,b){ const n=Math.min(a.length,b.length); if(n<3) return null; const ma=ser3(a.slice(-n))/n, mb=ser3(b.slice(-n))/n; let sab=0,saa=0,sbb=0; for(let i=a.length-n,j=b.length-n;i<a.length;i++,j++){ const x=a[i]-ma, y=b[j]-mb; sab+=x*y; saa+=x*x; sbb+=y*y; } return saa&&sbb? sab/Math.sqrt(saa*sbb) : null; }
+// Nelder-Mead (Minimierung)
+function nm3(f,x0,step=0.1,it=400){ const n=x0.length; let P=[x0.slice()]; for(let i=0;i<n;i++){ const x=x0.slice(); x[i]+=Array.isArray(step)?step[i]:step*(Math.abs(x[i])||1); P.push(x); } let F=P.map(f);
+  for(let k=0;k<it;k++){ const ix=[...F.keys()].sort((a,b)=>F[a]-F[b]); P=ix.map(i=>P[i]); F=ix.map(i=>F[i]); if(Math.abs(F[n]-F[0])<1e-12) break;
+    const c=new Array(n).fill(0); for(let i=0;i<n;i++) for(let j=0;j<n;j++) c[j]+=P[i][j]/n; const xr=c.map((v,j)=>v+(v-P[n][j])), fr=f(xr);
+    if(fr<F[0]){ const xe=c.map((v,j)=>v+2*(v-P[n][j])), fe=f(xe); if(fe<fr){ P[n]=xe; F[n]=fe; } else { P[n]=xr; F[n]=fr; } }
+    else if(fr<F[n-1]){ P[n]=xr; F[n]=fr; }
+    else { const xc=c.map((v,j)=>v+0.5*(P[n][j]-v)), fc=f(xc); if(fc<F[n]){ P[n]=xc; F[n]=fc; } else { for(let i=1;i<=n;i++){ P[i]=P[i].map((v,j)=>P[0][j]+0.5*(v-P[0][j])); F[i]=f(P[i]); } } } }
+  const b=F.indexOf(Math.min(...F)); return {x:P[b],f:F[b]}; }
+function iv3(price,F,K,T,cp){ if(!(price>0)||T<=0) return null; const intr=cp==="C"?Math.max(F-K,0):Math.max(K-F,0); if(price<=intr+1e-9) return null; let lo=0.01, hi=5;
+  for(let i=0;i<60;i++){ const m=(lo+hi)/2; if(greeks(F,K,T,m,cp).price>price) hi=m; else lo=m; } return (lo+hi)/2; }
+
+/* --- 1) GEX-Profil: Greek-Auswahl (TRACE-Stil), GEX-Veränderung je Strike, erwartete Tagesspanne --- */
+S.gpGreek??="gex"; S.gpChg??=12;
+V3.gexprof = V3.gexprof.replace(seg3("k3","gpScale",[["abs","Absolut"],["rel","Relativ"]]), seg3("k3","gpGreek",[["gex","Gamma"],["dex","Delta"],["vex","Vanna"],["chex","Charm"],["oi","Open Interest"]])+seg3("k3","gpScale",[["abs","Absolut"],["rel","Relativ"]]))
+  + P2("Veränderung je Strike","stärkste Zu- und Abnahmen der gewählten Größe seit dem Vergleichszeitpunkt",'<div class="form">'+seg3("k3","gpChg",[[1,"5 min"],[3,"15 min"],[12,"1 h"],[48,"4 h"],[288,"24 h"]])+'</div><div class="chart" id="c-gpchg"></div><div id="gp-chgt"></div>',"wide");
+function snapVal3(s,g){ if(g==="oi"){ const out=s.ks.map(()=>0); (s.gr&&s.gr.oi||[]).forEach(row=>row.forEach((v,i)=>out[i]+=v||0)); return out; } return (s.st&&s.st[g])||s.ks.map(()=>0); }
+
+/* --- 2) Flow-GEX: Dealer-Positionen aus dem Trade-Flow statt Annahme --- */
+V3.flowgex = P2("Flow-GEX","Dealer-Gamma aus tatsächlich gehandelten Kontrakten (Kunde kauft = Dealer short) im Vergleich zum OI-Modell",'<div class="cards" id="fg-cards"></div><div class="chart tall" id="c-fg"></div><div class="note">OI-Modell = Standardannahme (Dealer long Calls, short Puts). Flow-Modell = Netto-Käufe und -Verkäufe der Kunden im gewählten Zeitfenster (oben: Heute, 24 h, 3 T, 7 T) mit umgekehrtem Vorzeichen als Dealer-Position. Beide Sichten zusammen zeigen, ob der Flow das OI-Bild bestätigt oder kippt.</div>',"wide")+
+  P2("Dealer-Positionen aus Flow","größte Netto-Positionen je Kontrakt",'<div id="fg-t"></div>',"wide");
+R3.flowgex = (lb,lv,list) => {
+  const key=b=>b.exp+"|"+b.strike+"|"+b.cp, ref=new Map(); for(const b of lb){ const k=key(b); if(!ref.has(k)||b.venue==="deribit") ref.set(k,b); }
+  const pos=new Map(); for(const t of list){ const k=t.exp+"|"+t.strike+"|"+t.cp; pos.set(k,(pos.get(k)||0)+(t.side==="buy"?t.amt:-t.amt)); }
+  const gF=new Map(), gO=new Map(); let netF=0, dexF=0, buys=0, sells=0; const rows=[];
+  for(const [k,q] of pos){ const b=ref.get(k); if(!b) continue; const d=-q, g=d*b.g.gamma*b.F*b.F*0.01; gF.set(b.strike,(gF.get(b.strike)||0)+g); netF+=g; dexF+=d*b.g.delta*b.F; if(q>0) buys+=q; else sells-=q; rows.push({b,d,g}); }
+  for(const [k,v] of gexByStrike(lb,0.25)) gO.set(k,v);
+  const ks=[...new Set([...gF.keys(),...gO.keys()])].filter(k=>Math.abs(k/spot-1)<=0.25).sort((a,b)=>a-b), netO=[...gO.values()].reduce((a,b)=>a+b,0);
+  let cum=0, flip=null; for(let i=0;i<ks.length;i++){ const p=cum; cum+=gF.get(ks[i])||0; if(i&&p*cum<0&&!flip) flip=ks[i]; }
+  $("fg-cards").innerHTML = cardH("Flow-GEX netto",sgn3(netF),netF>=0?"Dealer long Gamma (aus Flow)":"Dealer short Gamma (aus Flow)",cls3(netF))+cardH("OI-GEX netto",sgn3(netO),"Standardmodell",cls3(netO))+cardH("Dealer-Delta aus Flow",sgn3(dexF),"zu hedgen: "+(dexF>0?"Verkauf":"Kauf")+" im Basiswert",cls3(dexF))+cardH("Kunden-Käufe / -Verkäufe",fmtNum(buys,1)+" / "+fmtNum(sells,1),S.cur+" in Kontrakten")+cardH("Übereinstimmung",netF*netO>0?"gleiches Vorzeichen":"gegenläufig",netF*netO>0?"Flow bestätigt das OI-Bild":"Flow kippt das OI-Bild",netF*netO>0?"pos":"warn");
+  const o=base(), c=ch("c-fg"); if(c) c.setOption({...o,legend:{...o.legend,data:["Flow-GEX","OI-GEX"]},grid:{...o.grid,bottom:50},tooltip:{...o.tooltip,valueFormatter:v=>typeof v==="number"?fmtUsd(v):v},
+    xAxis:ax(o,{type:"category",data:ks.map(String),axisLabel:{...o._axis.axisLabel,rotate:45,formatter:v=>fmtNum(+v)}}),yAxis:[ax(o,{type:"value",name:"Flow",axisLabel:{...o._axis.axisLabel,formatter:v=>fmtUsd(v)}}),ax(o,{type:"value",name:"OI",splitLine:{show:false},axisLabel:{...o._axis.axisLabel,formatter:v=>fmtUsd(v)}})],
+    series:[{type:"bar",name:"Flow-GEX",data:ks.map(k=>{ const v=gF.get(k)||0; return {value:Math.round(v),itemStyle:barStyle(v>=0?css("--bull"):css("--bear"))}; })},
+      {type:"line",name:"OI-GEX",yAxisIndex:1,showSymbol:false,data:ks.map(k=>Math.round(gO.get(k)||0)),lineStyle:{color:css("--accent"),width:1.6},itemStyle:{color:css("--accent")},markLine:flip?{symbol:"none",silent:true,data:[{xAxis:String(flip),lineStyle:{color:css("--warn"),type:"dashed"},label:{formatter:"Flow-Flip "+fmtNum(flip),color:css("--warn")}}]}:undefined}]},true);
+  rows.sort((a,b)=>Math.abs(b.g)-Math.abs(a.g));
+  $("fg-t").innerHTML = tbl3(["Kontrakt","Dealer-Position","Gamma-Exposure","Delta $"], rows.slice(0,25).map(r=>`<tr><td class="l">${esc(r.b.instrument_name)}</td><td class="${cls3(r.d)}">${(r.d>0?"+":"")+fmtNum(r.d,1)}</td><td class="${cls3(r.g)}">${sgn3(r.g)}</td><td>${sgn3(r.d*r.b.g.delta*r.b.F)}</td></tr>`))||'<div class="empty">Noch keine Trades im Zeitfenster.</div>';
+};
+
+/* --- 3) Fixed-Strike-IV-Matrix (SpotGamma-Stil) mit Smile-Vergleich --- */
+S.fsCmp??=12;
+V3.fixstrike = P2("Fixed-Strike-IV","IV je Strike und Verfall, Veränderung gegenüber dem Vergleichszeitpunkt",'<div class="form">'+seg3("k3","fsCmp",[[12,"vs. 1 h"],[48,"vs. 4 h"],[288,"vs. 24 h"]])+'</div><div id="fs-t"></div><div class="note">Grün = IV gestiegen, rot = gefallen (in Vola-Punkten). Vergleichswerte stammen aus den 5-Minuten-Snapshots dieses Terminals.</div>',"wide")+
+  P2("Smile-Vergleich","aktuelles Smile gegenüber früher",'<div class="form"><label>Verfall <select id="fs-exp"></select></label></div><div class="chart tall" id="c-fssmile"></div>',"wide");
+R3.fixstrike = lb => {
+  const D=lb.filter(b=>b.venue==="deribit"), ex=expiries(D).filter(e=>dte(e)>0.2).slice(0,8), ks=[...new Set(D.map(b=>b.strike))].filter(k=>Math.abs(k/spot-1)<=0.15).sort((a,b)=>a-b);
+  const ivNow=(e,k)=>{ const c=D.find(b=>b.exp===e&&b.strike===k&&b.cp===(k>=spot?"C":"P")); return c?c.mark_iv:null; };
+  const back=+S.fsCmp||12, old=snaps.length>back? snaps[snaps.length-1-back] : snaps[0];
+  const ivOld=(e,k)=>{ if(!old||!old.gr||!old.gr.iv) return null; const ei=old.exps.indexOf(e), ki=old.ks.indexOf(k); return ei>=0&&ki>=0? old.gr.iv[ei][ki] : null; };
+  const head=["Strike"].concat(ex.map(e=>e+" <span class='mut'>"+dte(e).toFixed(0)+"T</span>"));
+  $("fs-t").innerHTML = tbl3(head, ks.slice().reverse().map(k=>`<tr${Math.abs(k/spot-1)<0.006?' class="hl"':""}><td class="l"><b>${fmtNum(k)}</b> <span class="mut">${pct3((k/spot-1)*100,1)}</span></td>`+ex.map(e=>{ const v=ivNow(e,k), w=ivOld(e,k), d=v!=null&&w!=null?v-w:null;
+    const bg=d==null?"":`background:${rgba3(d>=0?css("--bull"):css("--bear"),Math.min(0.55,Math.abs(d)/4))}`; return `<td style="${bg}">${v!=null?v.toFixed(1):"–"}${d!=null?` <span class="mut">${d>=0?"+":""}${d.toFixed(1)}</span>`:""}</td>`; }).join("")+"</tr>"),"free");
+  const e=expSel("fs-exp",D,"fsExp",7), L=D.filter(b=>b.exp===e&&Math.abs(b.strike/spot-1)<=0.3&&b.cp===(b.strike>=spot?"C":"P")).sort((a,b)=>a.strike-b.strike);
+  const cmp=[[12,"vor 1 h"],[48,"vor 4 h"],[288,"vor 24 h"]].map(([n,l])=>[l,snaps.length>n?snaps[snaps.length-1-n]:null]).filter(x=>x[1]);
+  const o=base(), c=ch("c-fssmile"); if(!c) return; const cols=[css("--muted"),css("--warn"),css("--bear")];
+  c.setOption({...o,tooltip:{...o.tooltip,valueFormatter:v=>typeof v==="number"?v.toFixed(2)+" %":v},xAxis:ax(o,{type:"value",scale:true,axisLabel:{...o._axis.axisLabel,formatter:v=>fmtNum(v)}}),yAxis:ax(o,{type:"value",scale:true,axisLabel:{...o._axis.axisLabel,formatter:v=>v+" %"}}),
+    series:[{type:"line",name:"jetzt",showSymbol:true,symbolSize:4,data:L.map(b=>[b.strike,+b.mark_iv.toFixed(2)]),lineStyle:{color:css("--accent"),width:2},itemStyle:{color:css("--accent")}},
+      ...cmp.map(([l,s],i)=>{ const ei=s.exps.indexOf(e); return {type:"line",name:l,showSymbol:false,lineStyle:{color:cols[i],width:1.2,type:"dashed"},itemStyle:{color:cols[i]},data:ei<0?[]:s.ks.map((k,ki)=>[k,s.gr.iv[ei][ki]]).filter(x=>x[1]!=null&&Math.abs(x[0]/spot-1)<=0.3)}; })]},true);
+};
+document.addEventListener("change",e=>{ if(e.target.id==="fs-exp"){ S.fsExp=e.target.value; save(); render(); } });
+
+/* --- 4) IV-Verteilung je Verfall (Boxplot) auf der Seite Vol Metrics --- */
+V3.vmetrics = P2("IV-Verteilung je Verfall","Boxplot der IV über alle Strikes (±25 %), Deribit",'<div class="chart tall" id="c-ivbox"></div>',"wide");
+R3.vmetrics = lb => { const D=lb.filter(b=>b.venue==="deribit"&&Math.abs(b.strike/spot-1)<=0.25), ex=expiries(D).filter(e=>dte(e)>0.2).slice(0,12), o=base(), c=ch("c-ivbox"); if(!c) return;
+  const box=ex.map(e=>{ const v=D.filter(b=>b.exp===e).map(b=>b.mark_iv).sort((a,b)=>a-b); return v.length?[v[0],pctl3(v,.25),pctl3(v,.5),pctl3(v,.75),v[v.length-1]].map(x=>+x.toFixed(2)):[0,0,0,0,0]; });
+  c.setOption({...o,tooltip:{...o.tooltip,trigger:"item",formatter:p=>`${p.name}<br>Min ${p.data[1]} % · Q1 ${p.data[2]} %<br>Median <b>${p.data[3]} %</b><br>Q3 ${p.data[4]} % · Max ${p.data[5]} %`},xAxis:ax(o,{type:"category",data:ex}),yAxis:ax(o,{type:"value",scale:true,axisLabel:{...o._axis.axisLabel,formatter:v=>v+" %"}}),
+    series:[{type:"boxplot",data:box,itemStyle:{color:rgba3(css("--accent"),.25),borderColor:css("--accent")}}]},true); };
+
+/* --- 5) Realisierte Vola: fünf Schätzer + wöchentliche Varianz (Seite IV / RV / VRP) --- */
+V3.vrp = P2("Realisierte Vola je Schätzer","30 Tage rollierend, annualisiert (Close-Close, Parkinson, Garman-Klass, Rogers-Satchell, Yang-Zhang)",'<div class="cards" id="rve-cards"></div><div class="chart tall" id="c-rve"></div>',"wide")+
+  P2("Wöchentliche Bewegung: implizit vs. realisiert","eingepreist (DVOL zu Wochenbeginn) gegenüber tatsächlich",'<div class="cards" id="wv-cards"></div><div class="chart" id="c-wv"></div>',"wide");
+function rvEst3(x,n=30){ const T=x.t.length, out={cc:[],pk:[],gk:[],rs:[],yz:[]}; if(T<n+2) return out; const A=Math.sqrt(365);
+  for(let i=n;i<T;i++){ let cc=0,pk=0,gk=0,rs=0,oc=0,co=0, mo=0, mc=0; const r=[];
+    for(let j=i-n+1;j<=i;j++){ const o=x.o[j],h=x.h[j],l=x.l[j],c=x.c[j],pc=x.c[j-1]; const lo=Math.log(o/pc), lc=Math.log(c/o), lh=Math.log(h/o), ll=Math.log(l/o);
+      cc+=Math.log(c/pc)**2; pk+=Math.log(h/l)**2; gk+=0.5*Math.log(h/l)**2-(2*Math.log(2)-1)*Math.log(c/o)**2; rs+=lh*(lh-lc)+ll*(ll-lc); r.push([lo,lc]); mo+=lo; mc+=lc; }
+    mo/=n; mc/=n; for(const [a,b] of r){ oc+=(a-mo)**2; co+=(b-mc)**2; } const k=0.34/(1.34+(n+1)/(n-1)), yz=oc/(n-1)+k*co/(n-1)+(1-k)*rs/n;
+    const t=x.t[i]; out.cc.push([t,Math.sqrt(cc/n)*A*100]); out.pk.push([t,Math.sqrt(pk/(4*Math.log(2)*n))*A*100]); out.gk.push([t,Math.sqrt(Math.max(gk,0)/n)*A*100]); out.rs.push([t,Math.sqrt(Math.max(rs,0)/n)*A*100]); out.yz.push([t,Math.sqrt(Math.max(yz,0))*A*100]); }
+  return out; }
+R3.vrp = () => { const x=CND[S.cur+"1D"]; loadTF("1D"); if(!x||x.t.length<60) return; const E=rvEst3(x), o=base(), last=k=>E[k].length?E[k][E[k].length-1][1]:null, N={cc:"Close-Close",pk:"Parkinson",gk:"Garman-Klass",rs:"Rogers-Satchell",yz:"Yang-Zhang"};
+  $("rve-cards").innerHTML = Object.keys(N).map(k=>cardH(N[k],last(k)!=null?last(k).toFixed(1)+" %":"–",dvol?"DVOL "+dvol.toFixed(1)+" · VRP "+(dvol-last(k)>=0?"+":"")+(dvol-last(k)).toFixed(1):"")).join("");
+  const cols=[css("--accent"),css("--bull"),css("--warn"),css("--bear"),"#a58bff"], y0=Date.now()-400*DAY, c=ch("c-rve");
+  if(c) c.setOption({...o,legend:{...o.legend},tooltip:{...o.tooltip,valueFormatter:v=>typeof v==="number"?v.toFixed(1)+" %":v},dataZoom:[{type:"inside"}],xAxis:ax(o,{type:"time",splitLine:{show:false}}),yAxis:ax(o,{type:"value",axisLabel:{...o._axis.axisLabel,formatter:v=>v+" %"}}),
+    series:[...Object.keys(N).map((k,i)=>({type:"line",name:N[k],showSymbol:false,data:E[k].filter(p=>p[0]>=y0).map(p=>[p[0],+p[1].toFixed(2)]),lineStyle:{width:1.3,color:cols[i]},itemStyle:{color:cols[i]}})),
+      ...(dvolHist.length?[{type:"line",name:"DVOL",showSymbol:false,data:dvolHist.filter(p=>p[0]>=y0),lineStyle:{width:1.6,type:"dashed",color:css("--fg")},itemStyle:{color:css("--fg")}}]:[])]},true);
+  // Wochen
+  const wk=[], dv=new Map(dvolHist.map(d=>[Math.floor(d[0]/DAY),d[1]])); for(let i=1;i<x.t.length;i++){ const d=new Date(x.t[i]); if(d.getUTCDay()!==1) continue; const j=Math.min(x.t.length-1,i+6); if(j-i<3) continue; let s2=0; for(let q=i;q<=j;q++) s2+=Math.log(x.c[q]/x.c[q-1])**2; const iv=dv.get(Math.floor(x.t[i-1]/DAY)); if(iv==null) continue; wk.push({t:x.t[i],imp:iv/Math.sqrt(52),real:Math.sqrt(s2)*100,ret:(x.c[j]/x.c[i-1]-1)*100}); }
+  const W=wk.slice(-26), over=W.filter(w=>w.real>w.imp).length, c2=ch("c-wv");
+  $("wv-cards").innerHTML = cardH("Wochen mit Bewegung > eingepreist",W.length?over+" / "+W.length:"–",W.length?(over/W.length*100).toFixed(0)+" %":"",over>W.length/2?"warn":"")+cardH("Ø eingepreist",W.length?(ser3(W.map(w=>w.imp))/W.length).toFixed(2)+" %":"–","pro Woche (1σ)")+cardH("Ø realisiert",W.length?(ser3(W.map(w=>w.real))/W.length).toFixed(2)+" %":"–","pro Woche");
+  if(c2) c2.setOption({...o,tooltip:{...o.tooltip,valueFormatter:v=>typeof v==="number"?v.toFixed(2)+" %":v},xAxis:ax(o,{type:"category",data:W.map(w=>new Date(w.t).toLocaleDateString(LOC,{day:"2-digit",month:"2-digit"}))}),yAxis:ax(o,{type:"value",axisLabel:{...o._axis.axisLabel,formatter:v=>v+" %"}}),
+    series:[{type:"bar",name:"eingepreist (1σ)",data:W.map(w=>+w.imp.toFixed(2)),itemStyle:{color:rgba3(css("--accent"),.55)}},{type:"bar",name:"realisiert",data:W.map(w=>({value:+w.real.toFixed(2),itemStyle:{color:w.real>w.imp?css("--warn"):css("--muted")}}))}]},true); };
+
+/* --- 6) Vola-Lebenszyklus (Seite Vol-Regime) --- */
+V3.regime = P2("Vola-Lebenszyklus","Phase aus DVOL-Perzentil und Tempo der Veränderung",'<div class="cards" id="lc-cards"></div><div class="chart" id="c-lc"></div><div class="note">Kompression = niedrige und fallende Vola (Ausbruch wird wahrscheinlicher), Expansion = steigende Vola, Hoch = Vola im oberen Fünftel des Jahres, Abklingen = hohe, aber fallende Vola.</div>',"wide");
+function phase3(p,v){ return p>=80?"Hoch":v>0.5?"Expansion":p<35&&v<=0.5?"Kompression":"Abklingen"; }
+R3.regime = () => { const D=dvolHist; if(D.length<40) return; const out=[]; for(let i=30;i<D.length;i++){ const w=D.slice(Math.max(0,i-365),i+1).map(d=>d[1]), p=w.filter(v=>v<=D[i][1]).length/w.length*100, v=D[i][1]-D[i-5][1]; out.push([D[i][0],D[i][1],p,v,phase3(p,v)]); }
+  const L=out[out.length-1], col={Kompression:css("--accent"),Expansion:css("--warn"),Hoch:css("--bear"),Abklingen:css("--bull")}, run=out.slice().reverse().findIndex(x=>x[4]!==L[4]);
+  $("lc-cards").innerHTML = cardH("Phase",L[4],"seit "+(run<0?out.length:run)+" Tagen","")+cardH("DVOL-Perzentil",L[2].toFixed(0)+" %","1 Jahr")+cardH("Tempo (5 Tage)",(L[3]>=0?"+":"")+L[3].toFixed(1)+" Pkt.",L[3]>0?"steigend":"fallend",cls3(L[3]));
+  const o=base(), c=ch("c-lc"); if(!c) return; const areas=[]; let s=0; for(let i=1;i<=out.length;i++){ if(i===out.length||out[i][4]!==out[s][4]){ areas.push([{xAxis:out[s][0],itemStyle:{color:rgba3(col[out[s][4]],.13)}},{xAxis:out[i-1][0]}]); s=i; } }
+  c.setOption({...o,legend:{show:false},tooltip:{...o.tooltip,formatter:p=>{ const x=out[p[0].dataIndex]; return `${new Date(x[0]).toLocaleDateString(LOC)}<br>DVOL <b>${x[1].toFixed(1)}</b> · ${x[4]}<br>Perzentil ${x[2].toFixed(0)} %`; }},xAxis:ax(o,{type:"time",splitLine:{show:false}}),yAxis:ax(o,{type:"value",scale:true}),
+    series:[{type:"line",name:"DVOL",showSymbol:false,data:out.map(x=>[x[0],x[1]]),lineStyle:{color:css("--fg"),width:1.4},itemStyle:{color:css("--fg")},markArea:{silent:true,data:areas}}]},true); };
+
+/* --- 7) Saisonalität, Korrelation, Fear & Greed, Settlement-Historie --- */
+const KL3={}; async function bnKl(sym,iv,limit,startTime){ const k=sym+iv+limit+(startTime||""); const c=KL3[k]; if(c&&Date.now()-c.at<30*60e3) return c.d; const u=`https://api.binance.com/api/v3/klines?symbol=${sym}&interval=${iv}&limit=${limit}`+(startTime?`&startTime=${startTime}`:""); const r=await getJ3(u); if(Array.isArray(r)){ KL3[k]={at:Date.now(),d:r}; return r; } return null; }
+let SEAS={k:"",d:[],h:[]};
+async function loadSeas(){ const k=S.cur; if(SEAS.k===k||SEAS.busy) return; SEAS.busy=1; const sym=S.cur+"USDT"; let all=[], st=Date.UTC(2017,7,1);
+  for(let i=0;i<4;i++){ const r=await bnKl(sym,"1d",1000,st); if(!r||!r.length) break; all=all.concat(r); st=r[r.length-1][0]+DAY; if(r.length<1000) break; }
+  const h=await bnKl(sym,"1h",1000); SEAS={k,d:all.map(x=>[+x[0],+x[1],+x[4]]),h:(h||[]).map(x=>[+x[0],+x[1],+x[4]])}; scheduleRender(); }
+V3.seasonal = P2("Saisonalität","Monatsrenditen je Jahr, Binance Spot",'<div class="chart tall" id="c-seasm" style="height:min(60vh,520px)"></div>',"wide")+
+  P2("Wochentage","Ø Tagesrendite und Trefferquote seit 2017",'<div class="chart" id="c-seasw"></div>')+P2("Tageszeit (UTC)","Ø Stundenrendite, letzte 1000 Stunden",'<div class="chart" id="c-seash"></div>');
+NB3.add("seasonal");
+R3.seasonal = () => { loadSeas(); const D=SEAS.d; if(D.length<60) return; const o=base(), M={}; for(const [t,op,cl] of D){ const d=new Date(t), y=d.getUTCFullYear(), m=d.getUTCMonth(), k=y+"-"+m; if(!M[k]) M[k]={y,m,o:op,c:cl}; else M[k].c=cl; }
+  const ys=[...new Set(Object.values(M).map(x=>x.y))].sort(), mn=["Jan","Feb","Mär","Apr","Mai","Jun","Jul","Aug","Sep","Okt","Nov","Dez"], data=[]; for(const x of Object.values(M)) data.push([x.m,ys.indexOf(x.y),+((x.c/x.o-1)*100).toFixed(1)]);
+  const avg=mn.map((_,m)=>{ const v=Object.values(M).filter(x=>x.m===m).map(x=>(x.c/x.o-1)*100); return v.length?+(ser3(v)/v.length).toFixed(1):null; }); ys.push("Ø"); avg.forEach((v,m)=>{ if(v!=null) data.push([m,ys.length-1,v]); });
+  const c=ch("c-seasm"); if(c) c.setOption({backgroundColor:"transparent",textStyle:o.textStyle,tooltip:{...o.tooltip,trigger:"item",formatter:p=>`${mn[p.value[0]]} ${ys[p.value[1]]}: <b>${p.value[2]>0?"+":""}${p.value[2]} %</b>`},grid:{left:56,right:20,top:10,bottom:60},xAxis:ax(o,{type:"category",data:mn,splitArea:{show:false}}),yAxis:ax(o,{type:"category",data:ys.map(String),inverse:true}),
+    visualMap:{min:-30,max:30,calculable:false,orient:"horizontal",left:"center",bottom:4,itemHeight:160,itemWidth:10,textStyle:{color:css("--muted")},inRange:{color:[css("--bear"),rgba3(css("--panel-2")||"#222",.3),css("--bull")]}},
+    series:[{type:"heatmap",data,label:{show:true,fontSize:10,color:css("--fg"),formatter:p=>(p.value[2]>0?"+":"")+p.value[2]},itemStyle:{borderColor:css("--panel"),borderWidth:2}}]},true);
+  const wd=["So","Mo","Di","Mi","Do","Fr","Sa"], W=wd.map(()=>[]); for(const [t,op,cl] of D) W[new Date(t).getUTCDay()].push((cl/op-1)*100); const ord=[1,2,3,4,5,6,0];
+  const c2=ch("c-seasw"); if(c2) c2.setOption({...o,tooltip:{...o.tooltip,formatter:p=>{ const v=W[ord[p[0].dataIndex]]; return `${wd[ord[p[0].dataIndex]]}<br>Ø ${(ser3(v)/v.length).toFixed(2)} %<br>positiv ${(v.filter(x=>x>0).length/v.length*100).toFixed(0)} %`; }},xAxis:ax(o,{type:"category",data:ord.map(i=>wd[i])}),yAxis:ax(o,{type:"value",axisLabel:{...o._axis.axisLabel,formatter:v=>v+" %"}}),
+    series:[{type:"bar",data:ord.map(i=>{ const v=W[i], a=v.length?ser3(v)/v.length:0; return {value:+a.toFixed(3),itemStyle:barStyle(a>=0?css("--bull"):css("--bear"))}; })}]},true);
+  const Hh=[...Array(24)].map(()=>[]); for(const [t,op,cl] of SEAS.h) Hh[new Date(t).getUTCHours()].push((cl/op-1)*100);
+  const c3=ch("c-seash"); if(c3) c3.setOption({...o,tooltip:{...o.tooltip,valueFormatter:v=>typeof v==="number"?v.toFixed(3)+" %":v},xAxis:ax(o,{type:"category",data:Hh.map((_,i)=>String(i).padStart(2,"0"))}),yAxis:ax(o,{type:"value",axisLabel:{...o._axis.axisLabel,formatter:v=>v+" %"}}),
+    series:[{type:"bar",data:Hh.map(v=>{ const a=v.length?ser3(v)/v.length:0; return {value:+a.toFixed(4),itemStyle:barStyle(a>=0?css("--bull"):css("--bear"))}; })}]},true); };
+
+const COR_SYM=["BTC","ETH","SOL","XRP","BNB","DOGE","HYPE"]; let CORD={at:0,d:{}};
+async function loadCor(){ if(CORD.busy||Date.now()-CORD.at<30*60e3) return; CORD.busy=1; const out={}; await Promise.all(COR_SYM.map(async s=>{ const r=await bnKl(s+"USDT","1d",400); if(r) out[s]=r.map(x=>[+x[0],+x[4]]); })); CORD={at:Date.now(),d:out}; scheduleRender(); }
+S.corWin??=90;
+V3.correl = P2("Korrelation","Tagesrenditen, Binance Spot",'<div class="form">'+seg3("k3","corWin",[[30,"30 Tage"],[90,"90 Tage"],[365,"1 Jahr"]])+'</div><div class="chart tall" id="c-cor"></div>',"wide")+
+  P2("Rollierende Korrelation zu "+"BTC","30 Tage",'<div class="chart" id="c-corr"></div>',"wide");
+NB3.add("correl");
+R3.correl = () => { loadCor(); const D=CORD.d, ks=COR_SYM.filter(s=>D[s]&&D[s].length>40); if(ks.length<2) return; const n=+S.corWin||90, o=base();
+  const ret=s=>{ const a=D[s]; const m=new Map(); for(let i=1;i<a.length;i++) m.set(a[i][0],Math.log(a[i][1]/a[i-1][1])); return m; }, R={}; ks.forEach(s=>R[s]=ret(s));
+  const days=[...R[ks[0]].keys()].slice(-n), data=[];
+  ks.forEach((a,i)=>ks.forEach((b,j)=>{ const x=[],y=[]; for(const d of days){ if(R[a].has(d)&&R[b].has(d)){ x.push(R[a].get(d)); y.push(R[b].get(d)); } } const cr=corr3(x,y); data.push([j,i,cr==null?null:+cr.toFixed(2)]); }));
+  const c=ch("c-cor"); if(c) c.setOption({backgroundColor:"transparent",textStyle:o.textStyle,tooltip:{...o.tooltip,trigger:"item",formatter:p=>`${ks[p.value[1]]} / ${ks[p.value[0]]}: <b>${p.value[2]}</b>`},grid:{left:60,right:20,top:10,bottom:50},xAxis:ax(o,{type:"category",data:ks}),yAxis:ax(o,{type:"category",data:ks,inverse:true}),
+    visualMap:{min:-1,max:1,calculable:false,orient:"horizontal",left:"center",bottom:0,itemHeight:160,itemWidth:10,textStyle:{color:css("--muted")},inRange:{color:[css("--bear"),rgba3(css("--panel-2")||"#222",.4),css("--accent")]}},
+    series:[{type:"heatmap",data,label:{show:true,color:css("--fg"),fontSize:11},itemStyle:{borderColor:css("--panel"),borderWidth:2}}]},true);
+  const cols=[css("--accent"),css("--bull"),css("--warn"),css("--bear"),"#a58bff","#ff8a5c"], all=[...R.BTC.keys()], c2=ch("c-corr");
+  if(c2&&R.BTC) c2.setOption({...o,tooltip:{...o.tooltip,valueFormatter:v=>typeof v==="number"?v.toFixed(2):v},xAxis:ax(o,{type:"time",splitLine:{show:false}}),yAxis:ax(o,{type:"value",min:-1,max:1}),
+    series:ks.filter(s=>s!=="BTC").map((s,i)=>({type:"line",name:s,showSymbol:false,lineStyle:{width:1.3,color:cols[i%cols.length]},itemStyle:{color:cols[i%cols.length]},data:all.map((d,k)=>{ if(k<30) return null; const x=[],y=[]; for(const q of all.slice(k-29,k+1)){ if(R[s].has(q)){ x.push(R.BTC.get(q)); y.push(R[s].get(q)); } } const cr=corr3(x,y); return cr==null?null:[d,+cr.toFixed(3)]; }).filter(Boolean)}))},true); };
+
+let FNG={at:0,d:[]}; async function loadFng(){ if(FNG.busy||Date.now()-FNG.at<30*60e3) return; FNG.busy=1; const r=await getJ3("https://api.alternative.me/fng/?limit=120"); FNG={at:Date.now(),d:((r&&r.data)||[]).map(x=>[+x.timestamp*1000,+x.value,x.value_classification]).reverse()}; scheduleRender(); }
+const fngDe = c => ({"Extreme Fear":"Extreme Angst","Fear":"Angst","Neutral":"Neutral","Greed":"Gier","Extreme Greed":"Extreme Gier"})[c]||c;
+V3.stats += P2("Fear & Greed Index","Krypto-Marktstimmung (alternative.me)",'<div class="cards" id="fng-cards"></div><div class="chart" id="c-fng"></div>',"wide");
+const _R3stats=R3.stats; R3.stats = (lb,lv,list) => { _R3stats(lb,lv,list); loadFng(); const D=FNG.d; if(!D.length) return; const L=D[D.length-1], w=D[D.length-8], m=D[D.length-31];
+  $("fng-cards").innerHTML = cardH("Heute",String(L[1]),fngDe(L[2]),L[1]>=55?"pos":L[1]<=45?"neg":"")+cardH("Vor 1 Woche",w?String(w[1]):"–",w?fngDe(w[2]):"")+cardH("Vor 1 Monat",m?String(m[1]):"–",m?fngDe(m[2]):"");
+  const o=base(), c=ch("c-fng"); if(c) c.setOption({...o,legend:{show:false},tooltip:{...o.tooltip,formatter:p=>{ const x=D[p[0].dataIndex]; return `${new Date(x[0]).toLocaleDateString(LOC)}<br><b>${x[1]}</b> ${fngDe(x[2])}`; }},xAxis:ax(o,{type:"time",splitLine:{show:false}}),yAxis:ax(o,{type:"value",min:0,max:100}),
+    visualMap:{show:false,pieces:[{lt:25,color:css("--bear")},{gte:25,lt:45,color:rgba3(css("--bear"),.6)},{gte:45,lt:55,color:css("--muted")},{gte:55,lt:75,color:rgba3(css("--bull"),.6)},{gte:75,color:css("--bull")}]},
+    series:[{type:"line",showSymbol:false,data:D.map(x=>[x[0],x[1]]),lineStyle:{width:2},areaStyle:{opacity:.08},markLine:{symbol:"none",silent:true,data:[{yAxis:25},{yAxis:75}],lineStyle:{color:css("--line"),type:"dashed"},label:{show:false}}}]},true); };
+
+let SETL={k:"",d:[]}; async function loadSetl(){ const k=S.cur; if(SETL.k===k&&Date.now()-SETL.at<3600e3) return; SETL.at=Date.now(); const r=await dRpc("public/get_delivery_prices",{index_name:S.cur.toLowerCase()+"_usd",count:40}); if(r&&r.data){ SETL={k,at:Date.now(),d:r.data}; scheduleRender(); } }
+V3.oi = P2("Settlement-Historie","Deribit-Abrechnungspreise (08:00 UTC) im Vergleich zum Max Pain kurz vor dem Verfall",'<div class="chart" id="c-setl"></div><div id="setl-t"></div>',"wide");
+R3.oi = () => { loadSetl(); const D=SETL.d.slice().reverse(); if(!D.length) return; const MON=["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
+  const code=ds=>{ const d=new Date(ds+"T00:00:00Z"); return d.getUTCDate()+MON[d.getUTCMonth()]+String(d.getUTCFullYear()).slice(2); };
+  const mpAt=ds=>{ const e=code(ds), t=Date.parse(ds+"T08:00:00Z"); let best=null; for(const s of snaps){ if(s.t>t) break; if(s.mp&&s.mp[e]!=null) best=s.mp[e]; } return best; };
+  const rows=D.map(x=>({d:x.date,p:x.delivery_price,mp:mpAt(x.date)})), o=base(), c=ch("c-setl");
+  if(c) c.setOption({...o,tooltip:{...o.tooltip,valueFormatter:v=>typeof v==="number"?"$"+fmtNum(v):v},xAxis:ax(o,{type:"category",data:rows.map(r=>r.d.slice(5))}),yAxis:ax(o,{type:"value",scale:true,axisLabel:{...o._axis.axisLabel,formatter:v=>fmtNum(v)}}),
+    series:[{type:"line",name:"Settlement",data:rows.map(r=>r.p),lineStyle:{color:css("--accent"),width:1.8},itemStyle:{color:css("--accent")}},{type:"scatter",name:"Max Pain",data:rows.map(r=>r.mp),itemStyle:{color:css("--warn")},symbolSize:7}]},true);
+  $("setl-t").innerHTML = tbl3(["Datum","Settlement","Max Pain","Abstand"], rows.slice().reverse().slice(0,20).map(r=>`<tr><td class="l">${new Date(r.d+"T12:00:00Z").toLocaleDateString(LOC,{weekday:"short",day:"2-digit",month:"2-digit",year:"2-digit"})}</td><td>$${fmtNum(r.p,2)}</td><td>${r.mp!=null?"$"+fmtNum(r.mp):"–"}</td><td>${r.mp!=null?pct3((r.p/r.mp-1)*100,2):"–"}</td></tr>`))+'<div class="note">Max Pain stammt aus den Snapshots dieses Terminals; ohne Aufzeichnung vor dem Verfall bleibt die Spalte leer.</div>';
+};
+
+/* --- 8) Vola-Modelle: SVI, Merton Jump-Diffusion, Heston, Rough Volatility --- */
+V3.models = P2("Vola-Modelle","SVI, Merton Jump-Diffusion und Heston an das Smile eines Verfalls kalibriert",'<div class="form"><label>Verfall <select id="md-exp"></select></label><button class="btn" id="md-run">Kalibrieren</button><span class="mut" id="md-st"></span></div><div class="chart tall" id="c-md"></div><div id="md-t"></div><div class="note">SVI beschreibt das Smile direkt (5 Parameter). Merton ergänzt Kurssprünge (Häufigkeit λ, Ø Sprung μ, Sprung-Vola δ). Heston modelliert stochastische Vola (v0, κ, θ, ξ, ρ). Die Kalibrierung läuft im Browser und dauert je nach Gerät einige Sekunden.</div>',"wide")+
+  P2("Rough Volatility","Hurst-Exponent der realisierten Vola aus Stundenkerzen",'<div class="cards" id="rv-h"></div><div class="chart" id="c-hurst"></div><div class="note">H ≈ 0,5 = normale Brownsche Bewegung, H deutlich unter 0,5 = „raue“ Vola (typisch 0,1–0,2): Vola-Schocks klingen schnell ab, kurzfristige Vola ist schwer zu prognostizieren.</div>',"wide");
+let MD={e:"",res:null};
+function mdData(lb,e){ const D=lb.filter(b=>b.venue==="deribit"&&b.exp===e), F=D[0]?D[0].F:spot, T=D[0]?D[0].T:0;
+  const L=D.filter(b=>b.cp===(b.strike>=F?"C":"P")&&b.strike>F*0.55&&b.strike<F*1.8&&b.mark_iv>0).sort((a,b)=>a.strike-b.strike); return {F,T,L}; }
+function sviW(p,k){ const [a,b,r,m,s]=p; return a+b*(r*(k-m)+Math.sqrt((k-m)**2+s*s)); }
+function mertonPx(F,K,T,cp,sig,lam,mu,del){ const kap=Math.exp(mu+del*del/2)-1, lp=lam*(1+kap); let P=0, w=Math.exp(-lp*T);
+  for(let n=0;n<25;n++){ if(n>0) w*=lp*T/n; if(w<1e-12&&n>3) break; const sn=Math.sqrt(sig*sig+n*del*del/T), rn=-lam*kap+n*Math.log(1+kap)/T, Fn=F*Math.exp(rn*T); P+=w*Math.exp(-rn*T)*greeks(Fn,K,T,sn,cp).price; } return P; }
+// Heston: Lewis-Formel mit Gauß-Legendre auf [0, 200]
+const cx=(a,b)=>[a,b], cadd=(x,y)=>[x[0]+y[0],x[1]+y[1]], csub=(x,y)=>[x[0]-y[0],x[1]-y[1]], cmul=(x,y)=>[x[0]*y[0]-x[1]*y[1],x[0]*y[1]+x[1]*y[0]], cdiv=(x,y)=>{ const d=y[0]*y[0]+y[1]*y[1]; return [(x[0]*y[0]+x[1]*y[1])/d,(x[1]*y[0]-x[0]*y[1])/d]; };
+const cexp=x=>{ const e=Math.exp(x[0]); return [e*Math.cos(x[1]),e*Math.sin(x[1])]; }, clog=x=>[Math.log(Math.hypot(x[0],x[1])),Math.atan2(x[1],x[0])], csqrt=x=>{ const r=Math.hypot(x[0],x[1]), a=Math.sqrt((r+x[0])/2), b=Math.sign(x[1]||1)*Math.sqrt((r-x[0])/2); return [a,b]; };
+const GL=(()=>{ const n=64, xs=[], ws=[]; for(let i=1;i<=n;i++){ let x=Math.cos(Math.PI*(i-0.25)/(n+0.5)), p0, p1, dp; for(let it=0;it<50;it++){ p0=1; p1=x; for(let k=2;k<=n;k++){ const p2=((2*k-1)*x*p1-(k-1)*p0)/k; p0=p1; p1=p2; } dp=n*(x*p1-p0)/(x*x-1); const dx=p1/dp; x-=dx; if(Math.abs(dx)<1e-14) break; } xs.push(x); ws.push(2/((1-x*x)*dp*dp)); } return {xs,ws}; })();
+function hestonCF(u,T,v0,ka,th,xi,rho){ // φ(u) für log(S_T/F), u komplex
+  const iu=cmul([0,1],u), rxi=cmul([rho*xi,0],iu), b=csub([ka,0],rxi), d=csqrt(cadd(cmul(b,b),cmul([xi*xi,0],cadd(iu,cmul(u,u))))), g=cdiv(csub(b,d),cadd(b,d)), e=cexp(cmul([-T,0],d));
+  const one=[1,0], C=cmul([ka*th/(xi*xi),0],csub(cmul(csub(b,d),[T,0]),cmul([2,0],clog(cdiv(csub(one,cmul(g,e)),csub(one,g)))))), Dd=cmul(cdiv(csub(b,d),[xi*xi,0]),cdiv(csub(one,e),csub(one,cmul(g,e))));
+  return cexp(cadd(C,cmul(Dd,[v0,0]))); }
+function hestonCall(F,K,T,p){ const [v0,ka,th,xi,rho]=p, k=Math.log(F/K), U=200; let s=0;
+  for(let i=0;i<GL.xs.length;i++){ const u=(GL.xs[i]+1)/2*U, w=GL.ws[i]*U/2, phi=hestonCF([u,-0.5],T,v0,ka,th,xi,rho), ex=[Math.cos(u*k),Math.sin(u*k)], re=cmul(ex,phi)[0]; s+=w*re/(u*u+0.25); }
+  return F-Math.sqrt(F*K)/Math.PI*s; }
+function mdCalib(lb,e){ const {F,T,L}=mdData(lb,e); if(L.length<6||T<=0) return null; const k=L.map(b=>Math.log(b.strike/F)), w=L.map(b=>(b.mark_iv/100)**2*T), px=L.map(b=>b.g.price), vg=L.map(b=>Math.max(b.g.vega*100,1e-6));
+  const sv=nm3(p=>{ const [a,b,r,m,s]=p; if(b<0||Math.abs(r)>=0.999||s<=1e-4||a+b*s*Math.sqrt(1-r*r)<0) return 1e9; let E=0; for(let i=0;i<k.length;i++) E+=(sviW(p,k[i])-w[i])**2; return E; },[Math.min(...w)*0.8,0.1,-0.3,0,0.1],[0.01,0.05,0.2,0.05,0.05],800);
+  const me=nm3(p=>{ const [sig,lam,mu,del]=p; if(sig<=0.01||lam<0||lam>20||del<=0.001||del>1) return 1e9; let E=0; for(let i=0;i<L.length;i++){ const q=(mertonPx(F,L[i].strike,T,L[i].cp,sig,lam,mu,del)-px[i])/vg[i]; E+=q*q; } return E; },[Math.max(0.1,L[Math.floor(L.length/2)].mark_iv/100*0.8),1,-0.05,0.1],[0.05,0.5,0.05,0.05],300);
+  const he=nm3(p=>{ const [v0,ka,th,xi,rho]=p; if(v0<=1e-4||ka<=0.05||ka>15||th<=1e-4||xi<=0.05||xi>5||Math.abs(rho)>=0.99) return 1e9; let E=0; for(let i=0;i<L.length;i+=Math.max(1,Math.floor(L.length/18))){ const c=hestonCall(F,L[i].strike,T,p), pr=L[i].cp==="C"?c:c-F+L[i].strike; const q=(pr-px[i])/vg[i]; E+=q*q; } return E; },[(L[Math.floor(L.length/2)].mark_iv/100)**2,2,(L[Math.floor(L.length/2)].mark_iv/100)**2,0.8,-0.3],[0.05,0.8,0.05,0.3,0.2],260);
+  const ivOf=(pr,b)=>{ const v=iv3(pr,F,b.strike,T,b.cp); return v?v*100:null; };
+  return {e,F,T,L,sv,me,he,rows:L.map((b,i)=>({K:b.strike,mkt:b.mark_iv,svi:Math.sqrt(Math.max(sviW(sv.x,k[i]),0)/T)*100,mer:ivOf(mertonPx(F,b.strike,T,b.cp,...me.x),b),hes:(()=>{ const c=hestonCall(F,b.strike,T,he.x); return ivOf(b.cp==="C"?c:c-F+b.strike,b); })()}))}; }
+document.addEventListener("click",e=>{ if(e.target.id!=="md-run") return; const st=$("md-st"); if(st) st.textContent="Kalibriere …"; setTimeout(()=>{ const t0=performance.now(); try{ MD.res=mdCalib(liveBook(),S.mdExp); }catch(err){ MD.res=null; console.error(err); } if(st) st.textContent=MD.res?`fertig in ${((performance.now()-t0)/1000).toFixed(1)} s`:"Zu wenige Strikes für diesen Verfall."; render(); },30); });
+document.addEventListener("change",e=>{ if(e.target.id==="md-exp"){ S.mdExp=e.target.value; save(); MD.res=null; render(); } });
+R3.models = lb => { const D=lb.filter(b=>b.venue==="deribit"), e=expSel("md-exp",D,"mdExp",30), o=base(); if(MD.res&&MD.res.e!==e) MD.res=null;
+  if(!MD.res && !MD.auto){ MD.auto=1; setTimeout(()=>{ try{ MD.res=mdCalib(liveBook(),S.mdExp); }catch(err){} render(); },300); }
+  const R=MD.res, c=ch("c-md"); if(c){ const {L}=mdData(lb,e); const ser=[{type:"scatter",name:"Markt (Mark-IV)",data:L.map(b=>[b.strike,+b.mark_iv.toFixed(2)]),symbolSize:6,itemStyle:{color:css("--fg")}}];
+    if(R){ const cols=[css("--accent"),css("--warn"),css("--bull")]; [["svi","SVI"],["mer","Merton"],["hes","Heston"]].forEach(([k,n],i)=>ser.push({type:"line",name:n,showSymbol:false,smooth:true,data:R.rows.filter(r=>r[k]!=null).map(r=>[r.K,+r[k].toFixed(2)]),lineStyle:{width:1.8,color:cols[i]},itemStyle:{color:cols[i]}})); }
+    c.setOption({...o,tooltip:{...o.tooltip,valueFormatter:v=>typeof v==="number"?v.toFixed(2)+" %":v},xAxis:ax(o,{type:"value",scale:true,axisLabel:{...o._axis.axisLabel,formatter:v=>fmtNum(v)}}),yAxis:ax(o,{type:"value",scale:true,axisLabel:{...o._axis.axisLabel,formatter:v=>v+" %"}}),series:ser},true); }
+  if(R){ const rm=k=>{ const v=R.rows.filter(r=>r[k]!=null); return v.length?Math.sqrt(ser3(v.map(r=>(r[k]-r.mkt)**2))/v.length):null; };
+    const [a,b,r,m,s]=R.sv.x, [sg,lam,mu,del]=R.me.x, [v0,ka,th,xi,rho]=R.he.x;
+    $("md-t").innerHTML = tbl3(["Modell","Parameter","Fehler (RMSE, Vola-Pkt.)"],[
+      `<tr><td class="l"><b>SVI</b></td><td class="l">a ${a.toFixed(4)} · b ${b.toFixed(3)} · ρ ${r.toFixed(2)} · m ${m.toFixed(3)} · σ ${s.toFixed(3)}</td><td>${(rm("svi")||0).toFixed(2)}</td></tr>`,
+      `<tr><td class="l"><b>Merton</b></td><td class="l">σ ${(sg*100).toFixed(1)} % · λ ${lam.toFixed(2)} Sprünge/Jahr · μ ${(mu*100).toFixed(1)} % · δ ${(del*100).toFixed(1)} %</td><td>${(rm("mer")||0).toFixed(2)}</td></tr>`,
+      `<tr><td class="l"><b>Heston</b></td><td class="l">v0 ${(Math.sqrt(v0)*100).toFixed(1)} % · κ ${ka.toFixed(2)} · θ ${(Math.sqrt(th)*100).toFixed(1)} % · ξ ${xi.toFixed(2)} · ρ ${rho.toFixed(2)}</td><td>${(rm("hes")||0).toFixed(2)}</td></tr>`],"free"); }
+  // Rough Vol
+  const x=CND[S.cur+"60"]; loadTF("60"); if(!x||x.t.length<24*15) return; const days=new Map(); for(let i=1;i<x.t.length;i++){ const d=Math.floor(x.t[i]/DAY); days.set(d,(days.get(d)||0)+Math.log(x.c[i]/x.c[i-1])**2); }
+  const lv=[...days.entries()].sort((a,b)=>a[0]-b[0]).slice(1,-1).map(([,v])=>Math.log(Math.sqrt(v)));
+  const pts=[]; for(let D2=1;D2<=Math.min(10,Math.floor(lv.length/3));D2++){ let s2=0,n=0; for(let i=0;i+D2<lv.length;i++){ s2+=(lv[i+D2]-lv[i])**2; n++; } if(n) pts.push([Math.log(D2),Math.log(s2/n)]); }
+  if(pts.length<3) return; const mx=ser3(pts.map(p=>p[0]))/pts.length, my=ser3(pts.map(p=>p[1]))/pts.length; let sxy=0,sxx=0; for(const [px2,py] of pts){ sxy+=(px2-mx)*(py-my); sxx+=(px2-mx)**2; } const slope=sxy/sxx, H=slope/2, icp=my-slope*mx;
+  $("rv-h").innerHTML = cardH("Hurst-Exponent H",H.toFixed(3),H<0.3?"raue Vola":H<0.45?"leicht rau":"nahe Brownsch",H<0.3?"warn":"")+cardH("Datenbasis",lv.length+" Tage","aus "+x.t.length+" Stundenkerzen");
+  const c2=ch("c-hurst"); if(c2) c2.setOption({...o,tooltip:{...o.tooltip,valueFormatter:v=>typeof v==="number"?v.toFixed(3):v},xAxis:ax(o,{type:"value",name:"log Δ (Tage)",nameLocation:"middle",nameGap:24}),yAxis:ax(o,{type:"value",scale:true,name:"log E[(Δ log σ)²]"}),
+    series:[{type:"scatter",name:"Messwerte",data:pts,itemStyle:{color:css("--accent")}},{type:"line",name:"Fit (Steigung = 2H)",showSymbol:false,data:pts.map(p=>[p[0],icp+slope*p[0]]),lineStyle:{color:css("--warn"),type:"dashed"},itemStyle:{color:css("--warn")}}]},true);
+};
+
+
+const _gpR3=R3.gexprof; R3.gexprof=(lb,lv)=>{ _gpR3(lb,lv); const g=S.gpGreek||"gex", n=+S.gpChg||12, a=snaps[snaps.length-1], b=snaps.length>n?snaps[snaps.length-1-n]:snaps[0]; const c=ch("c-gpchg"); if(!a||!b||a===b||!c){ if($("gp-chgt")) $("gp-chgt").innerHTML='<div class="empty">Für den Vergleich werden mindestens zwei Snapshots benötigt (alle 5 Minuten).</div>'; return; }
+  const va=snapVal3(a,g), vb=snapVal3(b,g), mb=new Map(b.ks.map((k,i)=>[k,vb[i]])), rows=a.ks.map((k,i)=>[k,va[i]-(mb.get(k)||0),va[i]]).filter(r=>Math.abs(r[0]/spot-1)<=0.15), o=base(), lbl={gex:"GEX",dex:"DEX",vex:"VEX",chex:"CHEX",oi:"OI"}[g], f=g==="oi"?(v=>fmtNum(v,1)):fmtUsd;
+  c.setOption({...o,grid:{...o.grid,bottom:50},tooltip:{...o.tooltip,valueFormatter:v=>typeof v==="number"?f(v):v},xAxis:ax(o,{type:"category",data:rows.map(r=>String(r[0])),axisLabel:{...o._axis.axisLabel,rotate:45,formatter:v=>fmtNum(+v)}}),yAxis:ax(o,{type:"value",axisLabel:{...o._axis.axisLabel,formatter:v=>f(v)}}),
+    series:[{type:"bar",name:"Δ "+lbl,data:rows.map(r=>({value:Math.round(r[1]*10)/10,itemStyle:barStyle(r[1]>=0?css("--bull"):css("--bear"))}))}]},true);
+  const top=[...rows].sort((x,y)=>Math.abs(y[1])-Math.abs(x[1])).slice(0,8), mins=Math.round((a.t-b.t)/60000);
+  $("gp-chgt").innerHTML = tbl3(["Strike","vs. Spot","Δ "+lbl+" ("+mins+" min)",lbl+" jetzt"], top.map(r=>`<tr><td class="l"><b>${fmtNum(r[0])}</b></td><td>${pct3((r[0]/spot-1)*100,1)}</td><td class="${cls3(r[1])}">${(r[1]>0?"+":"")+f(r[1])}</td><td>${f(r[2])}</td></tr>`),"free"); };
+
+/* ====================== Werkzeuge: Benachrichtigungen, Screenshots, Uhr, Filter teilen, Altcoins, Liquidations-Heatmap, Block-Analysen, Marktbericht ====================== */
+
+/* --- Alerts: Browser-Benachrichtigung und Discord-Webhook --- */
+S.alNotify??=0; S.alHook??=""; S.alHookMin??=250000;
+V3.alerts = P2("Benachrichtigungen","Alerts zusätzlich als System-Meldung oder in deinen Discord-Kanal",'<div class="form"><label><button class="tog" id="al-notify" aria-label="Browser-Benachrichtigungen"></button> Browser-Benachrichtigungen</label><span class="mut" id="al-perm"></span></div><div class="form"><label class="grow">Discord-Webhook <input id="al-hook" class="chip" placeholder="https://discord.com/api/webhooks/…" style="min-width:320px" autocomplete="off"></label>'+num3("al-hookmin",S.alHookMin,10000,"nur ab Premium $",110)+'<button class="btn ghost" id="al-hooktest">Test senden</button><span class="mut" id="al-hookst"></span></div><div class="note">Den Webhook legst du in Discord unter Kanal-Einstellungen → Integrationen → Webhooks an. Er wird nur lokal in diesem Browser gespeichert. Gesendet wird, solange das Terminal geöffnet ist (höchstens eine Nachricht alle 3 Sekunden, mehrere Alerts werden gebündelt).</div>',"wide");
+const hookOk = u => /^https:\/\/(discord|discordapp)\.com\/api\/webhooks\/\d+\/[\w-]+$/.test(String(u||"").trim());
+let hookQ=[], hookT=0;
+function hookSend(lines){ if(!hookOk(S.alHook)) return; hookQ.push(...lines); if(hookT) return; hookT=setTimeout(()=>{ const msg=hookQ.splice(0,15).join("\n"); hookT=0; const fd=new FormData(); fd.append("payload_json",JSON.stringify({username:"TQI Alerts",content:msg.slice(0,1900)})); fetch(S.alHook.trim(),{method:"POST",mode:"no-cors",body:fd}).catch(()=>{}); if(hookQ.length) hookSend([]); },3000); }
+const _chkAl=checkAlerts; checkAlerts=function(added){ const first=alerts[0]; _chkAl(added); const neu=[]; for(const a of alerts){ if(a===first) break; neu.push(a); } if(!neu.length) return;
+  if(+S.alNotify && window.Notification && Notification.permission==="granted"){ for(const a of neu.slice(0,3)){ try{ new Notification("TQI · "+a.why,{body:`${a.t.side==="buy"?"KAUF":"VERKAUF"} ${fmtNum(a.t.amt,1)} ${a.t.inst} · ${fmtUsd(a.t.prem)} · ${VEN[a.t.venue].name}`,tag:"tqi"+a.t.id}); }catch(e){} } }
+  const big=neu.filter(a=>a.t.prem>=(S.alHookMin||0)); if(big.length) hookSend(big.map(a=>`**${a.why}** · ${VEN[a.t.venue].name} · ${a.t.side==="buy"?"🟢 BUY":"🔴 SELL"} ${fmtNum(a.t.amt,1)} \`${a.t.inst}\` · **${fmtUsd(a.t.prem)}** · IV ${a.t.iv!=null?(+a.t.iv).toFixed(1)+" %":"–"}`)); };
+R3.alerts = () => { const t=$("al-notify"); if(t) t.setAttribute("aria-pressed",String(!!+S.alNotify)); const p=$("al-perm"); if(p) p.textContent=window.Notification?({granted:"erlaubt",denied:"im Browser blockiert",default:"noch nicht erlaubt"})[Notification.permission]:"nicht unterstützt";
+  const h=$("al-hook"); if(h && document.activeElement!==h && h.value!==S.alHook) h.value=S.alHook||""; };
+NB3.add("alerts");
+document.addEventListener("click",async e=>{ const id=e.target.closest("button")&&e.target.closest("button").id;
+  if(id==="al-notify"){ if(!+S.alNotify && window.Notification && Notification.permission!=="granted"){ try{ await Notification.requestPermission(); }catch(err){} } S.alNotify=+S.alNotify?0:1; save(); render(); }
+  if(id==="al-hooktest"){ const st=$("al-hookst"); if(!hookOk(S.alHook)){ if(st) st.textContent="Ungültige Webhook-URL"; return; } hookSend(["✅ TQI Terminal ist verbunden. Alerts ab "+fmtUsd(S.alHookMin||0)+" werden hier gepostet."]); if(st) st.textContent="Test wird gesendet …"; } });
+document.addEventListener("change",e=>{ if(e.target.id==="al-hook"){ const v=e.target.value.trim(); S.alHook=v; save(); const st=$("al-hookst"); if(st) st.textContent=v&&!hookOk(v)?"Ungültige Webhook-URL":v?"gespeichert":""; } if(e.target.id==="al-hookmin"){ S.alHookMin=Math.max(0,+e.target.value||0); save(); } });
+
+/* --- Panel als Bild speichern --- */
+const CAM_SVG='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>';
+function addCams(){ const v=document.getElementById("v-"+S.view); if(!v) return; v.querySelectorAll(".panel").forEach(p=>{ const ph=p.querySelector(".ph"); if(!ph||ph.querySelector(".cam")) return; if(!p.querySelector(".chart,canvas")) return; ph.insertAdjacentHTML("beforeend",`<button class="iconbtn cam" title="Als Bild speichern" aria-label="Als Bild speichern">${CAM_SVG}</button>`); }); }
+document.addEventListener("click",e=>{ const b=e.target.closest(".cam"); if(!b) return; const p=b.closest(".panel"); if(!p) return; let url=null; const el=p.querySelector(".chart"), cv=p.querySelector(".ofwrap canvas");
+  if(el){ const c=echarts.getInstanceByDom(el); if(c) url=c.getDataURL({type:"png",pixelRatio:2,backgroundColor:css("--panel")}); }
+  if(!url && cv){ const t=document.createElement("canvas"); t.width=cv.width; t.height=cv.height; const g=t.getContext("2d"); g.fillStyle=css("--panel"); g.fillRect(0,0,t.width,t.height); g.drawImage(cv,0,0); url=t.toDataURL("image/png"); }
+  if(!url) return; const h=(p.querySelector(".ph h2")||{}).firstChild, name=String(h&&h.textContent||"Chart").trim().replace(/[^\wäöüÄÖÜß-]+/g,"_"), d=new Date(), ts=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")+"_"+String(d.getHours()).padStart(2,"0")+String(d.getMinutes()).padStart(2,"0");
+  const a=document.createElement("a"); a.href=url; a.download=`TQI_${S.cur}_${name}_${ts}.png`; document.body.appendChild(a); a.click(); a.remove(); });
+const _renderCam=render; render=function(){ _renderCam(); try{ addCams(); }catch(e){} };
+
+/* --- Uhr in der Kopfzeile --- */
+(()=>{ const b=document.getElementById("open-settings"); if(!b) return; b.insertAdjacentHTML("beforebegin",'<span class="hclock num" id="hclock" aria-label="Uhrzeit"></span>');
+  const tick=()=>{ const d=new Date(), el=document.getElementById("hclock"); if(el) el.innerHTML=`${d.toLocaleTimeString(LOC,{hour:"2-digit",minute:"2-digit",second:"2-digit"})} <span class="mut">UTC ${String(d.getUTCHours()).padStart(2,"0")}:${String(d.getUTCMinutes()).padStart(2,"0")}</span>`; }; tick(); setInterval(tick,1000); })();
+
+/* --- Filter-Gruppen teilen (Code kopieren / importieren) --- */
+(()=>{ const add=document.getElementById("fm-addg"); if(!add) return; add.parentElement.insertAdjacentHTML("beforeend",'<button class="btn ghost" id="fm-share" type="button">Code kopieren</button><input id="fm-code" class="chip" placeholder="Filter-Code einfügen" style="min-width:150px"><button class="btn ghost" id="fm-imp" type="button">Importieren</button>');
+  document.getElementById("fm-share").addEventListener("click",()=>{ try{ const code="TQIF-"+btoa(unescape(encodeURIComponent(JSON.stringify({name:fDraft.name,groups:fDraft.groups})))); document.getElementById("fm-code").value=code; navigator.clipboard&&navigator.clipboard.writeText(code); document.getElementById("fm-share").textContent="Kopiert"; setTimeout(()=>document.getElementById("fm-share").textContent="Code kopieren",1500); }catch(e){} });
+  document.getElementById("fm-imp").addEventListener("click",()=>{ const inp=document.getElementById("fm-code"); try{ const o=JSON.parse(decodeURIComponent(escape(atob(inp.value.trim().replace(/^TQIF-/,""))))); if(!Array.isArray(o.groups)||!o.groups.every(g=>Array.isArray(g)&&g.every(c=>c&&typeof c.f==="string"&&typeof c.op==="string"))) throw 0;
+    fDraft={id:"f"+Date.now().toString(36),name:String(o.name||"Importiert").slice(0,60),groups:o.groups}; fRender(); inp.value=""; }catch(e){ inp.value="Ungültiger Code"; } }); })();
+
+/* --- Altcoin-Optionen (Deribit USDC: SOL, XRP, HYPE, AVAX, TRX) --- */
+const ALTS=["SOL","XRP","HYPE","AVAX","TRX"]; S.alt??="SOL";
+let ALTB={at:0,rows:[],busy:false};
+async function loadAlt(){ if(ALTB.busy||Date.now()-ALTB.at<60000) return; ALTB.busy=true; const r=await dRpc("public/get_book_summary_by_currency",{currency:"USDC",kind:"option"}); if(Array.isArray(r)) ALTB={at:Date.now(),rows:r,busy:false}; else ALTB.busy=false; scheduleRender(); }
+function altBook(a){ const now=Date.now(), pre=a+"_USDC-"; return ALTB.rows.filter(x=>x.instrument_name.indexOf(pre)===0).map(x=>{ const p=x.instrument_name.split("-"), ts=parseExp(p[1]); if(!ts||ts<=now||!(x.mark_iv>0)||!(x.underlying_price>0)) return null; const K=+p[2].replace("d","."), cp=p[3], T=(ts-now)/YEAR, F=x.underlying_price, g=greeks(F,K,T,x.mark_iv/100,cp);
+  return {inst:x.instrument_name,exp:p[1],expTs:ts,strike:K,cp,F,T,iv:x.mark_iv,oi:x.open_interest||0,vol:x.volume_usd||0,mark:x.mark_price,g}; }).filter(Boolean); }
+V3.alts = P2("Altcoin-Optionen","Deribit USDC-Optionen: Open Interest, GEX, Smile und Term Structure",'<div class="form">'+seg3("k3","alt",ALTS.map(a=>[a,a]))+'</div><div class="cards" id="alt-cards"></div>',"wide")+
+  P2("Open Interest je Strike","alle Verfälle, mit Max Pain des nächsten Verfalls",'<div class="chart tall" id="c-altoi"></div>',"wide")+
+  P2("GEX je Strike","Dealer-Gamma (Standardmodell)",'<div class="chart" id="c-altgex"></div>')+P2("Term Structure","ATM IV je Verfall",'<div class="chart" id="c-altts"></div>')+
+  P2("Smile","nächster Verfall und ~30 Tage",'<div class="chart" id="c-altsm"></div>',"wide");
+NB3.add("alts");
+R3.alts = () => { loadAlt(); const a=S.alt||"SOL", L=altBook(a); if(!L.length){ $("alt-cards").innerHTML='<div class="empty">Lade Deribit-USDC-Optionen …</div>'; return; }
+  const o=base(), F=L[0].F, ex=[...new Set(L.sort((x,y)=>x.expTs-y.expTs).map(b=>b.exp))], dt=e=>(L.find(b=>b.exp===e).expTs-Date.now())/DAY;
+  const atm=e=>{ const R=L.filter(b=>b.exp===e); if(!R.length) return null; const k=R.reduce((m,b)=>Math.abs(b.strike-F)<Math.abs(m-F)?b.strike:m,R[0].strike); const v=R.filter(b=>b.strike===k).map(b=>b.iv); return ser3(v)/v.length; };
+  const front=ex.find(e=>dt(e)>0.5)||ex[0], e30=ex.reduce((m,e)=>Math.abs(dt(e)-30)<Math.abs(dt(m)-30)?e:m,ex[0]);
+  const mpain=e=>{ const R=L.filter(b=>b.exp===e), ks=[...new Set(R.map(b=>b.strike))]; let best=null,bv=Infinity; for(const k of ks){ let v=0; for(const b of R) v+=b.oi*(b.cp==="C"?Math.max(k-b.strike,0):Math.max(b.strike-k,0)); if(v<bv){ bv=v; best=k; } } return best; };
+  const oiC=ser3(L.filter(b=>b.cp==="C").map(b=>b.oi)), oiP=ser3(L.filter(b=>b.cp==="P").map(b=>b.oi)), gx=new Map(); let net=0; for(const b of L){ if(Math.abs(b.strike/F-1)>0.4) continue; const v=(b.cp==="C"?1:-1)*b.g.gamma*b.oi*F*F*0.01; gx.set(b.strike,(gx.get(b.strike)||0)+v); net+=v; }
+  const mp=mpain(front), dec=F<10?3:F<100?2:1;
+  $("alt-cards").innerHTML = cardH(a+" Spot","$"+fmtNum(F,dec),"Deribit USDC")+cardH("ATM IV "+front,atm(front)?atm(front).toFixed(1)+" %":"–","nächster Verfall")+cardH("ATM IV ~30T",atm(e30)?atm(e30).toFixed(1)+" %":"–",e30)+cardH("Put/Call OI",oiC?(oiP/oiC).toFixed(2):"–",fmtUsd((oiC+oiP)*F)+" Notional")+cardH("Max Pain "+front,mp!=null?"$"+fmtNum(mp,dec):"–",mp?pct3((mp/F-1)*100,1)+" vom Spot":"")+cardH("Netto-GEX",sgn3(net),net>0?"long Gamma":"short Gamma",cls3(net));
+  const ks=[...new Set(L.filter(b=>Math.abs(b.strike/F-1)<=0.4).map(b=>b.strike))].sort((x,y)=>x-y), oiBy=(k,cp)=>ser3(L.filter(b=>b.strike===k&&b.cp===cp).map(b=>b.oi));
+  const c1=ch("c-altoi"); if(c1) c1.setOption({...o,grid:{...o.grid,bottom:50},tooltip:{...o.tooltip,valueFormatter:v=>typeof v==="number"?fmtNum(v,0):v},xAxis:ax(o,{type:"category",data:ks.map(String),axisLabel:{...o._axis.axisLabel,rotate:45}}),yAxis:ax(o,{type:"value"}),
+    series:[{type:"bar",name:"Calls",stack:"oi",data:ks.map(k=>Math.round(oiBy(k,"C"))),itemStyle:{color:css("--bull")}},{type:"bar",name:"Puts",stack:"oi",data:ks.map(k=>Math.round(oiBy(k,"P"))),itemStyle:{color:css("--bear")},markLine:mp!=null&&ks.includes(mp)?{symbol:"none",silent:true,data:[{xAxis:String(mp),lineStyle:{color:css("--warn"),type:"dashed"},label:{formatter:"Max Pain",color:css("--warn")}}]}:undefined}]},true);
+  const gk=[...gx.keys()].sort((x,y)=>x-y), c2=ch("c-altgex"); if(c2) c2.setOption({...o,legend:{show:false},grid:{...o.grid,bottom:50},tooltip:{...o.tooltip,valueFormatter:v=>typeof v==="number"?fmtUsd(v):v},xAxis:ax(o,{type:"category",data:gk.map(String),axisLabel:{...o._axis.axisLabel,rotate:45}}),yAxis:ax(o,{type:"value",axisLabel:{...o._axis.axisLabel,formatter:v=>fmtUsd(v)}}),
+    series:[{type:"bar",name:"GEX",data:gk.map(k=>{ const v=gx.get(k); return {value:Math.round(v),itemStyle:barStyle(v>=0?css("--bull"):css("--bear"))}; })}]},true);
+  const c3=ch("c-altts"); if(c3) c3.setOption({...o,legend:{show:false},tooltip:{...o.tooltip,valueFormatter:v=>typeof v==="number"?v.toFixed(1)+" %":v},xAxis:ax(o,{type:"category",data:ex}),yAxis:ax(o,{type:"value",scale:true,axisLabel:{...o._axis.axisLabel,formatter:v=>v+" %"}}),
+    series:[{type:"line",name:"ATM IV",data:ex.map(e=>{ const v=atm(e); return v==null?null:+v.toFixed(2); }),lineStyle:{color:css("--accent"),width:2},itemStyle:{color:css("--accent")}}]},true);
+  const sm=e=>L.filter(b=>b.exp===e&&b.cp===(b.strike>=F?"C":"P")&&Math.abs(b.strike/F-1)<=0.5).sort((x,y)=>x.strike-y.strike).map(b=>[b.strike,+b.iv.toFixed(2)]);
+  const c4=ch("c-altsm"); if(c4) c4.setOption({...o,tooltip:{...o.tooltip,valueFormatter:v=>typeof v==="number"?v.toFixed(2)+" %":v},xAxis:ax(o,{type:"value",scale:true}),yAxis:ax(o,{type:"value",scale:true,axisLabel:{...o._axis.axisLabel,formatter:v=>v+" %"}}),
+    series:[{type:"line",name:front,data:sm(front),lineStyle:{color:css("--accent")},itemStyle:{color:css("--accent")}},...(e30!==front?[{type:"line",name:e30,data:sm(e30),lineStyle:{color:css("--warn")},itemStyle:{color:css("--warn")}}]:[])]},true);
+};
+
+/* --- Liquidations-Heatmap (Modell aus OI-Aufbau und Hebel-Stufen, Binance Perp) --- */
+OF_VIEWS.add("liqmap"); NB3.add("liqmap"); S.lqTf??="15m"; S.lqCon??=2;
+V3.liqmap = P2("Liquidations-Heatmap","geschätzte Liquidations-Level aus neuem Open Interest und typischen Hebeln, Binance Perp",'<div class="form">'+seg3("k3","lqTf",[["5m","5 min (≈ 40 h)"],["15m","15 min (≈ 5 T)"],["1h","1 h (≈ 20 T)"]])+seg3("k3","lqCon",[[1,"Kontrast niedrig"],[2,"mittel"],[3,"hoch"]])+'</div><div class="cards" id="lq-cards"></div>'+ofWrap("lq-cv")+'<div class="note">Modell: Jeder OI-Anstieg eröffnet Long- und Short-Positionen zum Durchschnittspreis der Kerze, verteilt auf 10×, 25×, 50× und 100× Hebel. Liquidations-Level oberhalb (Shorts) und unterhalb (Longs) bleiben stehen, bis der Preis sie erreicht. Helle Zonen = viel geschätzte Liquidität, die der Preis oft „anzieht“. Schätzung, keine Börsendaten.</div>',"wide");
+let LQ={k:"",at:0,bars:[],cols:[]}; const LQV={dy:0,zoom:1,hx:null,hy:null};
+async function loadLq(){ const tf=S.lqTf||"15m", k=S.cur+tf; if(LQ.k===k&&Date.now()-LQ.at<60000) return; if(LQ.busy) return; LQ.busy=1; const sym=S.cur+"USDT";
+  const [kl,oi]=await Promise.all([getJ3(`https://fapi.binance.com/fapi/v1/klines?symbol=${sym}&interval=${tf}&limit=500`),getJ3(`https://fapi.binance.com/futures/data/openInterestHist?symbol=${sym}&period=${tf}&limit=500`)]); LQ.busy=0;
+  if(!Array.isArray(kl)||!Array.isArray(oi)) return; const om=new Map(oi.map(x=>[+x.timestamp,+x.sumOpenInterest])); const bars=kl.map(x=>({t:+x[0],o:+x[1],h:+x[2],l:+x[3],c:+x[4],oi:om.get(+x[0])}));
+  const LEV=[[10,.3],[25,.3],[50,.25],[100,.15]], mm=0.004, act=[], cols=[]; let prev=null;
+  for(const b of bars){ for(let i=act.length-1;i>=0;i--){ const z=act[i]; if((z.s<0&&b.l<=z.px)||(z.s>0&&b.h>=z.px)) act.splice(i,1); }
+    if(b.oi!=null&&prev!=null&&b.oi>prev){ const d=b.oi-prev, p=(b.h+b.l+b.c)/3; for(const [L,w] of LEV){ act.push({px:p*(1-1/L+mm),usd:d*w*p,s:-1}); act.push({px:p*(1+1/L-mm),usd:d*w*p,s:1}); } }
+    if(b.oi!=null) prev=b.oi; cols.push(act.map(z=>[z.px,z.usd,z.s])); }
+  LQ={k,at:Date.now(),bars,cols}; ofNow(); }
+R3.liqmap = () => { loadLq(); const cv=$("lq-cv"); ofInteract(cv,{wheel:e=>{ LQV.zoom=Math.max(0.3,Math.min(4,LQV.zoom*(e.deltaY>0?1.15:1/1.15))); },drag:(dx,dy)=>{ LQV.dy+=dy; },hover:(x,y)=>{ LQV.hx=x; LQV.hy=y; },reset:()=>{ LQV.dy=0; LQV.zoom=1; }}); ofKick(); };
+OF_DRAW.liqmap = () => { loadLq(); const C=cvSetup("lq-cv"); if(!C) return; const {g,W,H}=C, c=ofc(); g.clearRect(0,0,W,H); const B=LQ.bars, Cc=LQ.cols; if(!B.length){ cvMsg(g,W,H,"Lade Kerzen und Open-Interest-Historie von Binance …"); return; }
+  const axR=74, prW=80, axB=20, pw=W-axR-prW, ph=H-axB, last=B[B.length-1].c, span=0.09*LQV.zoom, mid=last*(1-LQV.dy/ph*2*span), pLo=mid*(1-span), pHi=mid*(1+span), rows=Math.min(ph,260), st=(pHi-pLo)/rows, n=B.length;
+  const yOf=p=>(pHi-p)/(pHi-pLo)*ph, grid=new Float64Array(n*rows); let all=[];
+  for(let x=0;x<n;x++){ for(const [px,usd] of Cc[x]){ if(px<pLo||px>=pHi) continue; const r=Math.floor((px-pLo)/st); grid[x*rows+r]+=usd; } }
+  for(let i=0;i<grid.length;i+=7) if(grid[i]>0) all.push(grid[i]); all.sort((a,b)=>a-b); const vmax=all.length?all[Math.min(all.length-1,Math.floor(all.length*({1:0.995,2:0.98,3:0.94}[+S.lqCon||2])))]:1;
+  const off=document.createElement("canvas"); off.width=n; off.height=rows; const og=off.getContext("2d"), img=og.createImageData(n,rows), D=img.data, LUT=OBH_LUT;
+  for(let x=0;x<n;x++) for(let r=0;r<rows;r++){ const v=grid[x*rows+r]; if(v<=0) continue; const t=Math.min(1,Math.pow(v/vmax,0.55)), li=Math.round(t*255)*4, o=((rows-1-r)*n+x)*4; D[o]=LUT[li]; D[o+1]=LUT[li+1]; D[o+2]=LUT[li+2]; D[o+3]=LUT[li+3]; }
+  og.putImageData(img,0,0); g.imageSmoothingEnabled=true; g.drawImage(off,0,0,n,rows,0,0,pw,ph);
+  const xs=pw/n; for(let i=0;i<n;i++){ const b=B[i], X=i*xs+xs/2, up=b.c>=b.o; g.strokeStyle=up?c.up:c.dn; g.lineWidth=1; g.beginPath(); g.moveTo(X,yOf(b.h)); g.lineTo(X,yOf(b.l)); g.stroke(); g.fillStyle=up?c.up:c.dn; const y1=yOf(Math.max(b.o,b.c)), y2=yOf(Math.min(b.o,b.c)); g.fillRect(X-Math.max(0.5,xs*0.3),y1,Math.max(1,xs*0.6),Math.max(1,y2-y1)); }
+  // aktuelle Liquidations-Level rechts
+  const cur=Cc[Cc.length-1]||[], pr=new Float64Array(rows), ps=new Int8Array(rows); let pm=1e-9; for(const [px,usd,s] of cur){ if(px<pLo||px>=pHi) continue; const r=Math.floor((px-pLo)/st); pr[r]+=usd; ps[r]=s; pm=Math.max(pm,pr[r]); }
+  const rh=ph/rows; for(let r=0;r<rows;r++){ if(!pr[r]) continue; g.fillStyle=rgba3(ps[r]>0?c.up:c.dn,.55); g.fillRect(pw+2,ph-(r+1)*rh,pr[r]/pm*(prW-6),Math.max(1,rh)); }
+  g.fillStyle=c.bg; g.fillRect(pw+prW,0,axR,H); g.fillRect(0,ph,W,axB); g.strokeStyle=c.line; g.beginPath(); g.moveTo(pw+.5,0); g.lineTo(pw+.5,ph); g.moveTo(pw+prW+.5,0); g.lineTo(pw+prW+.5,ph); g.moveTo(0,ph+.5); g.lineTo(W,ph+.5); g.stroke();
+  g.font="500 10.5px IBM Plex Mono, monospace"; g.fillStyle=c.mut; const stp=Math.pow(10,Math.floor(Math.log10((pHi-pLo)/6))), nice=[1,2,2.5,5,10].map(m=>m*stp).find(s=>(pHi-pLo)/s<=8)||stp*10; for(let p=Math.ceil(pLo/nice)*nice;p<=pHi;p+=nice){ const y=yOf(p); if(y<6||y>ph-6) continue; g.fillText(fmtNum(p),pw+prW+6,y); }
+  const ly=yOf(last); g.strokeStyle=rgba3(c.fg,.6); g.setLineDash([3,3]); g.beginPath(); g.moveTo(0,ly); g.lineTo(pw,ly); g.stroke(); g.setLineDash([]); g.fillStyle=c.acc; g.fillRect(pw+prW+1,ly-8,axR-2,16); g.fillStyle=c.onacc; g.font="700 10.5px IBM Plex Mono, monospace"; g.fillText(fmtNum(last),pw+prW+5,ly);
+  g.fillStyle=c.mut; g.font="500 10px IBM Plex Mono, monospace"; const tstep=Math.max(1,Math.round(n/7)); for(let i=0;i<n;i+=tstep) g.fillText(new Date(B[i].t).toLocaleString(LOC,{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}),i*xs+2,ph+axB/2);
+  if(LQV.hy!=null&&LQV.hx<pw&&LQV.hy<ph){ const p=pHi-LQV.hy/ph*(pHi-pLo), r=Math.floor((p-pLo)/st), xi=Math.min(n-1,Math.max(0,Math.floor(LQV.hx/xs))), v=grid[xi*rows+r]||0; g.strokeStyle=rgba3(c.fg,.4); g.setLineDash([4,4]); g.beginPath(); g.moveTo(0,LQV.hy); g.lineTo(pw,LQV.hy); g.stroke(); g.setLineDash([]); const tx=`${fmtNum(p)} · ${fUsd0(v)}`; g.font="600 11px IBM Plex Mono, monospace"; const tw=g.measureText(tx).width+12, bx=Math.min(LQV.hx+10,pw-tw-4), by=Math.max(4,LQV.hy-26); g.fillStyle=c.bg2; g.fillRect(bx,by,tw,20); g.fillStyle=c.fg; g.fillText(tx,bx+6,by+10); }
+  // Kennzahlen: größte Cluster über und unter dem Preis
+  const cl=new Map(); for(const [px,usd] of cur){ const k=Math.round(px/(last*0.0025))*(last*0.0025); cl.set(k,(cl.get(k)||0)+usd); } const arr=[...cl.entries()], up=arr.filter(x=>x[0]>last).sort((a,b)=>b[1]-a[1])[0], dn=arr.filter(x=>x[0]<last).sort((a,b)=>b[1]-a[1])[0];
+  const ca=$("lq-cards"); if(ca) ca.innerHTML=cardH("Größter Short-Liq-Cluster",up?"$"+fmtNum(up[0]):"–",up?fUsd0(up[1])+" · "+pct3((up[0]/last-1)*100,2):"","pos")+cardH("Größter Long-Liq-Cluster",dn?"$"+fmtNum(dn[0]):"–",dn?fUsd0(dn[1])+" · "+pct3((dn[0]/last-1)*100,2):"","neg")+cardH("Offene Level gesamt",fUsd0(arr.reduce((a,x)=>a+x[1],0)),"im Modell noch nicht erreicht");
+};
+
+/* --- Block-Analysen (Seite Block-RFQ) --- */
+V3.blocks = P2("Netto-Delta der Blocks","kumuliert über das Zeitfenster (Käufer-Seite)",'<div class="chart" id="c-bkdelta"></div>')+P2("Vola-Flow","Netto-Vega der Blocks: kaufen oder verkaufen die großen Adressen Vola?",'<div class="cards" id="bk-vega"></div><div class="chart" id="c-bkvega"></div>')+
+  P2("Strike-Leiter","Block-Notional je Strike, gekauft vs. verkauft",'<div class="chart tall" id="c-bkladder"></div>',"wide")+P2("IV der Block-Prints","implizite Vola jedes Block-Legs zum Ausführungszeitpunkt",'<div class="chart" id="c-bkiv"></div>',"wide")+
+  P2("Strategie-Rotation","Anteil der Strategien je Tag (nach Premium)",'<div class="chart" id="c-bkrot"></div>')+P2("Auffällige Häufungen","Strategien, die in den letzten 4 Stunden deutlich häufiger als üblich gehandelt wurden",'<div id="bk-burst"></div>');
+R3.blocks = () => { const L=allBlocks().slice().sort((a,b)=>a.ts-b.ts), o=base(); if(!L.length) return; const ivm=new Map(); for(const b of liveBook()) if(!ivm.has(b.exp+"|"+b.strike)||b.venue==="deribit") ivm.set(b.exp+"|"+b.strike,b.mark_iv);
+  let cd=0; const c1=ch("c-bkdelta"); if(c1) c1.setOption({...o,legend:{show:false},tooltip:{...o.tooltip,valueFormatter:v=>typeof v==="number"?fmtNum(v,1)+" "+S.cur:v},xAxis:ax(o,{type:"time",splitLine:{show:false}}),yAxis:ax(o,{type:"value"}),series:[{type:"line",step:"end",showSymbol:false,data:L.map(b=>[b.ts,+(cd+=b.delta).toFixed(2)]),lineStyle:{color:css("--accent"),width:1.8},areaStyle:{opacity:.08,color:css("--accent")},itemStyle:{color:css("--accent")}}]},true);
+  let nv=0, vb=0, vs=0; const vser=[]; for(const b of L){ let v=0; for(const l of b.legs){ if(!l.strike||!l.expTs) continue; const T=(l.expTs-b.ts)/YEAR; if(T<=0) continue; const iv=(ivm.get(l.exp+"|"+l.strike)||50)/100, g=greeks(b.idx,l.strike,T,iv,l.cp||"C"); v+=l.sign*l.qty*g.vega; } nv+=v; if(v>0) vb+=v; else vs-=v; vser.push([b.ts,+nv.toFixed(0)]); }
+  $("bk-vega").innerHTML=cardH("Netto-Vega",sgn3(nv),"je 1 Vola-Punkt",cls3(nv))+cardH("Vola gekauft / verkauft",fmtUsd(vb)+" / "+fmtUsd(vs),vb+vs?(vb/(vb+vs)*100).toFixed(0)+" % Käufe":"",vb>vs?"pos":"neg");
+  const c2=ch("c-bkvega"); if(c2) c2.setOption({...o,legend:{show:false},tooltip:{...o.tooltip,valueFormatter:v=>typeof v==="number"?fmtUsd(v):v},xAxis:ax(o,{type:"time",splitLine:{show:false}}),yAxis:ax(o,{type:"value",axisLabel:{...o._axis.axisLabel,formatter:v=>fmtUsd(v)}}),series:[{type:"line",step:"end",showSymbol:false,data:vser,lineStyle:{color:css("--warn"),width:1.8},itemStyle:{color:css("--warn")}}]},true);
+  const lad=new Map(); for(const b of L) for(const l of b.legs){ if(!l.strike) continue; const v=l.qty*b.idx, a=lad.get(l.strike)||[0,0]; a[l.sign>0?0:1]+=v; lad.set(l.strike,a); } const ks=[...lad.keys()].filter(k=>Math.abs(k/spot-1)<=0.4).sort((a,b)=>a-b);
+  const c3=ch("c-bkladder"); if(c3) c3.setOption({...o,grid:{...o.grid,bottom:50},tooltip:{...o.tooltip,valueFormatter:v=>typeof v==="number"?fmtUsd(Math.abs(v)):v},xAxis:ax(o,{type:"category",data:ks.map(String),axisLabel:{...o._axis.axisLabel,rotate:45,formatter:v=>fmtNum(+v)}}),yAxis:ax(o,{type:"value",axisLabel:{...o._axis.axisLabel,formatter:v=>fmtUsd(Math.abs(v))}}),
+    series:[{type:"bar",name:"gekauft",stack:"l",data:ks.map(k=>Math.round(lad.get(k)[0])),itemStyle:{color:css("--bull")}},{type:"bar",name:"verkauft",stack:"l",data:ks.map(k=>-Math.round(lad.get(k)[1])),itemStyle:{color:css("--bear")}}]},true);
+  const pts=[]; for(const b of L) for(const l of b.legs){ if(!l.strike||!l.expTs||!(l.price>0)) continue; const T=(l.expTs-b.ts)/YEAR, iv=iv3(l.price*b.idx,b.idx,l.strike,T,l.cp||"C"); if(iv) pts.push({value:[b.ts,+(iv*100).toFixed(1)],name:`${l.sign>0?"Kauf":"Verkauf"} ${fmtNum(l.qty,1)} ${l.exp||""} ${fmtNum(l.strike)}${l.cp||""}`,symbolSize:Math.max(5,Math.min(22,Math.sqrt(l.qty*b.idx/20000))),itemStyle:{color:rgba3(l.sign>0?css("--bull"):css("--bear"),.7)}}); }
+  const c4=ch("c-bkiv"); if(c4) c4.setOption({...o,legend:{show:false},tooltip:{...o.tooltip,trigger:"item",formatter:p=>`${fmtDT(p.value[0])}<br>${p.name}<br>IV <b>${p.value[1]} %</b>`},xAxis:ax(o,{type:"time",splitLine:{show:false}}),yAxis:ax(o,{type:"value",scale:true,axisLabel:{...o._axis.axisLabel,formatter:v=>v+" %"}}),series:[{type:"scatter",data:pts}]},true);
+  const days=[...new Set(L.map(b=>new Date(b.ts).toISOString().slice(0,10)))].sort(), tot=new Map(); L.forEach(b=>tot.set(b.strategy,(tot.get(b.strategy)||0)+b.prem)); const top=[...tot.entries()].sort((a,b)=>b[1]-a[1]).slice(0,6).map(x=>x[0]), pal=[css("--accent"),css("--bull"),css("--warn"),css("--bear"),"#a58bff","#ff8a5c",css("--muted")];
+  const share=(d,s)=>{ const X=L.filter(b=>new Date(b.ts).toISOString().slice(0,10)===d), T=ser3(X.map(b=>b.prem))||1; return +(ser3(X.filter(b=>s==="Andere"?!top.includes(b.strategy):b.strategy===s).map(b=>b.prem))/T*100).toFixed(1); };
+  const c5=ch("c-bkrot"); if(c5) c5.setOption({...o,legend:{...o.legend,type:"scroll"},grid:{...o.grid,top:40},tooltip:{...o.tooltip,valueFormatter:v=>typeof v==="number"?v+" %":v},xAxis:ax(o,{type:"category",data:days.map(d=>d.slice(5))}),yAxis:ax(o,{type:"value",max:100,axisLabel:{...o._axis.axisLabel,formatter:v=>v+" %"}}),
+    series:[...top,"Andere"].map((s,i)=>({type:"bar",name:s,stack:"r",data:days.map(d=>share(d,s)),itemStyle:{color:pal[i%pal.length]}}))},true);
+  const now=Date.now(), span=Math.max(4*3600e3,now-L[0].ts), rec=L.filter(b=>now-b.ts<=4*3600e3), cnt=new Map(), base4=new Map(); rec.forEach(b=>cnt.set(b.strategy,(cnt.get(b.strategy)||0)+1)); L.forEach(b=>base4.set(b.strategy,(base4.get(b.strategy)||0)+1));
+  const rows=[...cnt.entries()].map(([s,n])=>{ const avg=(base4.get(s)||0)/(span/(4*3600e3)); return [s,n,avg,avg?n/avg:n]; }).filter(r=>r[1]>=2&&r[3]>=2).sort((a,b)=>b[3]-a[3]);
+  $("bk-burst").innerHTML = rows.length? tbl3(["Strategie","letzte 4 h","Ø je 4 h","Faktor"], rows.slice(0,10).map(r=>`<tr><td class="l">${esc(r[0])}</td><td>${r[1]}</td><td>${r[2].toFixed(1)}</td><td class="wrn"><b>${r[3].toFixed(1)}×</b></td></tr>`),"free") : '<div class="empty">Keine auffälligen Häufungen im Moment.</div>';
+};
+
+/* --- Marktbericht (für Discord) --- */
+S.brLang??="de";
+V3.briefing = P2("Marktbericht","automatisch aus den Live-Daten, zum Kopieren für Discord",'<div class="form">'+seg3("k3","brLang",[["de","Deutsch"],["en","English"]])+'<button class="btn" id="br-copy">Für Discord kopieren</button><span class="mut" id="br-st"></span></div><div class="brief" id="br-out"></div>',"wide");
+function briefText(lb,lv){ const en=S.brLang==="en", T=(de,e)=>en?e:de, K=keyLevels(lb,lv), e0=frontExp(lb), mp=e0?maxPain(lb,e0):null, e30=nearestExpTo(lb,30), iv30=e30?atmIv(lb,e30):null, ivf=e0?atmIv(lb,e0):null, w=e30?wings(lb,e30):null;
+  const x=CND[S.cur+"60"], p24=x&&x.c.length>25?x.c[x.c.length-25]:null, ch24=p24?(spot/p24-1)*100:null, rk=ivRank(), vrp=dvol!=null&&rv30!=null?dvol-rv30:null;
+  const today=windowTrades().filter(t=>t.ts>=new Date().setUTCHours(0,0,0,0)); let bull=0,bear=0,big=null; for(const t of today){ if(t.bull) bull+=t.prem; else bear+=t.prem; if(!big||t.prem>big.prem) big=t; }
+  const f=v=>"$"+fmtNum(v), fr=[["Binance",PERP.binance.fund],["Bybit",PERP.bybit.fund],["OKX",PERP.okx.fund]].filter(r=>r[1]!=null).map(([n,v])=>`${n} ${(v*100).toFixed(4)} %`).join(" · ");
+  const L=[]; const dt=new Date().toLocaleString(en?"en-GB":"de-DE",{weekday:"long",day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});
+  L.push(`**TQI ${S.cur} ${T("Marktbericht","Market Briefing")}** · ${dt}`); L.push("");
+  L.push(`**${T("Kurs","Price")}:** ${f(spot)}${ch24!=null?` (${ch24>=0?"+":""}${ch24.toFixed(2)} % 24h)`:""}`);
+  L.push(`**${T("Volatilität","Volatility")}:** DVOL ${dvol!=null?dvol.toFixed(1):"–"}${rk!=null?` · IV Rank ${rk.toFixed(0)}`:""} · RV30 ${rv30!=null?rv30.toFixed(1)+" %":"–"} · VRP ${vrp!=null?(vrp>=0?"+":"")+vrp.toFixed(1):"–"} (${vrp!=null&&vrp>0?T("Optionen eher teuer","options rich"):T("Optionen eher günstig","options cheap")})`);
+  L.push(`**${T("Term Structure","Term structure")}:** ATM ${e0||""} ${ivf?ivf.toFixed(1)+" %":"–"} vs. 30${T("T","d")} ${iv30?iv30.toFixed(1)+" %":"–"} → ${ivf&&iv30?(ivf>iv30?T("Backwardation (kurzfristiger Stress)","backwardation (near-term stress)"):T("Contango (normal)","contango (normal)")):"–"}`);
+  if(w) L.push(`**Skew:** 25Δ RR 30${T("T","d")} ${(w.rr>0?"+":"")+w.rr.toFixed(2)} → ${w.rr<0?T("Puts gefragter (Absicherung)","puts bid (hedging demand)"):T("Calls gefragter","calls bid")}`);
+  L.push(`**Gamma:** ${T("Netto-GEX","Net GEX")} ${sgn3(K.net)} → ${K.net>0?T("Dealer long Gamma, Bewegungen werden gedämpft","dealers long gamma, moves get dampened"):T("Dealer short Gamma, Bewegungen können sich beschleunigen","dealers short gamma, moves can accelerate")}`);
+  L.push(`**Levels:** Call Wall ${K.calls[0]?f(K.calls[0][0]):"–"} · Put Wall ${K.puts[0]?f(K.puts[0][0]):"–"} · Flip ${K.flip?f(K.flip):"–"} · Max Pain ${e0||""} ${mp?f(mp):"–"}`);
+  L.push(`**Flow ${T("heute","today")}:** ${T("bullisch","bullish")} ${fmtUsd(bull)} vs. ${T("bärisch","bearish")} ${fmtUsd(bear)} → ${bull>=bear?T("Netto bullisch","net bullish"):T("Netto bärisch","net bearish")}${big?` · ${T("größter Trade","largest trade")}: ${big.side==="buy"?"BUY":"SELL"} ${fmtNum(big.amt,1)} ${big.inst} (${fmtUsd(big.prem)})`:""}`);
+  if(fr) L.push(`**Funding:** ${fr}`);
+  L.push(""); L.push(`_${T("Keine Anlageberatung. Daten: Deribit, Binance, Bybit, OKX und weitere, live aus dem TQI Terminal.","Not financial advice. Data: Deribit, Binance, Bybit, OKX and more, live from the TQI Terminal.")}_`);
+  return L.join("\n"); }
+NB3.add("briefing");
+R3.briefing = (lb,lv) => { loadTF("60"); if(!lb||!lb.length){ $("br-out").textContent="Warte auf Optionsdaten …"; return; } const t=briefText(lb,lv); window.__brief=t; const el=$("br-out"); const h=t.replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c])).replace(/\*\*(.+?)\*\*/g,"<b>$1</b>").replace(/_(.+?)_$/gm,"<i>$1</i>").replace(/\n/g,"<br>"); if(el.__h!==h){ el.__h=h; el.innerHTML=h; } };
+document.addEventListener("click",e=>{ if(e.target.id!=="br-copy") return; try{ navigator.clipboard.writeText(window.__brief||""); $("br-st").textContent="Kopiert, in Discord einfügen."; }catch(err){ $("br-st").textContent="Kopieren nicht möglich"; } });
+
+document.head.insertAdjacentHTML("beforeend",`<style>
+.hclock{font-size:12px;color:var(--fg);white-space:nowrap;margin-left:auto;margin-right:6px}
+.hclock .mut{margin-left:6px}
+@media (max-width:900px){.hclock{display:none}}
+.ph .cam{margin-left:auto;opacity:.55;width:28px;height:28px}
+.ph .cam:hover{opacity:1}
+.brief{border:1px solid var(--line);border-radius:10px;padding:14px 16px;line-height:1.65;background:var(--panel-2);font-size:13.5px}
+</style>`);
+
+/* --- Preis-Alerts (BTC/ETH), auch per Rechtsklick im Kerzen-Chart --- */
+S.pxAlerts=Array.isArray(S.pxAlerts)?S.pxAlerts:[];
+V3.alerts += P2("Preis-Alerts","Meldung, wenn der Kurs einen bestimmten Preis erreicht",'<div class="form"><label>Preis $ <input id="pa-px" type="number" class="chip num" step="50" style="width:120px"></label>'+sel3("pa-dir",[["cross","kreuzt"],["up","steigt über"],["down","fällt unter"]],"cross","Bedingung")+'<label class="grow">Notiz <input id="pa-note" class="chip" placeholder="z. B. Call Wall, Put Wall, nPOC" maxlength="60"></label><label><input type="checkbox" id="pa-rep"> wiederholen</label><button class="btn" id="pa-add">Alert setzen</button></div><div id="pa-list"></div><div class="note">Tipp: Rechtsklick in einen Kerzen-Chart (Key Levels, GEX-Profil, Kurs-Chart) setzt sofort einen Alert auf diesen Preis. Ausgelöst wird mit Hinweis, Ton, Browser-Benachrichtigung und, falls eingerichtet, Discord-Webhook. Gilt für die oben gewählte Währung und nur, solange das Terminal offen ist.</div>',"wide");
+window.addPxAlert=function(px,dir,note,rep){ px=+px; if(!(px>0)) return; const a={id:"a"+Date.now().toString(36)+Math.random().toString(36).slice(2,5),cur:S.cur,px,dir:dir||"cross",note:String(note||"").slice(0,60),rep:!!rep,on:1,at:Date.now(),trig:0}; S.pxAlerts.push(a); save(); toast(`<b>Preis-Alert gesetzt</b> · ${S.cur} ${{cross:"kreuzt",up:"steigt über",down:"fällt unter"}[a.dir]} $${fmtNum(px)}`); render(); };
+window.pxAlertLines=function(){ const col=css("--big-buy"); return S.pxAlerts.filter(a=>a.on&&a.cur===S.cur).map(a=>({yAxis:a.px,lineStyle:{color:col,type:"dashed",width:1.1},label:{formatter:"Alert  "+fmtNum(a.px)+(a.note?"  "+a.note:""),position:"insideEndBottom",color:col,fontSize:10,fontFamily:"IBM Plex Mono"}})); };
+let paPrev=null, paCur="";
+setInterval(()=>{ const px=spot; if(!(px>0)) return; if(paCur!==S.cur){ paCur=S.cur; paPrev=px; return; } const pv=paPrev; paPrev=px; if(pv==null) return; let hit=false;
+  for(const a of S.pxAlerts){ if(!a.on||a.cur!==S.cur) continue; const up=pv<a.px&&px>=a.px, dn=pv>a.px&&px<=a.px; if(!(a.dir==="up"?up:a.dir==="down"?dn:(up||dn))) continue; if(a.rep&&Date.now()-a.trig<60000) continue;
+    a.trig=Date.now(); if(!a.rep) a.on=0; hit=true; const msg=`${S.cur} ${up?"steigt über":"fällt unter"} $${fmtNum(a.px)} (jetzt $${fmtNum(px)})${a.note?" · "+a.note:""}`;
+    toast(`<b>Preis-Alert</b><br>${esc(msg)}`); try{ if(typeof beep==="function") beep(); }catch(e){}
+    if(window.Notification&&Notification.permission==="granted"){ try{ new Notification("TQI · Preis-Alert",{body:msg,tag:"tqi-px-"+a.id}); }catch(e){} }
+    hookSend([`🔔 **Preis-Alert** · ${msg}`]); }
+  if(hit){ save(); render(); } },1000);
+const _R3al=R3.alerts; R3.alerts=(...a)=>{ _R3al(...a); const el=$("pa-list"); if(!el) return; const L=S.pxAlerts.slice().sort((x,y)=>y.on-x.on||x.px-y.px);
+  const html=L.length? tbl3(["Währung","Preis","Bedingung","Notiz","Abstand","Status",""], L.map(a=>`<tr><td class="l">${a.cur}</td><td><b>$${fmtNum(a.px)}</b></td><td class="l">${{cross:"kreuzt",up:"steigt über",down:"fällt unter"}[a.dir]}${a.rep?" · wiederholt":""}</td><td class="l">${esc(a.note||"")}</td><td>${a.cur===S.cur&&spot?pct3((a.px/spot-1)*100,2):"–"}</td><td class="l ${a.on?"pos":"mut"}">${a.on?"aktiv":"ausgelöst "+new Date(a.trig).toLocaleString(LOC,{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}</td><td><button class="btn ghost" data-patog="${a.id}">${a.on?"Pause":"Aktivieren"}</button> <button class="btn ghost" data-padel="${a.id}">Löschen</button></td></tr>`),"free") : '<div class="empty">Noch keine Preis-Alerts.</div>';
+  if(el.__h!==html){ el.__h=html; el.innerHTML=html; } const inp=$("pa-px"); if(inp&&!inp.value&&spot) inp.placeholder=fmtNum(spot,0).replace(/\./g,""); };
+document.addEventListener("click",e=>{ const t=e.target.closest("button"); if(!t) return;
+  if(t.id==="pa-add"){ const px=+$("pa-px").value; if(!(px>0)){ toast("Bitte einen Preis eingeben."); return; } addPxAlert(px,$("pa-dir").value,$("pa-note").value,$("pa-rep").checked); $("pa-px").value=""; $("pa-note").value=""; }
+  if(t.dataset.padel){ S.pxAlerts=S.pxAlerts.filter(a=>a.id!==t.dataset.padel); save(); render(); }
+  if(t.dataset.patog){ const a=S.pxAlerts.find(x=>x.id===t.dataset.patog); if(a){ a.on=a.on?0:1; if(a.on) a.trig=0; save(); render(); } } });
 
 /* ====================== Session 3: Werkzeuge, Strategie, Quant ====================== */
 const dLb = () => liveFrom(books.deribit);
@@ -4035,7 +4515,7 @@ R3.optpnl = () => { const lb=dLb(), inst=instSel("opn-i",lb,"opnI"), res=S.opnRe
 document.addEventListener("change",e=>{ if(e.target.id==="opn-i"){ S.opnI=e.target.value; save(); render(); } });
 
 /* --- Strategie-Engine --- */
-V3.strategy = P2("Strategie-Engine","Meinung eingeben, die Engine sucht die passende Struktur in der Live-Kette",'<div class="form">'+seg3("k3","stView",[["bull","Bullisch"],["bear","Bärisch"],["neutral","Neutral"],["longvol","Long Vol"],["shortvol","Short Vol"]])+'<label>Verfall <select id="stg-exp"></select></label>'+num3("stg-tgt",S.stTgt??5,0.5,"Ziel-Bewegung %",70)+num3("stg-bud",S.stBud??1000,100,"Max. Risiko $",90)+'</div><div id="stg-t"></div><div class="note">Bewertet wird mit Deribit-Mark-Preisen: Payoff am Ziel, Wahrscheinlichkeit für Gewinn aus der Mark-IV (lognormal) und Gewinn/Risiko-Verhältnis. Menge wird auf das maximale Risiko skaliert. Klick auf „In Rechner“ übernimmt die Legs.</div>',"wide");
+V3.strategy = P2("Strategie-Engine","Meinung eingeben, die Engine sucht die passende Struktur in der Live-Kette",'<div class="form">'+seg3("k3","stView",[["bull","Bullisch"],["bear","Bärisch"],["neutral","Neutral"],["longvol","Long Vol"],["shortvol","Short Vol"]])+seg3("k3","stScan",[[0,"Ein Verfall"],[1,"Scanner: alle Verfälle"]])+'<label>Verfall <select id="stg-exp"></select></label>'+num3("stg-maxdte",S.stMaxDte??45,1,"Scanner bis DTE",64)+num3("stg-tgt",S.stTgt??5,0.5,"Ziel-Bewegung %",70)+num3("stg-bud",S.stBud??1000,100,"Max. Risiko $",90)+'</div><div id="stg-t"></div><div class="note">Bewertet wird mit Deribit-Mark-Preisen: Payoff am Ziel, Wahrscheinlichkeit für Gewinn aus der Mark-IV (lognormal) und Gewinn/Risiko-Verhältnis. Menge wird auf das maximale Risiko skaliert. Klick auf „In Rechner“ übernimmt die Legs.</div>',"wide");
 function buildCands(L,F){ const ks=[...new Set(L.map(b=>b.strike))].sort((a,b)=>a-b), at=m=>near(ks,F*m), G=(k,cp)=>L.find(b=>b.strike===k&&b.cp===cp), C=[];
   const mk=(name,legs)=>{ if(legs.some(([b])=>!b)) return; const ls=legs.map(([b,q])=>({b,q})); C.push({name,ls}); };
   [1,1.03,1.06,1.1].forEach(m=>mk("Long Call "+fmtNum(at(m)),[[G(at(m),"C"),1]])); [1,0.97,0.94,0.9].forEach(m=>mk("Long Put "+fmtNum(at(m)),[[G(at(m),"P"),1]]));
@@ -4057,10 +4537,11 @@ function evalCand(c,F,view,tgt){ const legs=c.ls.map(({b,q})=>({q,K:b.strike,cp:
   const be=[]; for(let i=1;i<xs.length;i++){ if(Math.sign(pl[i-1])!==Math.sign(pl[i])) be.push(xs[i-1]+(xs[i]-xs[i-1])*(-pl[i-1])/(pl[i]-pl[i-1])); }
   return {...c,cost,mxP:unl?Infinity:mxP,mnP,atT,pop,fit,be,delta:g.d,vega:g.v}; }
 R3.strategy = () => { const lb=dLb(), e=expSel("stg-exp",lb,"stExp",14), L=lb.filter(b=>b.exp===e), F=L[0]?L[0].F:spot, view=S.stView||"bull", tgt=S.stTgt??5, bud=S.stBud??1000; if(!L.length) return;
-  const R=buildCands(L,F).map(c=>evalCand(c,F,view,tgt)).filter(x=>isFinite(x.fit) && x.mnP<-1 && Math.abs(x.cost)<F*2).sort((a,b)=>b.fit-a.fit).slice(0,10);
+  const scan=+S.stScan===1, EX=scan? expiries(lb).filter(x=>dte(x)>=1&&dte(x)<=(S.stMaxDte??45)) : [e];
+  const R=EX.flatMap(ex=>{ const Le=lb.filter(b=>b.exp===ex), Fe=Le[0]?Le[0].F:spot; return Le.length? buildCands(Le,Fe).map(c=>{ const r=evalCand(c,Fe,view,tgt); if(scan) r.name=ex+" · "+r.name; return r; }) : []; }).filter(x=>isFinite(x.fit) && x.mnP<-1 && Math.abs(x.cost)<F*2).sort((a,b)=>b.fit-a.fit).slice(0,scan?15:10);
   window.__stg=R; $("stg-t").innerHTML = tbl3(["Struktur","Menge","Kosten","Max. Gewinn","Max. Verlust","Am Ziel","P(Gewinn)","Break-even","Δ / Vega",""], R.map((r,i)=>{ const n=Math.max(0.1,Math.floor(bud/Math.max(-r.mnP,1)*10)/10);
     return `<tr><td class="l"><b>${r.name}</b><br><span class="mut" style="font-size:11px">${r.ls.map(({b,q})=>`${q>0?"+":"−"}${Math.abs(q)} ${b.strike}${b.cp}`).join(" / ")}</span></td><td>${n}</td><td class="${r.cost>0?"neg":"pos"}">${fmtUsd(n*r.cost)}</td><td class="pos">${r.mxP===Infinity?"unbegrenzt":fmtUsd(n*r.mxP)}</td><td class="neg">${fmtUsd(n*r.mnP)}</td><td class="${cls3(r.atT)}">${fmtUsd(n*r.atT)}</td><td>${r.pop!=null?(r.pop*100).toFixed(0)+" %":"–"}</td><td>${r.be.map(x=>fmtNum(x)).join(" / ")||"–"}</td><td>${(n*r.delta).toFixed(2)} / $${fmtNum(n*r.vega,0)}</td><td><button class="btn ghost" data-stuse="${i}" data-stq="${n}">In Rechner</button></td></tr>`; })); };
-document.addEventListener("change",e=>{ if(e.target.id==="stg-exp"){ S.stExp=e.target.value; save(); render(); } if(e.target.id==="stg-tgt"){ S.stTgt=+e.target.value; save(); render(); } if(e.target.id==="stg-bud"){ S.stBud=+e.target.value; save(); render(); } });
+document.addEventListener("change",e=>{ if(e.target.id==="stg-maxdte"){ S.stMaxDte=Math.max(1,+e.target.value||45); save(); render(); } if(e.target.id==="stg-exp"){ S.stExp=e.target.value; save(); render(); } if(e.target.id==="stg-tgt"){ S.stTgt=+e.target.value; save(); render(); } if(e.target.id==="stg-bud"){ S.stBud=+e.target.value; save(); render(); } });
 document.addEventListener("click",e=>{ const b=e.target.closest("[data-stuse]"); if(!b||!window.__stg) return; const r=window.__stg[+b.dataset.stuse], n=+b.dataset.stq; S.legs=r.ls.map(({b:x,q})=>({inst:x.instrument_name,qty:Math.abs(q)*n,side:Math.sign(q)})); save(); go("calc"); });
 
 /* --- Backtest (modellbasiert) --- */
@@ -4185,7 +4666,12 @@ IC.orderflow='<path d="M4 20V11"/><path d="M9 20V5"/><path d="M14 20v-6"/><path 
 (()=>{ const d=NAV2.find(x=>x.g==="Dashboard"); if(d) d.items=d.items.filter(([k])=>k!=="news");
   NAV2.splice(NAV2.indexOf(d)+1,0,{g:"News & Kalender",ic:"news",items:[["calendar","Wirtschaftskalender"],["mnews","Market News"],["news","Krypto-News"],["earnings","Earnings-Kalender"]]});
   const f=NAV2.find(x=>x.g==="Futures"); NAV2.splice(NAV2.indexOf(f)+1,0,{g:"Orderflow",ic:"orderflow",items:[["footprint","Footprint"],["dom","DOM"],["heatmap","Orderbuch-Heatmap"],["tape2","Time & Sales"],["tpo","Market Profile (TPO)"]]}); })();
-const _restartOF=restart; restart=function(){ _restartOF(); TSB.length=0; obStop(); tsStop(); OBH.cols=[]; OBH.cur=""; FP.cur=""; DOMT.m.clear(); TPO.k=""; for(const k in ZS) delete ZS[k]; };
+nav3("Dashboard",[["briefing","Marktbericht"],["alts","Altcoin-Optionen"]],"stats");
+nav3("Gamma",[["flowgex","Flow-GEX"]],"dealer");
+nav3("Volatilität",[["fixstrike","Fixed-Strike-IV"]],"skew");
+nav3("Futures",[["liqmap","Liquidations-Heatmap"]],"liq");
+(()=>{ const q=NAV2.find(x=>x.g==="Quant"); if(q){ const i=q.items.findIndex(([k])=>k==="sim"); q.items.splice(i+1,0,["models","Vola-Modelle"],["seasonal","Saisonalität"],["correl","Korrelation"]); } })();
+const _restartOF=restart; restart=function(){ _restartOF(); TSB.length=0; obStop(); tsStop(); OBH.cols=[]; OBH.cur=""; FP.cur=""; DOMT.m.clear(); TPO.k=""; for(const k in ZS) delete ZS[k]; LQ.k=""; SEAS.k=""; SETL.k=""; MD.res=null; MD.auto=0; };
 
 /* ====================== Installierbare App (PWA) & Update-Hinweis ====================== */
 let instPrompt=null;
@@ -4209,6 +4695,76 @@ setInterval(async()=>{ if(location.protocol!=="https:") return; try{ const r=awa
   const html='<div class="sec">Sprache · Language</div><div class="row"><span>🌐</span><select id="set-lang" class="chip" style="min-width:150px">'+I18N.langs.map(([k,n])=>`<option value="${k}"${k===I18N.lang?" selected":""}>${n}</option>`).join("")+'</select></div>';
   if(h) h.insertAdjacentHTML("afterend",html); else d.insertAdjacentHTML("afterbegin",html); })();
 document.addEventListener("change",e=>{ if(e.target.id!=="set-lang") return; S.lang=e.target.value; save(); location.reload(); });
+
+/* ====================== Design-Templates, Vorschau-Kacheln ohne Namen, eigener Farb-Editor ====================== */
+const THEMES=[
+ {id:"midnight",light:0,
+  v:{bg:"#0b1120",panel:"#111a2e","panel-2":"#16213a",line:"#1f2b46",fg:"#e6ecf7",muted:"#8391ad",accent:"#38bdf8",bull:"#22c55e",bear:"#ef4444",warn:"#f59e0b","on-accent":"#04111f",edge:"rgba(56,189,248,.28)",glow:"rgba(56,189,248,.10)","big-buy":"#f472b6","big-sell":"#a78bfa",heat:"#3b82f6"},
+  body:"radial-gradient(1100px 520px at 10% -8%,rgba(56,189,248,.10),transparent 60%),var(--bg)",
+  pal:["#38bdf8","#22c55e","#ef4444","#a78bfa","#f59e0b","#94a3b8"]},
+ {id:"violet",light:0,
+  v:{bg:"#0c0814",panel:"#140f22","panel-2":"#1b142d",line:"#2a2042",fg:"#efe9fb",muted:"#9a8db8",accent:"#a855f7",bull:"#2dd4bf",bear:"#fb7185",warn:"#fbbf24","on-accent":"#ffffff",edge:"rgba(168,85,247,.34)",glow:"rgba(168,85,247,.14)","big-buy":"#f0abfc","big-sell":"#c026d3",heat:"#c084fc"},
+  body:"radial-gradient(1000px 560px at 0% -10%,rgba(168,85,247,.16),transparent 60%),radial-gradient(800px 500px at 100% 0%,rgba(45,212,191,.05),transparent 60%),var(--bg)",
+  pal:["#a855f7","#2dd4bf","#fb7185","#fbbf24","#60a5fa","#c4b5fd"]},
+ {id:"amber",light:0,
+  v:{bg:"#050403",panel:"#0c0a07","panel-2":"#151109",line:"#2a2114",fg:"#ffd08a",muted:"#a8834b",accent:"#ff9500",bull:"#3ddc84",bear:"#ff4d4d",warn:"#ffd60a","on-accent":"#140b00",edge:"rgba(255,149,0,.32)",glow:"rgba(255,149,0,.10)","big-buy":"#ffd60a","big-sell":"#ff6b00",heat:"#ff9500"},
+  body:"var(--bg)", x:".panel,.kpi,.side,.nav3{font-family:var(--f-mono)}",
+  pal:["#ff9500","#3ddc84","#ff4d4d","#ffd60a","#5ac8fa","#c7a26b"]},
+ {id:"nord",light:0,
+  v:{bg:"#242933",panel:"#2e3440","panel-2":"#353c4a",line:"#434c5e",fg:"#eceff4",muted:"#9aa5b8",accent:"#88c0d0",bull:"#a3be8c",bear:"#bf616a",warn:"#ebcb8b","on-accent":"#2e3440",edge:"rgba(136,192,208,.30)",glow:"rgba(136,192,208,.08)","big-buy":"#ebcb8b","big-sell":"#b48ead",heat:"#88c0d0"},
+  body:"linear-gradient(180deg,#2a303b,var(--bg) 460px)",
+  pal:["#88c0d0","#a3be8c","#bf616a","#ebcb8b","#b48ead","#81a1c1"]},
+ {id:"forest",light:0,
+  v:{bg:"#07100c",panel:"#0d1913","panel-2":"#122219",line:"#1d3327",fg:"#e7efe9",muted:"#87a091",accent:"#d4a72c",bull:"#4ade80",bear:"#f87171",warn:"#fb923c","on-accent":"#120d00",edge:"rgba(212,167,44,.30)",glow:"rgba(212,167,44,.08)","big-buy":"#fde047","big-sell":"#fb923c",heat:"#d4a72c"},
+  body:"radial-gradient(1000px 520px at 100% -10%,rgba(212,167,44,.08),transparent 60%),var(--bg)",
+  pal:["#d4a72c","#4ade80","#f87171","#60a5fa","#fb923c","#a3b8ad"]},
+ {id:"lavender",light:1,
+  v:{bg:"#f4f2fa",panel:"#ffffff","panel-2":"#f0ecf8",line:"rgba(40,20,90,.10)",fg:"#1e1530",muted:"#6e6585",accent:"#7c3aed",bull:"#10b981",bear:"#f43f5e",warn:"#d97706","on-accent":"#ffffff",edge:"rgba(124,58,237,.22)",glow:"rgba(124,58,237,.06)","big-buy":"#db2777","big-sell":"#6d28d9",heat:"#db2777"},
+  body:"var(--bg)",
+  pal:["#7c3aed","#10b981","#f43f5e","#d97706","#3b82f6","#a78bfa"]},
+ {id:"arctic",light:1,
+  v:{bg:"#eef2f7",panel:"#ffffff","panel-2":"#f3f6fa",line:"rgba(15,40,80,.10)",fg:"#0f1d33",muted:"#5f6f86",accent:"#2563eb",bull:"#0d9488",bear:"#e11d48",warn:"#d97706","on-accent":"#ffffff",edge:"rgba(37,99,235,.20)",glow:"rgba(37,99,235,.06)","big-buy":"#d946ef","big-sell":"#4f46e5",heat:"#2563eb"},
+  body:"var(--bg)",
+  pal:["#2563eb","#0d9488","#e11d48","#d97706","#7c3aed","#64748b"]},
+];
+// Vorschau-Farben der vier bestehenden Designs (für die Kacheln) und deren Großorder-Farben
+const BASE_SK={neon:{bg:"#030303",panel:"#0a0a0a",line:"#1c1c1c",accent:"#00e5ff",bull:"#00ff9c",bear:"#ff2e63","big-buy":"#ff3df2","big-sell":"#8b5cf6",heat:"#00b4ff"},
+  glass:{bg:"#000000",panel:"#141418",line:"#2a2a30",accent:"#7c9cff",bull:"#1fd17f",bear:"#ff4d63","big-buy":"#f472b6","big-sell":"#a78bfa",heat:"#7c9cff"},
+  graphite:{bg:"#0a0a0b",panel:"#141416",line:"#26262b",accent:"#f0a93b",bull:"#3ddc97",bear:"#f25f5c","big-buy":"#ffd166","big-sell":"#ff5c8a",heat:"#f0a93b"},
+  paper:{bg:"#f4f4f2",panel:"#ffffff",line:"#dddddd",accent:"#7c3aed",bull:"#9b9b9b",bear:"#111111","big-buy":"#ec4899","big-sell":"#7e22ce",heat:"#ec4899"}};
+window.SKIN_IDS=["neon","glass","graphite","paper",...THEMES.map(t=>t.id)];
+window.SKIN_LIGHT=["paper",...THEMES.filter(t=>t.light).map(t=>t.id)];
+window.SKIN_PAL=Object.fromEntries(THEMES.map(t=>[t.id,t.pal]));
+const CUST_KEYS=[["bg","Hintergrund"],["panel","Panels"],["panel-2","Panel-Flächen"],["line","Linien"],["fg","Text"],["muted","Text gedämpft"],["warn","Hinweis / Flip"],["big-buy","Große Käufe"],["big-sell","Große Verkäufe"],["heat","Heatmap"]];
+const hex3 = c => { c=String(c||"").trim(); let m=/^#([0-9a-f]{3})$/i.exec(c); if(m) return "#"+m[1].split("").map(x=>x+x).join("").toLowerCase(); m=/^#([0-9a-f]{6})/i.exec(c); if(m) return "#"+m[1].toLowerCase(); m=/^rgba?\(([^)]+)\)/i.exec(c); if(m){ const p=m[1].split(/[\s,\/]+/).map(parseFloat); return "#"+p.slice(0,3).map(v=>Math.max(0,Math.min(255,Math.round(v))).toString(16).padStart(2,"0")).join(""); } return "#888888"; };
+(function(){
+  let css=":root{--big-buy:#ff3df2;--big-sell:#8b5cf6;--heat:#00b4ff}\n"+Object.entries(BASE_SK).map(([id,v])=>`html[data-skin="${id}"]{--big-buy:${v["big-buy"]};--big-sell:${v["big-sell"]};--heat:${v.heat}}`).join("\n")+"\n";
+  css+="html[data-light] .panel,html[data-light] .kpi{box-shadow:0 1px 2px rgba(0,0,0,.05),0 6px 18px rgba(0,0,0,.05)!important}html[data-light] .side{box-shadow:0 -4px 16px rgba(0,0,0,.06)!important}html[data-light] .histctl input{color-scheme:light}html[data-light] input[type=date]{color-scheme:light}\n";
+  for(const t of THEMES){ css+=`html[data-skin="${t.id}"]{${Object.entries(t.v).map(([k,v])=>`--${k}:${v}`).join(";")};color-scheme:${t.light?"light":"dark"}}\nhtml[data-skin="${t.id}"] body{background:${t.body}}\n`+(t.x? t.x.split("}").filter(r=>r.trim()).map(r=>{ const [sel,body]=r.split("{"); return sel.split(",").map(q=>`html[data-skin="${t.id}"] ${q.trim()}`).join(",")+"{"+body+"}"; }).join("\n")+"\n":""); }
+  css+=`.skins{grid-template-columns:repeat(4,1fr)!important;gap:8px!important}.skin-grp{grid-column:1/-1;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:4px 0 0}
+.skins button.skt{padding:4px!important;border-radius:9px;display:block!important}.skins button.skt svg{display:block;width:100%;height:auto;border-radius:6px}
+.theme-row{flex-wrap:wrap;gap:6px}.theme-row>span{width:100%}.theme-code{display:flex;gap:6px;width:100%}.theme-code input{flex:1;min-width:0;background:var(--panel-2);border:1px solid var(--line);border-radius:7px;padding:5px 8px;color:var(--fg);font:11px var(--f-mono)}
+.custc{display:grid;grid-template-columns:1fr auto;gap:6px 10px;align-items:center;margin:4px 0 8px;font-size:12.5px}.custc input[type=color]{width:38px;height:24px;border:1px solid var(--line);border-radius:6px;background:none;padding:0;cursor:pointer}
+details.custd summary{cursor:pointer;color:var(--fg);font-size:12.5px;padding:6px 0}#sw-accent{flex-wrap:wrap;justify-content:flex-end;max-width:64%}`;
+  const st=document.createElement("style"); st.id="theme-css"; st.textContent=css; document.head.appendChild(st);
+  const box=document.querySelector(".skins"); if(!box) return;
+  const thumb=(id,v,light,n)=>`<button class="skt" data-skin="${id}" aria-label="Design ${n}"><svg viewBox="0 0 64 40" aria-hidden="true"><rect width="64" height="40" rx="6" fill="${v.bg}"/><rect x="5" y="5" width="54" height="30" rx="4" fill="${v.panel}" stroke="${v.line}"/><rect x="9" y="9" width="15" height="3" rx="1.5" fill="${v.accent}"/><path d="M9 29 L17 24 L24 26 L31 18 L38 21 L46 14" fill="none" stroke="${v.accent}" stroke-width="1.6" stroke-linecap="round"/><rect x="47" y="21" width="3.5" height="9" rx=".8" fill="${v.bull}"/><rect x="53" y="17" width="3.5" height="11" rx=".8" fill="${v.bear}"/>${light?'<rect x=".5" y=".5" width="63" height="39" rx="6" fill="none" stroke="#cfcfcf"/>':""}</svg></button>`;
+  const dark=[["neon",BASE_SK.neon],["glass",BASE_SK.glass],["graphite",BASE_SK.graphite],...THEMES.filter(t=>!t.light).map(t=>[t.id,t.v])], light=[["paper",BASE_SK.paper],...THEMES.filter(t=>t.light).map(t=>[t.id,t.v])];
+  let n=0; box.innerHTML='<div class="skin-grp">Dunkel</div>'+dark.map(([id,v])=>thumb(id,v,0,++n)).join("")+'<div class="skin-grp">Hell</div>'+light.map(([id,v])=>thumb(id,v,1,++n)).join("");
+  // Eigene Farben
+  const resetRow=$("col-reset").closest(".row");
+  const cust=document.createElement("details"); cust.className="custd"; cust.innerHTML='<summary>Weitere Farben selbst einstellen</summary><div class="custc" id="custc">'+CUST_KEYS.map(([k,l])=>`<label for="cc-${k}">${l}</label><input type="color" id="cc-${k}" data-cust="${k}" aria-label="${l}">`).join("")+'</div>';
+  resetRow.before(cust);
+  const row=document.createElement("div"); row.className="row theme-row"; row.innerHTML='<span>Design teilen</span><div class="theme-code"><input id="theme-code" placeholder="Design-Code einfügen" aria-label="Design-Code"><button class="btn ghost" id="theme-copy">Kopieren</button><button class="btn ghost" id="theme-apply">Übernehmen</button></div>';
+  resetRow.after(row);
+  $("drawer").addEventListener("click",e=>{ if(e.target.closest("[data-skin]")||e.target.id==="col-reset") S.cust={}; },true);
+  $("drawer").addEventListener("input",e=>{ const k=e.target.dataset&&e.target.dataset.cust; if(!k) return; S.cust=Object.assign({},S.cust,{[k]:e.target.value}); document.documentElement.style.setProperty("--"+k,e.target.value); });
+  $("drawer").addEventListener("change",e=>{ const k=e.target.dataset&&e.target.dataset.cust; if(!k) return; save(); applyLook(); });
+  $("theme-copy").addEventListener("click",()=>{ const code="TQI-"+btoa(JSON.stringify({s:S.skin,a:S.accent||null,u:S.bull||null,d:S.bear||null,c:S.cust||{}})); $("theme-code").value=code; try{ navigator.clipboard.writeText(code); }catch(e){} $("theme-copy").textContent="Kopiert"; setTimeout(()=>$("theme-copy").textContent="Kopieren",1500); });
+  $("theme-apply").addEventListener("click",()=>{ try{ const o=JSON.parse(atob($("theme-code").value.trim().replace(/^TQI-/,""))); if(!SKIN_IDS.includes(o.s)) throw 0; const hx=c=>c&&/^#[0-9a-f]{6}$/i.test(c)?c:null; S.skin=o.s; S.accent=hx(o.a); S.bull=hx(o.u); S.bear=hx(o.d); S.cust={}; for(const [k] of CUST_KEYS){ const v=hx(o.c&&o.c[k]); if(v) S.cust[k]=v; } save(); applyLook(); $("theme-code").value=""; }catch(e){ $("theme-code").value="Ungültiger Code"; } });
+})();
+const _applyLook0=applyLook; applyLook=function(){ const r=document.documentElement, c=S.cust||{}; for(const [k] of CUST_KEYS){ if(c[k]) r.style.setProperty("--"+k,c[k]); else r.style.removeProperty("--"+k); } _applyLook0();
+  for(const [k] of CUST_KEYS){ const el=document.getElementById("cc-"+k); if(el) el.value=hex3(c[k]||css("--"+k)); } OFC.t=0; };
 
 /* S3-END */
 applyOrder(); applyLook();
