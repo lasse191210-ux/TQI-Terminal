@@ -17,7 +17,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.5.0/echarts.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/echarts-gl@2.0.9/dist/echarts-gl.min.js" onload="window.__gl=1" onerror="window.__gl=0"></script>
-<script>/* I18N-BEGIN */window.TQI_I18N_V="20261107-230920";
+<script>/* I18N-BEGIN */window.TQI_I18N_V="20261107-231755";
 /* TQI Sprach-Engine: Deutsch ist Standard. Andere Sprachen übersetzen Texte, Attribute und Chart-Beschriftungen zur Laufzeit. */
 (function(){
   var LANGS=[["de","Deutsch"],["en","English"],["es","Español"],["fr","Français"]];
@@ -1513,7 +1513,7 @@ function rSpot(lb,lv){
   c.setOption({...o,legend:{show:false},grid:{...o.grid,right:74},tooltip:{...o.tooltip,valueFormatter:v=>typeof v==="number"?"$"+fmtNum(v):v},dataZoom:[{type:"inside",start:40,end:100}],
     xAxis:ax(o,{type:"category",data:candles.t.map(t=>new Date(t).toLocaleString(LOC,{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})),splitLine:{show:false}}),
     yAxis:ax(o,{type:"value",scale:true,position:"right",axisLabel:{...o._axis.axisLabel,formatter:v=>fmtNum(v)}}),
-    series:[{type:"candlestick",name:S.cur+"-PERP",data:candles.t.map((_,i)=>{ const c=candles.c[i], o=(candles.o||[])[i]??c; return [o,c,(candles.l||[])[i]??Math.min(o,c),(candles.h||[])[i]??Math.max(o,c)]; }),
+    series:[{type:"candlestick",large:false,name:S.cur+"-PERP",data:candles.t.map((_,i)=>{ const c=candles.c[i], o=(candles.o||[])[i]??c; return [o,c,(candles.l||[])[i]??Math.min(o,c),(candles.h||[])[i]??Math.max(o,c)]; }),
       itemStyle:{color:css("--bull"),color0:css("--bear"),borderColor:css("--bull"),borderColor0:css("--bear")},
       markLine:{symbol:"none",silent:true,data:lines.map(([n,v,col])=>({yAxis:v,label:{formatter:n+" "+fmtNum(v),color:col,position:"insideEndTop",fontSize:10},lineStyle:{color:col,type:n==="Spot"?"solid":"dashed",width:1}}))}}]},true);
 }
@@ -2420,7 +2420,7 @@ function renderDvolPage(){
       {name:S.cur+"-Perp",type:"line",yAxisIndex:1,data:t.map((x,i)=>[x,c[i]]),showSymbol:false,lineStyle:{color:css("--muted"),width:1,type:"dashed"}}]},true);
   const c2=ch("c-dvolh"); if(c2){ const d=dvolHour; c2.setOption({...o,legend:{show:false},grid:{...o.grid,right:60},tooltip:{...o.tooltip},dataZoom:[{type:"inside",start:50,end:100}],
     xAxis:ax(o,{type:"category",data:d.map(x=>new Date(x[0]).toLocaleString(LOC,{day:"2-digit",month:"2-digit",hour:"2-digit"})),splitLine:{show:false}}),yAxis:ax(o,{type:"value",scale:true,position:"right"}),
-    series:[{type:"candlestick",name:"DVOL 1 h",data:d.map(x=>[x[1],x[4],x[3],x[2]]),itemStyle:{color:css("--bull"),color0:css("--bear"),borderColor:css("--bull"),borderColor0:css("--bear")},
+    series:[{type:"candlestick",large:false,name:"DVOL 1 h",data:d.map(x=>[x[1],x[4],x[3],x[2]]),itemStyle:{color:css("--bull"),color0:css("--bear"),borderColor:css("--bull"),borderColor0:css("--bear")},
       markLine:{symbol:"none",silent:true,data:dvolHist.length?[{yAxis:Math.max(...dvolHist.map(x=>x[1])),label:{formatter:"52W-Hoch",color:css("--bear")},lineStyle:{color:css("--bear"),type:"dashed"}},{yAxis:Math.min(...dvolHist.map(x=>x[1])),label:{formatter:"52W-Tief",color:css("--bull")},lineStyle:{color:css("--bull"),type:"dashed"}}]:[]}}]},true); }
   const first=dvolMin.length?dvolMin[0][4]:null, chg=first&&dvol?dvol-first:null, rvNow=rv.length?rv[rv.length-1][1]:null;
   const el=$("dv-cards"); if(el) el.innerHTML = cardH("DVOL",dvol?dvol.toFixed(1):"–","aktuell")+cardH("Δ 24 h",chg!=null?(chg>0?"+":"")+chg.toFixed(1):"–","Vola-Punkte",chg!=null?cls(-chg):"")+cardH("RV 60 Min",rvNow?rvNow.toFixed(1):"–","annualisiert aus 1-Min-Kerzen")+cardH("Implizit − realisiert",dvol&&rvNow?(dvol-rvNow>0?"+":"")+(dvol-rvNow).toFixed(1):"–","Volatility Drift",dvol&&rvNow?(dvol>rvNow?"wrn":"pos"):"");
@@ -2787,7 +2787,7 @@ window.addEventListener("beforeunload", saveX);
     const hgt=Math.min(4,Math.abs(v)*4), w=100/N; out+=`<rect x="${i*w+w*0.18}" y="${v>=0?4-hgt:4}" width="${w*0.64}" height="${hgt}" fill="var(${v>=0?"--bull":"--bear"})"/>`; }
   el.innerHTML=out; })();
 /* S3-BEGIN */
-const TQI_BUILD="20261107-230920";
+const TQI_BUILD="20261107-231755";
 /* ====================== Session 3: Infrastruktur ====================== */
 const V3 = {}, R3 = {}, NB3 = new Set();   // Seiten-HTML, Renderer, Seiten ohne Optionskette
 // Legenden- und Tooltip-Marker in der Linienfarbe zeichnen (sonst Palettenfarbe)
@@ -3243,7 +3243,7 @@ R3.gexprof = (lb,lv) => {
       visualMap:{show:true,orient:"horizontal",left:"center",bottom:0,itemHeight:140,itemWidth:10,min:-mx||-1,max:mx||1,dimension:2,seriesIndex:0,calculable:false,text:[rel?"+max":fmtUsd(mx),rel?"-max":fmtUsd(-mx)],textStyle:{color:css("--muted"),fontSize:10},inRange:{color:[css("--bear"),alpha(css("--bear"),.25),css("--panel-2"),alpha(css("--bull"),.25),css("--bull")]}},
       series:[{type:"custom",renderItem:(p,api)=>{ const t=api.value(0), k=api.value(1), w=api.value(3); const a=api.coord([t,k+dk/2]), b=api.coord([t+w,k-dk/2]); return {type:"rect",shape:{x:a[0],y:a[1],width:Math.max(1,b[0]-a[0]),height:Math.max(1,b[1]-a[1])},style:{fill:api.visual("color")}}; },encode:{x:0,y:1},data,
           tooltip:{formatter:p=>`${fmtDT(p.value[0])} · Strike ${fmtNum(p.value[1])}<br>GEX <b>${rel?(p.value[2]*100).toFixed(0)+" %":fmtUsd(p.value[2])}</b>`}},
-        {type:"candlestick",name:"Perp",data:gpCand.t.map((t,i)=>[t,gpCand.o[i],gpCand.c[i],gpCand.l[i],gpCand.h[i]]),itemStyle:{color:css("--fg"),color0:"transparent",borderColor:css("--fg"),borderColor0:css("--fg")},barMaxWidth:8,
+        {type:"candlestick",large:false,name:"Perp",data:gpCand.t.map((t,i)=>[t,gpCand.o[i],gpCand.c[i],gpCand.l[i],gpCand.h[i]]),itemStyle:{color:css("--fg"),color0:"transparent",borderColor:css("--fg"),borderColor0:css("--fg")},barMaxWidth:8,
           markLine:{symbol:"none",silent:true,data:lines.map(([n,v,col])=>({yAxis:v,lineStyle:{color:col,type:"dashed",width:1.2},label:{formatter:n+" "+fmtNum(v),color:col,position:"insideEndTop",fontSize:10}}))}}]},true); }
   $("gp-note").textContent = S0.length? `${S0.length} Gamma-Snapshots im Fenster (alle 5 Minuten aufgezeichnet, solange das Terminal offen ist). Grün = Dealer long Gamma (bremst), rot = short Gamma (beschleunigt).` : "Die Gamma-Oberfläche entsteht aus Snapshots alle 5 Minuten. Lass das Terminal offen, dann füllt sich die Heatmap. Die Kerzen sind sofort da.";
   const exps=expiries(lb); if(S.gpExp!=="all" && !exps.includes(S.gpExp)) S.gpExp="all"; fillOne("gp-exp",["all"].concat(exps),S.gpExp||"all"); const se=$("gp-exp"); if(se&&se.options[0]) se.options[0].text="Alle Verfälle";
@@ -3265,7 +3265,7 @@ R3.keylv = (lb,lv) => {
   $("kl-t").innerHTML = tbl3(["Level","Strike","vs. Spot","GEX","Stärke"], rows.map(([n,x,c])=>`<tr><td class="l ${c}">${n}</td><td>$${fmtNum(x[0])}</td><td>${pct3((x[0]/spot-1)*100,1)}</td><td>${x[1]==null?"–":fmtUsd(x[1])}</td><td class="l"><span class="bar ${c}" style="display:inline-block;height:8px;border-radius:3px;width:${x[1]==null?0:Math.round(Math.abs(x[1])/mx*120)}px;background:var(--${c==="pos"?"bull":c==="neg"?"bear":"warn"})"></span></td></tr>`),"free");
   const o=base(), c=ch("c-kl"); if(c && klCand.t){ const col={pos:css("--bull"),neg:css("--bear"),warn:css("--warn"),"":css("--accent")};
     c.setOption({...o,grid:{...o.grid,right:90},tooltip:{...o.tooltip,trigger:"axis"},xAxis:ax(o,{type:"category",data:klCand.t.map(t=>fmtDT(t)),splitLine:{show:false}}),yAxis:ax(o,{type:"value",scale:true,axisLabel:{...o._axis.axisLabel,formatter:v=>fmtNum(v)}}),
-      series:[{type:"candlestick",name:"Perp",data:klCand.t.map((_,i)=>[klCand.o[i],klCand.c[i],klCand.l[i],klCand.h[i]]),itemStyle:{color:css("--bull"),color0:css("--bear"),borderColor:css("--bull"),borderColor0:css("--bear")},
+      series:[{type:"candlestick",large:false,name:"Perp",data:klCand.t.map((_,i)=>[klCand.o[i],klCand.c[i],klCand.l[i],klCand.h[i]]),itemStyle:{color:css("--bull"),color0:css("--bear"),borderColor:css("--bull"),borderColor0:css("--bear")},
         markLine:{symbol:"none",silent:true,data:rows.filter(r=>r[0]!=="Vol Trigger").map(([n,x,cc])=>({yAxis:x[0],lineStyle:{color:col[cc],type:n.indexOf("Flip")>=0?"dashed":"solid",width:1.1,opacity:.9},label:{formatter:n,color:col[cc],position:"end",fontSize:10}}))}}]},true); }
 };
 
@@ -3408,6 +3408,7 @@ const rgba3=(c,a)=>{ c=String(c||"").trim(); let m=/^#([0-9a-f]{3})$/i.exec(c); 
 const tfOf=(key,def)=>{ const v=String(S["tf_"+key]??def); return TFMS3[v]?v:def; };
 const tfBar3=(key)=>seg3("k3","tf_"+key,TF3);
 const tog3=(key,label)=>`<span class="lbl3">${label}</span>`+seg3("k3",key,[[1,"An"],[0,"Aus"]]);
+const ckBar=(c,zs,ze,ms)=>{ try{ const g=c.getModel().getComponent("grid",0).coordinateSystem.getRect(), n=Math.max(1,(ze-zs)/ms+1); return Math.max(1,Math.min(16,g.width/n*0.72)); }catch(e){ return null; } };
 const resetBtn3=key=>`<button class="btn ghost ckreset" data-ckreset="${key}" title="Doppelklick in den Chart setzt die Ansicht ebenfalls zurück">Ansicht zurücksetzen</button>`;
 document.addEventListener("click",e=>{ const b=e.target.closest("[data-ckreset]"); if(!b) return; delete ZS[b.dataset.ckreset]; render(); });
 function aggC(d,ms){ const o={ticks:[],open:[],high:[],low:[],close:[],volume:[]}; let cur=-1;
@@ -3476,7 +3477,7 @@ function ckDraw(elId,key,x,tf,o2={}){
   if(window.pxAlertLines) try{ for(const a of pxAlertLines()) lv.push(a); }catch(e){}
   if(+cf.pline) lv.push({yAxis:last,lineStyle:{color:acc,type:"dotted",width:1},label:{formatter:fmtNum(last,last<100?2:0),position:"end",color:css("--on-accent"),backgroundColor:acc,padding:[2,4],borderRadius:2,fontSize:10.5,fontFamily:"IBM Plex Mono"}});
   if(cf.style==="line") series.push({id:"cdl",type:"line",name:S.cur+"-PERP",z:3,showSymbol:false,data:x.t.map((t,i)=>[t,x.c[i]]),lineStyle:{color:fg,width:1.5},itemStyle:{color:fg},markLine:{symbol:"none",silent:true,animation:false,data:lv}});
-  else series.push({id:"cdl",type:"candlestick",name:S.cur+"-PERP",z:3,clip:true,barMaxWidth:16,data:x.t.map((t,i)=>[t,x.o[i],x.c[i],x.l[i],x.h[i]]),
+  else series.push({id:"cdl",type:"candlestick",name:S.cur+"-PERP",z:3,clip:true,large:false,barMaxWidth:16,data:x.t.map((t,i)=>[t,x.o[i],x.c[i],x.l[i],x.h[i]]),
     itemStyle:{color:cf.style==="hollow"?"transparent":up,color0:dn,borderColor:up,borderColor0:dn,borderWidth:1},markLine:{symbol:"none",silent:true,animation:false,data:lv}});
   if(o2.vol) series.push({id:"vol",type:"bar",name:"Volumen",yAxisIndex:1,z:2,barMaxWidth:16,silent:true,data:x.t.map((t,i)=>({value:[t,x.v[i]||0],itemStyle:{color:rgba3(x.c[i]>=x.o[i]?up:dn,.32)}}))});
   if(V){ const vm=Math.max(...V.rows.map(r=>r[1]),1e-9); CKX[key]=Object.assign(CKX[key]||{},{vpm:vm,vpst:V.st});
@@ -3505,10 +3506,12 @@ function ckDraw(elId,key,x,tf,o2={}){
   if(heatIdx>=0){ const H=o2.heat; opt.visualMap={show:true,orient:"horizontal",left:12,top:4,itemHeight:120,itemWidth:9,min:H.pos?0:(-H.mx||-1),max:H.mx||1,dimension:2,seriesIndex:heatIdx,calculable:false,text:[(H.lbl?H.lbl+" ":"")+(H.rel?"+max":H.pos?fmtNum(H.mx,0):fmtUsd(H.mx)),H.pos?"0":H.rel?"−max":fmtUsd(-H.mx)],textStyle:{color:mut,fontSize:10},
     inRange:{color:H.pos?[rgba3(acc,0),rgba3(acc,.22),rgba3(acc,.6)]:[rgba3(dn,.6),rgba3(dn,.16),rgba3(css("--panel-2")||"#000",0),rgba3(up,.16),rgba3(up,.6)]}}; }
   c.setOption(opt,true); CKX[key]=Object.assign(CKX[key]||{},{x,ms,tf,o2});
+  { const bw=ckBar(c,z.s,z.e,ms); if(bw) c.setOption({series:[{id:"cdl",barWidth:bw}]}); }
   if(!c.__ck){ c.__ck=key;
     c.on("datazoom",()=>{ const k2=c.__ck, zz=ZS[k2], X=CKX[k2]; if(!zz||!X) return; const dz=(c.getOption().dataZoom||[])[0]; if(!dz) return; zz.s=dz.startValue; zz.e=dz.endValue; const ff=ckFit(X.x,zz.s,zz.e,X.ms), C2=ckCfg();
       const upd={yAxis:[{min:ff.lo,max:ff.hi},{max:ff.vm*100/Math.max(5,+C2.volH)}]};
       if(X.o2.vp && +C2.vp){ const V2=vpOf(X.x,zz.s,zz.e,X.ms,+C2.vpBins,+C2.vpVA); X.vpm=Math.max(...V2.rows.map(r=>r[1]),1e-9); X.vpst=V2.st; const lt=X.x.t[X.x.t.length-1]; upd.series=[{id:"vp",data:V2.rows.map(r=>[lt,...r])}]; }
+      const bw=ckBar(c,zz.s,zz.e,X.ms); if(bw) upd.series=(upd.series||[]).concat([{id:"cdl",barWidth:bw}]);
       c.setOption(upd); });
     c.getZr().on("dblclick",()=>{ delete ZS[c.__ck]; render(); });
     c.getDom().addEventListener("contextmenu",ev=>{ ev.preventDefault(); try{ const r=c.getDom().getBoundingClientRect(), px=c.convertFromPixel({yAxisIndex:0},ev.clientY-r.top); if(px>0&&window.addPxAlert) addPxAlert(Math.round(px),"cross","aus Chart"); }catch(e){} }); }
