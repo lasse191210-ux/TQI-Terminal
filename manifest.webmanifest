@@ -1,0 +1,23 @@
+{
+  "id": "./",
+  "name": "TQI Terminal · The Quantitative Institute",
+  "short_name": "TQI",
+  "description": "Krypto-Options-Analytics: Flow, Gamma, Greeks, Volatilität, Block-RFQ, Futures",
+  "lang": "de",
+  "start_url": "./#dashboard",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#030303",
+  "theme_color": "#030303",
+  "icons": [
+    {"src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+    {"src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+    {"src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ],
+  "shortcuts": [
+    {"name": "Premium Net Flow", "url": "./#netflow", "icons": [{"src": "icons/icon-192.png", "sizes": "192x192"}]},
+    {"name": "GEX-Profil", "url": "./#gexprof", "icons": [{"src": "icons/icon-192.png", "sizes": "192x192"}]},
+    {"name": "Key Levels", "url": "./#keylv", "icons": [{"src": "icons/icon-192.png", "sizes": "192x192"}]},
+    {"name": "Trade Tape", "url": "./#tape", "icons": [{"src": "icons/icon-192.png", "sizes": "192x192"}]}
+  ]
+}

@@ -4,6 +4,15 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>TQI Terminal</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="theme-color" content="#030303">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="TQI">
+<meta name="application-name" content="TQI">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.5.0/echarts.min.js"></script>
@@ -2725,6 +2734,7 @@ window.addEventListener("beforeunload", saveX);
     const hgt=Math.min(4,Math.abs(v)*4), w=100/N; out+=`<rect x="${i*w+w*0.18}" y="${v>=0?4-hgt:4}" width="${w*0.64}" height="${hgt}" fill="var(${v>=0?"--bull":"--bear"})"/>`; }
   el.innerHTML=out; })();
 /* S3-BEGIN */
+const TQI_BUILD="20261107-173632";
 /* ====================== Session 3: Infrastruktur ====================== */
 const V3 = {}, R3 = {}, NB3 = new Set();   // Seiten-HTML, Renderer, Seiten ohne Optionskette
 function nav3(group, items, afterKey){
@@ -3588,6 +3598,24 @@ nav3("Futures",[["fterm","Term Structure"],["funding","Funding-Raten"],["bhist",
 mount3();
 const _restart3=restart; restart=function(){ _restart3(); setTimeout(start3,1500); BH.k=""; XA.at=0; QM.at=0; OPN.k=""; gpCand.k=""; klCand.k=""; spCand.k=""; try{ TVX=JSON.parse(localStorage.getItem("tqivix-"+S.cur)||"[]"); }catch(e){ TVX=[]; } };
 setTimeout(()=>{ loadNews(true); },4000);
+
+/* ====================== Installierbare App (PWA) & Update-Hinweis ====================== */
+let instPrompt=null;
+const isStandalone = () => (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone===true;
+if("serviceWorker" in navigator && location.protocol==="https:") navigator.serviceWorker.register("sw.js").catch(()=>{});
+window.addEventListener("beforeinstallprompt",e=>{ e.preventDefault(); instPrompt=e; syncInst(); });
+window.addEventListener("appinstalled",()=>{ instPrompt=null; toast("TQI ist jetzt als App installiert"); syncInst(); });
+(function(){ const d=$("drawer"); if(!d||$("inst-app")) return;
+  d.insertAdjacentHTML("beforeend",'<div class="sec">App</div><div class="row"><span>Als App installieren</span><button class="btn" id="inst-app" hidden>Installieren</button></div><div class="note" id="inst-note" style="margin-top:4px"></div>'); })();
+function syncInst(){ const b=$("inst-app"), n=$("inst-note"); if(!b||!n) return;
+  if(isStandalone()){ b.hidden=true; n.textContent="Läuft bereits als App."; return; }
+  b.hidden=!instPrompt;
+  n.textContent = instPrompt? "Eigenes Fenster mit TQI-Icon in Taskleiste und Startmenü, Updates automatisch." : /iPhone|iPad|iPod/.test(navigator.userAgent)? "iPhone: in Safari Teilen → „Zum Home-Bildschirm“." : "PC: in Chrome oder Edge rechts in der Adressleiste auf das Installieren-Symbol klicken (oder Menü → „App installieren“)."; }
+document.addEventListener("click",async e=>{ if(e.target.id!=="inst-app"||!instPrompt) return; instPrompt.prompt(); try{ await instPrompt.userChoice; }catch(err){} instPrompt=null; syncInst(); });
+syncInst();
+// Neue Version auf GitHub? Alle 15 Minuten prüfen und Hinweis zum Neuladen zeigen.
+setInterval(async()=>{ if(location.protocol!=="https:") return; try{ const r=await fetch("index.html?v="+Date.now(),{cache:"no-store"}); const t=await r.text(); const m=/TQI_BUILD="([^"]+)"/.exec(t);
+  if(m && m[1]!==TQI_BUILD && !window.__updShown){ window.__updShown=true; toast('Neue TQI-Version verfügbar · <a href="#" onclick="location.reload();return false" style="color:var(--accent)">jetzt neu laden</a>'); } }catch(e){} }, 15*60000);
 
 /* S3-END */
 applyOrder(); applyLook();
