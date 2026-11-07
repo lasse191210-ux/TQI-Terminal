@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.5.0/echarts.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/echarts-gl/2.0.9/echarts-gl.min.js" onload="window.__gl=1" onerror="window.__gl=0"></script>
+<script src="https://cdn.jsdelivr.net/npm/echarts-gl@2.0.9/dist/echarts-gl.min.js" onload="window.__gl=1" onerror="window.__gl=0"></script>
 <style>
 /* Layout: Kopfzeile, Kennzahlenleiste, links Seitenleiste mit Abteilungen, rechts Panel-Raster der aktiven Abteilung */
 :root{
@@ -18,7 +18,7 @@
   --fs:13px;color-scheme:dark;
 }
 html[data-skin="glass"]{--bg:#000;--panel:rgba(18,18,22,.74);--panel-2:rgba(30,30,36,.82);--line:rgba(255,255,255,.08);--fg:#ececf1;--muted:#8a8a96;--accent:#7c9cff;--bull:#1fd17f;--bear:#ff4d63;--edge:rgba(255,255,255,.10);--glow:rgba(124,156,255,.08)}
-html[data-skin="paper"]{--bg:#f4f4f2;--panel:#ffffff;--panel-2:#efefed;--line:rgba(0,0,0,.10);--fg:#111111;--muted:#6e6e6e;--accent:#111111;--bull:#9b9b9b;--bear:#111111;--warn:#5c5c5c;--on-accent:#ffffff;--edge:rgba(0,0,0,.12);--glow:rgba(0,0,0,.05);color-scheme:light}
+html[data-skin="paper"]{--bg:#f4f4f2;--panel:#ffffff;--panel-2:#efefed;--line:rgba(0,0,0,.10);--fg:#111111;--muted:#6e6e6e;--accent:#7c3aed;--bull:#9b9b9b;--bear:#111111;--warn:#5c5c5c;--on-accent:#ffffff;--edge:rgba(0,0,0,.12);--glow:rgba(0,0,0,.05);color-scheme:light}
 html[data-skin="paper"] body{background:var(--bg)}
 html[data-skin="paper"] .panel,html[data-skin="paper"] .kpi{box-shadow:0 1px 2px rgba(0,0,0,.05),0 6px 18px rgba(0,0,0,.05)!important}
 html[data-skin="paper"] .side{box-shadow:0 -4px 16px rgba(0,0,0,.06)!important}
@@ -550,7 +550,7 @@ th.sort{cursor:pointer;user-select:none}th.sort:hover{color:var(--accent)}
     <button data-skin="neon"><i style="background:linear-gradient(135deg,#030303 55%,#00e5ff)"></i>Carbon Neon</button>
     <button data-skin="glass"><i style="background:linear-gradient(135deg,#000 45%,#7c9cff)"></i>Obsidian Glass</button>
     <button data-skin="graphite"><i style="background:linear-gradient(135deg,#141416 55%,#f0a93b)"></i>Graphite Pro</button>
-    <button data-skin="paper"><i style="background:linear-gradient(135deg,#fff 55%,#9b9b9b 55% 75%,#111 75%);border:1px solid #ccc"></i>Paper</button>
+    <button data-skin="paper"><i style="background:linear-gradient(135deg,#fff 50%,#7c3aed 50% 62%,#9b9b9b 62% 80%,#111 80%);border:1px solid #ccc"></i>Paper</button>
   </div>
   <div class="row"><span>Akzentfarbe</span><div class="sw" id="sw-accent"></div></div>
   <div class="row"><span>Bullisch</span><div class="sw"><input type="color" id="col-bull" aria-label="Farbe bullisch"></div></div>
@@ -983,7 +983,7 @@ window.addEventListener("resize",()=>$$(".chart").forEach(el=>{ const c=echarts.
 function base(){
   const muted=css("--muted"), line=css("--line");
   const pp=document.documentElement.dataset.skin==="paper";
-  return { backgroundColor:"transparent", animation:false, ...(pp?{color:["#111111","#9b9b9b","#5c5c5c","#333333","#bdbdbd","#777777"]}:{}), textStyle:{fontFamily:"IBM Plex Sans, sans-serif",color:muted},
+  return { backgroundColor:"transparent", animation:false, ...(pp?{color:["#7c3aed","#9b9b9b","#111111","#b794f6","#5c5c5c","#bdbdbd"]}:{}), textStyle:{fontFamily:"IBM Plex Sans, sans-serif",color:muted},
     grid:{left:64,right:62,top:34,bottom:30},
     tooltip:{trigger:"axis",backgroundColor:css("--panel-2"),borderColor:css("--edge")||line,textStyle:{color:css("--fg"),fontFamily:"IBM Plex Mono, monospace",fontSize:11.5}},
     legend:{top:4,textStyle:{color:muted,fontSize:11},itemWidth:12,itemHeight:8},
@@ -2090,7 +2090,7 @@ function renderSide(){
     if(g) sh.innerHTML = `<div class="nsh">${g.g}</div>`+g.items.map(([k,l])=>`<button data-go="${k}" ${k===cur?'aria-current="page"':""}>${l}${SOON.has(k)?' <span class="soon">bald</span>':""}</button>`).join("");
     return;
   }
-  $("navsheet").hidden=true;
+  { const sh=$("navsheet"), g=window.innerWidth<=900? NAV2.find(x=>x.g===mobGroup) : null; sh.hidden=!g; if(g) sh.innerHTML = `<div class="nsh">${g.g}</div>`+g.items.map(([k,l])=>`<button data-go="${k}" ${k===cur?'aria-current="page"':""}>${l}</button>`).join(""); }
   $("side").innerHTML = NAV2.map(g=>{ const act=g.items.some(([k])=>k===cur), open = S.navOpen[g.g]!=null? S.navOpen[g.g] : act;
     return `<div class="ngrp${open?" open":""}"><button class="ngh${act?" act":""}" data-grp="${g.g}" aria-expanded="${open}"><svg viewBox="0 0 24 24" aria-hidden="true">${IC[g.ic]}</svg><span class="lbl">${g.g}</span><span class="chev" aria-hidden="true">›</span></button>
       <div class="nitems">${g.items.map(([k,l])=>`<button data-go="${k}" ${k===cur?'aria-current="page"':""} title="${l}"><span class="lbl">${l}</span>${SOON.has(k)?'<span class="soon">bald</span>':""}${k==="alerts"&&unseenAlerts?`<span class="badge">${unseenAlerts>99?"99+":unseenAlerts}</span>`:""}</button>`).join("")}</div></div>`; }).join("");
@@ -2099,7 +2099,7 @@ document.addEventListener("click",e=>{
   const h=e.target.closest(".ngh"); if(!h) return; const g=h.dataset.grp;
   if(window.innerWidth<=700){ mobGroup = mobGroup===g? null : g; renderSide(); return; }
   const grp=NAV2.find(x=>x.g===g), act=grp.items.some(([k])=>k===(S.navKey||S.view)); const open = S.navOpen[g]!=null? S.navOpen[g] : act;
-  if(window.innerWidth<=900 && window.innerWidth>700){ go(grp.items[0][0]); return; }
+  if(window.innerWidth<=900 && window.innerWidth>700){ mobGroup = mobGroup===g? null : g; renderSide(); return; }
   S.navOpen[g]=!open; save(); renderSide();
 });
 document.addEventListener("click",e=>{ if(!document.body.contains(e.target)) return; if(!e.target.closest("#navsheet") && !e.target.closest(".side") && mobGroup){ mobGroup=null; renderSide(); } });
@@ -2583,7 +2583,7 @@ document.addEventListener("click",e=>{ const b=e.target.closest("[data-venue]");
 $("div-min").value=S.divMin; $("div-min").addEventListener("change",e=>{ S.divMin=Math.max(0,+e.target.value||0); save(); render(); });
 
 /* ---------- Design & Einstellungen ---------- */
-const ACCENTS=["#00e5ff","#7c9cff","#f0a93b","#b36bff","#ff5fa2","#e8e8e8"];
+const ACCENTS=["#00e5ff","#7c9cff","#f0a93b","#b36bff","#7c3aed","#ff5fa2","#e8e8e8"];
 function applyLook(){
   if(!["neon","glass","graphite","paper"].includes(S.skin)) S.skin="neon"; const r=document.documentElement; r.dataset.skin=S.skin;
   r.classList.toggle("d3",!!S.d3); r.classList.toggle("glass",!!S.glass); r.classList.toggle("compact",!!S.compact); r.classList.toggle("drag",!!S.drag);
@@ -3536,11 +3536,15 @@ NB3.add("docs"); R3.docs=()=>{};
 /* ====================== Navigation & Start ====================== */
 nav3("Dashboard",[["stats","Stats"],["spot","Spot je Börse"],["news","News"],["sources","Datenquellen"]]);
 nav3("Flow",[["tide","Market Tide & NOPE"],["premium","Premium-Matrix"],["screener","Options-Screener"]]);
-nav3("Greeks",[["gexprof","GEX-Profil"],["keylv","Key Levels"]],"exposure"); nav3("Greeks",[["higher","Höhere Greeks"]],"gexp");
+nav3("Greeks",[["higher","Höhere Greeks"]],"gexp");
+IC.gamma='<path d="M5 4h12"/><path d="M8 4v16"/><path d="M14 20c0-6 2-9 5-11"/>'; IC.quant='<path d="M4 19V5"/><path d="M4 19h16"/><path d="M7 15l4-5 3 3 5-7"/><circle cx="19" cy="6" r="1.5"/>';
+(()=>{ const gr=NAV2.find(x=>x.g==="Greeks"); gr.items=gr.items.filter(([k])=>!["exposure","dealer","xheat"].includes(k));
+  NAV2.splice(1,0,{g:"Gamma",ic:"gamma",items:[["gexprof","GEX-Profil"],["keylv","Key Levels"],["exposure","Gamma-Profil & Levels"],["dealer","Dealer-Positionierung"],["xheat","Gamma-Heatmap"],["tide","Hedge-Impact"]]}); })();
 nav3("Volatilität",[["tqivix","TQI Vol-Index"]],"dvolv");
 (()=>{ const g=NAV2.find(x=>x.g==="Multi-Exchange"); g.items=g.items.filter(([k])=>k!=="venues-ll"&&k!=="futures-basis"); g.items.push(["leadlag","Lead-Lag"],["basisx","Basis-Spread"],["arb","Arb-Scanner"]); SOON.delete("venues-ll"); })();
 nav3("Futures",[["fterm","Term Structure"],["funding","Funding-Raten"],["bhist","Basis-Historie"],["oiprof","OI-Profil"],["liq","Liquidationen"],["lsr","Long/Short & Taker"],["perpoi","Perp-OI & CVD"]]);
-(()=>{ const g=NAV2.find(x=>x.g==="Werkzeuge"); g.items=[["calc","Rechner"],["strategy","Strategie-Engine"],["backtest","Backtest"],["dhedge","Delta-Hedge"],["breakeven","Break-even"],["sim","Simulator"],["straddle","Straddle-Builder"],["combog","Combo-Greeks"],["optpnl","Option-PnL"],["quant","Quant / ML"],["alerts","Alerts"],["docs","Erklärungen"]]; })();
+(()=>{ const g=NAV2.find(x=>x.g==="Werkzeuge"); g.items=[["calc","Rechner"],["breakeven","Break-even"],["straddle","Straddle-Builder"],["combog","Combo-Greeks"],["optpnl","Option-PnL"],["alerts","Alerts"],["docs","Erklärungen"]];
+  NAV2.splice(NAV2.indexOf(g),0,{g:"Quant",ic:"quant",items:[["quant","Quant / ML"],["strategy","Strategie-Engine"],["backtest","Backtest"],["dhedge","Delta-Hedge"],["sim","Simulator"],["arb","Arb-Scanner"]]}); })();
 mount3();
 const _restart3=restart; restart=function(){ _restart3(); setTimeout(start3,1500); BH.k=""; XA.at=0; QM.at=0; OPN.k=""; gpCand.k=""; klCand.k=""; spCand.k=""; try{ TVX=JSON.parse(localStorage.getItem("tqivix-"+S.cur)||"[]"); }catch(e){ TVX=[]; } };
 setTimeout(()=>{ loadNews(true); },4000);
