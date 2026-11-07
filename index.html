@@ -18,6 +18,10 @@
   --fs:13px;color-scheme:dark;
 }
 html[data-skin="glass"]{--bg:#000;--panel:rgba(18,18,22,.74);--panel-2:rgba(30,30,36,.82);--line:rgba(255,255,255,.08);--fg:#ececf1;--muted:#8a8a96;--accent:#7c9cff;--bull:#1fd17f;--bear:#ff4d63;--edge:rgba(255,255,255,.10);--glow:rgba(124,156,255,.08)}
+html[data-skin="paper"]{--bg:#f4f4f2;--panel:#ffffff;--panel-2:#efefed;--line:rgba(0,0,0,.10);--fg:#111111;--muted:#6e6e6e;--accent:#111111;--bull:#9b9b9b;--bear:#111111;--warn:#5c5c5c;--on-accent:#ffffff;--edge:rgba(0,0,0,.12);--glow:rgba(0,0,0,.05);color-scheme:light}
+html[data-skin="paper"] body{background:var(--bg)}
+html[data-skin="paper"] .panel,html[data-skin="paper"] .kpi{box-shadow:0 1px 2px rgba(0,0,0,.05),0 6px 18px rgba(0,0,0,.05)!important}
+html[data-skin="paper"] .side{box-shadow:0 -4px 16px rgba(0,0,0,.06)!important}
 html[data-skin="graphite"]{--bg:#0a0a0b;--panel:#141416;--panel-2:#1b1b1e;--line:#26262b;--fg:#e8e6e1;--muted:#8b8985;--accent:#f0a93b;--bull:#3ddc97;--bear:#f25f5c;--edge:#2c2c31;--glow:rgba(240,169,59,.05)}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
@@ -181,7 +185,7 @@ html.hist [data-win]{opacity:.4}
 .drawer h3{margin:0;font-size:15px;display:flex;justify-content:space-between;align-items:center}
 .drawer .sec{font-size:10.5px;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-top:6px}
 .drawer .row{display:flex;justify-content:space-between;align-items:center;gap:10px}
-.skins{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.skins{display:grid;grid-template-columns:repeat(2,1fr);gap:6px}
 .skins button{border:1px solid var(--line);border-radius:8px;padding:8px 4px 6px;background:var(--panel);cursor:pointer;color:var(--muted);font-size:11px;display:flex;flex-direction:column;gap:5px;align-items:center}
 .skins button[aria-pressed="true"]{border-color:var(--accent);color:var(--fg);box-shadow:0 0 12px var(--glow)}
 .skins i{display:block;width:100%;height:26px;border-radius:5px}
@@ -235,6 +239,17 @@ html.hist [data-win]{opacity:.4}
   .loading{bottom:calc(82px + env(safe-area-inset-bottom,0px))}
 }
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.d3 .panel{transform:none}}
+.sf-zoom{position:absolute;left:10px;top:10px;z-index:3;display:flex;flex-direction:column;gap:6px}.sf-zoom .iconbtn{width:34px;height:34px;font-size:18px;border:1px solid var(--line);border-radius:8px;background:var(--panel)}
+/* S3CSS-BEGIN */
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.nwl{display:flex;flex-direction:column;gap:8px}.nwi{display:block;border:1px solid var(--line);border-radius:9px;padding:10px 12px;background:var(--panel-2);color:var(--fg);text-decoration:none}
+.nwi:hover{border-color:var(--accent)}.nwh{display:flex;gap:10px;align-items:center;font-size:11px;margin-bottom:4px}.nwt{font-weight:600;font-size:14px;line-height:1.35}.nwd{font-size:12px;margin-top:4px;line-height:1.4}
+mark{background:color-mix(in srgb,var(--accent) 35%,transparent);color:var(--fg);border-radius:3px;padding:0 2px}
+.docs details{border:1px solid var(--line);border-radius:8px;padding:8px 12px;margin-bottom:8px;background:var(--panel-2)}.docs summary{cursor:pointer;font-weight:600}.docs p{margin:8px 0 2px;line-height:1.55;color:var(--muted)}
+.pmx td,.pmx th{font-size:11px;padding:4px 6px;white-space:nowrap}.pmx td{text-align:right}
+th.sort{cursor:pointer;user-select:none}th.sort:hover{color:var(--accent)}
+.card .v.warn{color:var(--warn)}
+/* S3CSS-END */
 </style>
 </head>
 <body>
@@ -357,9 +372,9 @@ html.hist [data-win]{opacity:.4}
 <!-- ============ BLOCK-RFQ ============ -->
 <div class="view" data-view="blocks" id="v-blocks" hidden>
   <article class="panel wide"><div class="ph"><h2>Block-RFQ</h2>
-      <span class="seg" role="group" aria-label="Börse"><button class="blk-v" data-bv="all">Aggregiert</button><button class="blk-v" data-bv="deribit">Deribit</button><button class="blk-v" data-bv="okx">OKX</button><button class="blk-v" data-bv="bybit">Bybit</button></span></div>
+      <span class="seg" role="group" aria-label="Börse"><button class="blk-v" data-bv="all">Aggregiert</button><button class="blk-v" data-bv="deribit">Deribit</button><button class="blk-v" data-bv="derive">Derive</button><button class="blk-v" data-bv="okx">OKX</button><button class="blk-v" data-bv="bybit">Bybit</button></span></div>
     <div class="cards" id="blk-cards"></div>
-    <div class="note">Deribit: alle Block-RFQs mit Legs und Strategie. OKX: Block-Trades der 60 Kontrakte mit dem höchsten OI, alle 5 Minuten. Bybit: als Block markierte Trades. Derive, Binance und Paradigm sind im Browser nicht erreichbar. Richtung aus dem Netto-Delta der Käuferseite.</div></article>
+    <div class="note">Deribit: alle Block-RFQs mit Legs und Strategie. OKX: Block-Trades der 60 Kontrakte mit dem höchsten OI, alle 5 Minuten. Bybit: als Block markierte Trades. Derive: RFQ-Trades aus dem öffentlichen Trade-Feed. Binance und Paradigm sind im Browser nicht erreichbar. Richtung aus dem Netto-Delta der Käuferseite.</div></article>
   <article class="panel"><div class="ph"><h2>Strategie-Mix <small>nach Premium</small></h2></div><div class="chart" id="c-blkmix"></div></article>
   <article class="panel"><div class="ph"><h2>Blocks im Zeitverlauf <small>je Stunde, nach Richtung</small></h2></div><div class="chart" id="c-blktime"></div></article>
   <article class="panel wide"><div class="ph"><h2>Whale-Leaderboard <small>größte Blocks</small></h2></div>
@@ -535,6 +550,7 @@ html.hist [data-win]{opacity:.4}
     <button data-skin="neon"><i style="background:linear-gradient(135deg,#030303 55%,#00e5ff)"></i>Carbon Neon</button>
     <button data-skin="glass"><i style="background:linear-gradient(135deg,#000 45%,#7c9cff)"></i>Obsidian Glass</button>
     <button data-skin="graphite"><i style="background:linear-gradient(135deg,#141416 55%,#f0a93b)"></i>Graphite Pro</button>
+    <button data-skin="paper"><i style="background:linear-gradient(135deg,#fff 55%,#9b9b9b 55% 75%,#111 75%);border:1px solid #ccc"></i>Paper</button>
   </div>
   <div class="row"><span>Akzentfarbe</span><div class="sw" id="sw-accent"></div></div>
   <div class="row"><span>Bullisch</span><div class="sw"><input type="color" id="col-bull" aria-label="Farbe bullisch"></div></div>
@@ -561,11 +577,12 @@ const DEF = {cur:"BTC", win:"day", view:"dashboard", nfInt:5, nfMode:"prem", exG
   tpCp:"all", tpSd:"all", tpBlk:false, tpMin:10000, oiExp:"", ivV:"term", ivExp:"",
   unRatio:0.5, unMinPrem:25000, unSort:"ratio", unPrint:100000, unOpen:0.25,
   alMin:250000, alOpen:0.5, alBlocks:true, alSweeps:false, alSound:false,
-  venues:{deribit:true,bybit:true,okx:true,paradex:true,delta:true,thalex:true,aevo:true}, divMin:2, histDate:"", blkVenue:"all", tapeGreeks:false, filterSets:null, activeFilter:"", filterAll:false, navKey:"", navOpen:null, dashboards:null, activeDash:null, whaleMin:100000, skin:"neon", accent:null, bull:null, bear:null, d3:true, glass:false, compact:false, drag:false, fs:13, big:250000, order:null, contract:"", legs:[]};
+  venues:{deribit:true,bybit:true,okx:true,paradex:true,delta:true,thalex:true,aevo:true,derive:true,hypercall:true}, divMin:2, histDate:"", blkVenue:"all", tapeGreeks:false, filterSets:null, activeFilter:"", filterAll:false, navKey:"", navOpen:null, dashboards:null, activeDash:null, whaleMin:100000, skin:"neon", accent:null, bull:null, bear:null, d3:true, glass:false, compact:false, drag:false, fs:13, big:250000, order:null, contract:"", legs:[]};
 const S = Object.assign({}, DEF);
 try{ Object.assign(S, JSON.parse(localStorage.getItem("ft-settings")||"{}")); }catch(e){}
 S.hmMetric=S.hmMetric||"iv"; S.surfMode=S.surfMode||"3d";
 S.venues = Object.assign({deribit:true,bybit:true,okx:true,paradex:true,delta:true,thalex:true,aevo:true}, S.venues||{});
+["derive","hypercall"].forEach(v=>{ if(S.venues && S.venues[v]===undefined) S.venues[v]=true; });
 const save = () => { try{ localStorage.setItem("ft-settings", JSON.stringify(S)); }catch(e){} };
 
 /* ====================== Helfer ====================== */
@@ -608,7 +625,7 @@ function greeks(F,K,T,sig,cp){
 function bsPrice(F,K,T,sig,cp){ if(T<=0) return cp==="C"?Math.max(F-K,0):Math.max(K-F,0); return greeks(F,K,T,sig,cp).price; }
 
 /* ====================== Zustand ====================== */
-let books={deribit:[],bybit:[],okx:[],paradex:[],delta:[],thalex:[],aevo:[]}, xws={}, vstat={deribit:"",bybit:"",okx:"",paradex:"",delta:"",thalex:"",aevo:""}, lastDeribitTs=0, book=[], futBook=[], trades=[], tradeIds=new Set(), spot=0, rvSeries=[], rv30=null, dvol=null, dvolHist=[], funding=[],
+let books={deribit:[],bybit:[],okx:[],paradex:[],delta:[],thalex:[],aevo:[],derive:[],hypercall:[]}, xws={}, vstat={deribit:"",bybit:"",okx:"",paradex:"",delta:"",thalex:"",aevo:"",derive:"",hypercall:""}, lastDeribitTs=0, book=[], futBook=[], trades=[], tradeIds=new Set(), spot=0, rvSeries=[], rv30=null, dvol=null, dvolHist=[], funding=[],
     ws=null, rpcId=1, pending=new Map(), renderTimer=null, gen=0, backfilled=false, gexHist=[], alerts=[], unseenAlerts=0, sweepMap=new Map();
 
 /* ====================== WebSocket JSON-RPC ====================== */
@@ -718,8 +735,8 @@ function addTrades(list, live){
 
 /* ====================== Weitere Börsen: Bybit, OKX ====================== */
 const VEN = {deribit:{name:"Deribit",short:"DRB",col:"#3ad0ff"}, bybit:{name:"Bybit",short:"BYB",col:"#f7a600"}, okx:{name:"OKX",short:"OKX",col:"#cfd3dc"},
-  paradex:{name:"Paradex",short:"PDX",col:"#a58bff"}, delta:{name:"Delta",short:"DLT",col:"#ff8a5c"}, thalex:{name:"Thalex",short:"THX",col:"#e9e05a"}, aevo:{name:"Aevo",short:"AEVO",col:"#ff6fb0"}};
-const VLIST = ["deribit","bybit","okx","paradex","delta","thalex","aevo"];
+  paradex:{name:"Paradex",short:"PDX",col:"#a58bff"}, delta:{name:"Delta",short:"DLT",col:"#ff8a5c"}, thalex:{name:"Thalex",short:"THX",col:"#e9e05a"}, aevo:{name:"Aevo",short:"AEVO",col:"#ff6fb0"}, derive:{name:"Derive",short:"DRV",col:"#2fe0a8"}, hypercall:{name:"Hypercall",short:"HYP",col:"#9be15d"}};
+const VLIST = ["deribit","bybit","okx","paradex","delta","thalex","aevo","derive","hypercall"];
 const XLIST = VLIST.slice(1);
 const canon = n => { const p=n.split("-"); if(p.length>=4) p[1]=p[1].replace(/^0+(?=\d)/,""); return p.slice(0,4).join("-"); };
 let rbTimer=null; const markDirty = () => { if(rbTimer) return; rbTimer=setTimeout(()=>{ rbTimer=null; rebuildBook(); scheduleRender(); }, 3000); };
@@ -791,8 +808,38 @@ function aevoTickers(list){ for(const t of list||[]){ const n=canon(t.instrument
 const fromAevo = x => { if(!x || (x.instrument_type && x.instrument_type!=="OPTION")) return null; const px=+x.price, amt=+x.amount; let ts=+x.created_timestamp||+x.timestamp||Date.now(); if(ts>1e15) ts=Math.round(ts/1e6);
   return xTrade("aevo",{id:x.trade_id||(ts+"-"+x.instrument_name), ts, inst:x.instrument_name||"", side:String(x.side||"buy").toLowerCase(), amt, idx:+x.index_price||spot, price:spot?px/spot:0, prem:px*amt, iv:x.iv?+x.iv*100:null, block:false}); };
 
+/* --- Derive (WS JSON-RPC) --- */
+const deriveName = n => { const p=String(n).split("-"); if(p.length!==4||!/^\d{8}$/.test(p[1])||!/^[CP]$/.test(p[3])) return null; const d=p[1]; return `${p[0]}-${+d.slice(6,8)}${MONS[+d.slice(4,6)-1]}${d.slice(2,4)}-${p[2]}-${p[3]}`; };
+const DERIVE_WS="wss://api.derive.xyz/v3/ws";
+function wsRpcBatch(url, calls, timeout=20000){ return new Promise((res,rej)=>{ let w; try{ w=new WebSocket(url); }catch(e){ rej(e); return; } const out=new Array(calls.length).fill(null); let left=calls.length, done=false;
+  const fin=v=>{ if(done) return; done=true; try{ w.close(); }catch(e){} if(v instanceof Error) rej(v); else res(v); };
+  w.onopen=()=>{ if(!calls.length) fin(out); calls.forEach((c,i)=>w.send(JSON.stringify({method:c[0],params:c[1],id:i+1}))); };
+  w.onmessage=e=>{ let m; try{ m=JSON.parse(e.data); }catch(err){ return; } if(!m.id||m.id>calls.length) return; out[m.id-1]=m.result||null; if(--left===0) fin(out); };
+  w.onerror=()=>fin(new Error("ws")); setTimeout(()=>fin(out),timeout); }); }
+const ymd = s => { const d=new Date(s*1000); return d.getUTCFullYear()+String(d.getUTCMonth()+1).padStart(2,"0")+String(d.getUTCDate()).padStart(2,"0"); };
+async function loadDeriveBook(){
+  const [ins]=await wsRpcBatch(DERIVE_WS,[["public/get_all_instruments",{currency:S.cur,instrument_type:"option",expired:false,page_size:1000}]]);
+  const now=Date.now()/1000, exps=[...new Set(((ins&&ins.instruments)||[]).map(x=>x.option_details&&x.option_details.expiry).filter(e=>e&&e>now))].sort((a,b)=>a-b).slice(0,24);
+  const res=await wsRpcBatch(DERIVE_WS, exps.map(e=>["public/get_tickers",{instrument_type:"option",currency:S.cur,expiry_date:ymd(e)}]));
+  const out=[];
+  res.forEach(r=>{ const tk=(r&&r.tickers)||{}; for(const nm in tk){ const t=tk[nm], name=deriveName(nm); if(!name) continue; const ins2=parseInst(name); if(!ins2) continue; const op=t.option_pricing||{};
+    const F=+op.f||+t.I||spot, iv=(+op.i||0)*100, st=t.stats||{}; if(!(iv>0)||!(F>0)) continue;
+    out.push({instrument_name:name,...ins2,venue:"derive",open_interest:+st.oi||0,mark_iv:iv,underlying_price:F,mark_price:+t.M/F||0,volume:(+st.v||0)/F,bid_price:+t.b/F||0,ask_price:+t.a/F||0}); } });
+  if(out.length){ books.derive=out; rebuildBook(); } vstat.derive=vstat.derive||(out.length?"ok":"err");
+}
+const fromDerive = x => { if(!x || (x.liquidity_role && x.liquidity_role!=="taker")) return null; const name=deriveName(x.instrument_name||""); if(!name) return null; const idx=+x.index_price||spot, px=+x.trade_price, amt=+x.trade_amount;
+  return xTrade("derive",{id:x.trade_id, ts:+x.timestamp, inst:name, side:x.direction, amt, idx, price:idx?px/idx:0, prem:px*amt, iv:null, block:!!x.rfq_id, mark:idx?(+x.mark_price||0)/idx:0, rfq:x.rfq_id||""}); };
+async function loadDeriveHistory(){ try{ const [r]=await wsRpcBatch(DERIVE_WS,[["public/get_trade_history",{currency:S.cur,instrument_type:"option",page_size:1000}]]);
+  if(addX(((r&&r.trades)||[]).map(fromDerive)).length){ trades.sort((a,b)=>a.ts-b.ts); scheduleRender(); } }catch(e){} }
+/* --- Hypercall (WS, nur Trades) --- */
+const fromHyper = m => { const name=deriveName(m.symbol||""); if(!name) return null; let px=+m.price; const idx=spot||1; const usd = px>50? px : px*idx; const amt=+m.size;
+  return xTrade("hypercall",{id:(m.timestamp||Date.now())+"-"+m.symbol+"-"+m.size, ts:+m.timestamp||Date.now(), inst:name, side:String(m.side||"buy").toLowerCase(), amt, idx, price:usd/idx, prem:usd*amt, iv:null, block:false}); };
 /* --- Verbindungen je Börse --- */
 const XWS = {
+  derive:{url:()=>DERIVE_WS, subs:()=>[{method:"subscribe",params:{channels:["trades.option."+S.cur]},id:1}], ping:()=>JSON.stringify({method:"public/get_time",params:{},id:99}),
+    msg:m=> m.params && m.params.channel && m.params.channel.indexOf("trades.option")===0 ? (m.params.data||[]).map(fromDerive) : null},
+  hypercall:{url:()=>"wss://api.hypercall.xyz/ws", subs:()=>[{type:"Subscribe",channel:"trades"}], ping:()=>JSON.stringify({type:"Ping"}),
+    msg:m=> m.type==="Trade" && String(m.symbol||"").indexOf(S.cur+"-")===0 ? [fromHyper(m)] : null},
   bybit:{url:()=>"wss://stream.bybit.com/v5/public/option", subs:()=>[{op:"subscribe",args:["publicTrade."+S.cur]}], ping:()=>JSON.stringify({op:"ping"}),
     msg:m=> m.topic && m.topic.indexOf("publicTrade")===0 && m.data ? m.data.map(x=>fromBybit(x,true)) : null},
   okx:{url:()=>"wss://ws.okx.com:443/ws/v5/public", subs:()=>[{op:"subscribe",args:[{channel:"option-trades",instType:"OPTION",instFamily:S.cur+"-USD"}]}], ping:()=>"ping",
@@ -820,25 +867,26 @@ function connectX(v, myGen){
   w.onclose=()=>{ clearInterval(ping); if(myGen!==gen) return; vstat[v]="err"; renderVenueSeg(); setTimeout(()=>connectX(v,myGen),5000); };
   w.onerror=()=>{ vstat[v]="err"; renderVenueSeg(); };
 }
-const BOOK = {bybit:()=>loadBybitBook(), okx:()=>loadOkxBook(), paradex:()=>loadParadexBook(), delta:()=>loadDeltaBook(), thalex:()=>loadThalexInstr(), aevo:async()=>{}};
+const BOOK = {bybit:()=>loadBybitBook(), okx:()=>loadOkxBook(), paradex:()=>loadParadexBook(), delta:()=>loadDeltaBook(), thalex:()=>loadThalexInstr(), aevo:async()=>{}, derive:()=>loadDeriveBook(), hypercall:async()=>{}};
 const waitSpot = async () => { for(let i=0;i<60 && !spot;i++) await new Promise(r=>setTimeout(r,250)); };
 async function bootX(v, myGen){
   await waitSpot(); if(myGen!==gen) return;
   try{ await BOOK[v](); }catch(e){ vstat[v]="err"; }
   if(myGen!==gen) return; renderVenueSeg(); scheduleRender();
   if(v==="bybit"||v==="okx") await loadXHistory(v);
+  if(v==="derive") loadDeriveHistory();
   if(v==="paradex"){ vstat.paradex = books.paradex.length?"live":"err"; renderVenueSeg(); return; }  // Paradex: nur Kette (kein offener Trade-Stream)
   connectX(v, myGen);
 }
 const xKey = () => "ft-xtrades-"+S.cur;
 function saveX(){
-  const c=Date.now()-7*DAY, VI={bybit:1,okx:2,delta:3,thalex:4,aevo:5,paradex:6};
+  const c=Date.now()-7*DAY, VI={bybit:1,okx:2,delta:3,thalex:4,aevo:5,paradex:6,derive:7,hypercall:8};
   const arr=trades.filter(t=>t.venue!=="deribit" && t.ts>=c).map(t=>[t.ts,VI[t.venue],t.inst,t.side==="buy"?1:0,t.amt,t.price,Math.round(t.idx),t.iv?+t.iv.toFixed(2):0,t.block?1:0,t.id]);
   try{ localStorage.setItem(xKey(), JSON.stringify(arr)); }catch(e){ try{ localStorage.setItem(xKey(), JSON.stringify(arr.slice(-arr.length/2|0))); }catch(e2){} }
 }
 function loadSavedX(){
   let arr=[]; try{ arr=JSON.parse(localStorage.getItem(xKey())||"[]"); }catch(e){}
-  const VN=[null,"bybit","okx","delta","thalex","aevo","paradex"];
+  const VN=[null,"bybit","okx","delta","thalex","aevo","paradex","derive","hypercall"];
   addX(arr.map(a=>xTrade(VN[a[1]],{ts:a[0],inst:a[2],side:a[3]?"buy":"sell",amt:a[4],price:a[5],idx:a[6],prem:a[5]*a[4]*a[6],iv:a[7]||null,block:!!a[8],id:a[9]})));
   trades.sort((a,b)=>a.ts-b.ts);
 }
@@ -934,7 +982,8 @@ function ch(id){ const el = REMAP? (REMAP[id]? document.getElementById(REMAP[id]
 window.addEventListener("resize",()=>$$(".chart").forEach(el=>{ const c=echarts.getInstanceByDom(el); if(c) c.resize(); }));
 function base(){
   const muted=css("--muted"), line=css("--line");
-  return { backgroundColor:"transparent", animation:false, textStyle:{fontFamily:"IBM Plex Sans, sans-serif",color:muted},
+  const pp=document.documentElement.dataset.skin==="paper";
+  return { backgroundColor:"transparent", animation:false, ...(pp?{color:["#111111","#9b9b9b","#5c5c5c","#333333","#bdbdbd","#777777"]}:{}), textStyle:{fontFamily:"IBM Plex Sans, sans-serif",color:muted},
     grid:{left:64,right:62,top:34,bottom:30},
     tooltip:{trigger:"axis",backgroundColor:css("--panel-2"),borderColor:css("--edge")||line,textStyle:{color:css("--fg"),fontFamily:"IBM Plex Mono, monospace",fontSize:11.5}},
     legend:{top:4,textStyle:{color:muted,fontSize:11},itemWidth:12,itemHeight:8},
@@ -1005,10 +1054,10 @@ function renderHeat(lb, list){
   const data=[]; let mx=1; grid.forEach((row,i)=>row.forEach((v,j)=>{ data.push([j,i,v]); mx=Math.max(mx,Math.abs(v)); }));
   const nm={prem:"Net Premium",gex:"Net GEX",oi:"OI netto (Calls − Puts, $)"}[S.hm];
   c.setOption({backgroundColor:"transparent",animation:false,textStyle:o.textStyle,
-    tooltip:{...o.tooltip,trigger:"item",formatter:p=>`${exps[p.value[0]]} · ${fmtNum(ks[p.value[1]])}<br>${nm}: <b>${fmtSigned(p.value[2])}</b>`},
+    tooltip:{...o.tooltip,trigger:"item",formatter:p=>`${exps[p.value[0]]} · ${typeof ks[p.value[1]]==="number"?fmtNum(ks[p.value[1]]):ks[p.value[1]]}<br>${nm}: <b>${fmtSigned(p.value[2])}</b>`},
     grid:{left:62,right:14,top:10,bottom:44},
     xAxis:ax(o,{type:"category",data:exps,splitLine:{show:false}}),
-    yAxis:ax(o,{type:"category",data:ks.map(k=>fmtNum(k)),splitLine:{show:false}}),
+    yAxis:ax(o,{type:"category",data:ks.map(k=>typeof k==="number"?fmtNum(k):k),splitLine:{show:false}}),
     visualMap:{show:false,min:-mx,max:mx,inRange:{color:[css("--bear"),css("--panel-2"),css("--bull")]}},
     series:[{type:"heatmap",data,itemStyle:{borderColor:css("--bg"),borderWidth:1},
       label:{show:true,fontSize:9.5,fontFamily:"IBM Plex Mono, monospace",color:css("--fg"),formatter:p=>p.value[2]?fmtUsd(p.value[2]).replace("$",""):""}}]},true);
@@ -1979,11 +2028,18 @@ function bybitBlocks(){
     g.legs.push({inst:t.inst,exp:t.exp,expTs:t.expTs,strike:t.strike,cp:t.cp,sign:t.side==="buy"?1:-1,qty:t.amt,price:t.price}); }
   return out.map(finishBlock);
 }
+function deriveBlocks(){
+  const m=new Map();
+  for(const t of windowTrades()){ if(t.venue!=="derive"||!t.rfq) continue; let g=m.get(t.rfq); if(!g){ g={venue:"derive",id:"r"+t.rfq,ts:t.ts,idx:t.idx,legs:[]}; m.set(t.rfq,g); }
+    g.legs.push({inst:t.inst,exp:t.exp,expTs:t.expTs,strike:t.strike,cp:t.cp,sign:t.side==="buy"?1:-1,qty:t.amt,price:t.price}); }
+  return [...m.values()].map(finishBlock);
+}
 function allBlocks(){
   const s=windowStart(), e=windowEnd(); let L=[];
   if(S.blkVenue==="all"||S.blkVenue==="deribit") L=L.concat([...blocksD.values()]);
   if(S.blkVenue==="all"||S.blkVenue==="okx") L=L.concat([...blocksO.values()]);
   if(S.blkVenue==="all"||S.blkVenue==="bybit") L=L.concat(bybitBlocks());
+  if(S.blkVenue==="all"||S.blkVenue==="derive") L=L.concat(deriveBlocks());
   return L.filter(b=>b.ts>=s&&b.ts<=e).sort((a,b)=>b.ts-a.ts);
 }
 const legTxt = b => b.legs.slice(0,6).map(l=>`<span class="${l.sign>0?"pos":"neg"}">${l.sign>0?"+":"−"}${fmtNum(l.qty,1)}</span> ${l.exp||""} ${fmtNum(l.strike)}${l.cp||""}`).join(" / ")+(b.legs.length>6?` <span class="mut">+${b.legs.length-6} weitere</span>`:"");
@@ -2014,7 +2070,7 @@ function renderBlocks(){
 const NAV2 = [
   {g:"Dashboard",ic:"dashboard",items:[["dashboard","Übersicht"],["custom","Eigenes Dashboard"],["contract","Strike-Insight"]]},
   {g:"Flow",ic:"flow",items:[["tape","Trade Tape"],["flow","Options-Orderflow"],["volflow","Volume Flow"],["oi","Open Interest"],["unusual","Scanner"]]},
-  {g:"Block-RFQ",ic:"blocks",items:[["blocks","Aggregiert"],["blocks-deribit","Deribit"],["blocks-okx","OKX"],["blocks-bybit","Bybit"]]},
+  {g:"Block-RFQ",ic:"blocks",items:[["blocks","Aggregiert"],["blocks-deribit","Deribit"],["blocks-derive","Derive"],["blocks-okx","OKX"],["blocks-bybit","Bybit"]]},
   {g:"Greeks",ic:"greeks",items:[["exposure","Levels"],["dealer","Dealer-Positionierung"],["gexp","Greek Exposure"],["heatmaps","Heatmaps"],["xheat","Exposure-Heatmap"],["tail","Tail Strike"]]},
   {g:"Volatilität",ic:"vol",items:[["vol","Term Structure"],["surf","Surfaces"],["vmetrics","Vol Metrics"],["skew","Skew-Analyse"],["ivpct","IV-Perzentil"],["vrp","IV / RV / VRP"],["dvolv","Vol-Index (DVOL)"],["regime","Vol-Regime"]]},
   {g:"Multi-Exchange",ic:"multi",items:[["venues","Börsen-Vergleich"],["venues-div","Divergenz"],["venues-ll","Lead-Lag"],["futures-basis","Basis-Spread"]]},
@@ -2145,8 +2201,8 @@ function gridHeat(id, exps, ks, val, kind, fmt, title){
   const c=ch(id); if(!c) return; const o=base(), data=[]; let mn=Infinity, mx=-Infinity;
   exps.forEach((e,j)=>ks.forEach((k,i)=>{ const v=val(e,k,j,i); if(v==null||!isFinite(v)) return; data.push([j,i,v]); mn=Math.min(mn,v); mx=Math.max(mx,v); }));
   if(!data.length){ c.clear(); return; } const am=Math.max(Math.abs(mn),Math.abs(mx))||1;
-  c.setOption({backgroundColor:"transparent",animation:false,textStyle:o.textStyle,tooltip:{...o.tooltip,trigger:"item",formatter:p=>`${exps[p.value[0]]} · ${fmtNum(ks[p.value[1]])}<br>${title}: <b>${fmt(p.value[2])}</b>`},
-    grid:{left:62,right:14,top:10,bottom:kind==="seq"?60:40},xAxis:ax(o,{type:"category",data:exps,splitLine:{show:false}}),yAxis:ax(o,{type:"category",data:ks.map(k=>fmtNum(k)),splitLine:{show:false}}),
+  c.setOption({backgroundColor:"transparent",animation:false,textStyle:o.textStyle,tooltip:{...o.tooltip,trigger:"item",formatter:p=>`${exps[p.value[0]]} · ${typeof ks[p.value[1]]==="number"?fmtNum(ks[p.value[1]]):ks[p.value[1]]}<br>${title}: <b>${fmt(p.value[2])}</b>`},
+    grid:{left:62,right:14,top:10,bottom:kind==="seq"?60:40},xAxis:ax(o,{type:"category",data:exps,splitLine:{show:false}}),yAxis:ax(o,{type:"category",data:ks.map(k=>typeof k==="number"?fmtNum(k):k),splitLine:{show:false}}),
     visualMap: kind==="seq"? seqMap(mn,mx) : divMap(am),
     series:[{type:"heatmap",data,itemStyle:{borderColor:css("--bg"),borderWidth:1},label:{show:ks.length<=26&&exps.length<=10,fontSize:9,fontFamily:"IBM Plex Mono, monospace",color:css("--fg"),formatter:p=>fmt(p.value[2]).replace("$","")}}]},true);
 }
@@ -2205,25 +2261,50 @@ function smileAt(L,F,x){ // IV bei Moneyness x=K/F, OTM-Optionen
   if(x<=pts[0][0]) return pts[0][1]; if(x>=pts[pts.length-1][0]) return pts[pts.length-1][1];
   for(let i=1;i<pts.length;i++) if(pts[i][0]>=x){ const [x0,y0]=pts[i-1],[x1,y1]=pts[i]; return y0+(y1-y0)*(x-x0)/(x1-x0); } return null;
 }
+function deltaIv(lb,e,cp,d){ const L=ivRows(lb,e).filter(b=>b.cp===cp&&b.g&&isFinite(b.g.delta)&&b.mark_iv>0).map(b=>[Math.abs(b.g.delta),b.mark_iv]).filter(p=>p[0]>0.005&&p[0]<0.6).sort((a,b)=>a[0]-b[0]);
+  if(L.length<2) return null; if(d<=L[0][0]) return L[0][1]; if(d>=L[L.length-1][0]) return L[L.length-1][1];
+  for(let i=1;i<L.length;i++) if(L[i][0]>=d){ const [x0,y0]=L[i-1],[x1,y1]=L[i]; return x1===x0?y1:y0+(y1-y0)*(d-x0)/(x1-x0); } return null; }
+const SURF_D=[["P",.05,"5p"],["P",.10,"10p"],["P",.15,"15p"],["P",.20,"20p"],["P",.25,"25p"],["P",.30,"30p"],["P",.35,"35p"],["P",.40,"40p"],["P",.45,"45p"],["A",.5,"ATM"],["C",.45,"45c"],["C",.40,"40c"],["C",.35,"35c"],["C",.30,"30c"],["C",.25,"25c"],["C",.20,"20c"],["C",.15,"15c"],["C",.10,"10c"],["C",.05,"5c"]];
+const SURF_COL=["#313695","#4575b4","#74add1","#abd9e9","#e0f3f8","#fee090","#fdae61","#f46d43","#d73027","#a50026"];
 function renderSurf(lb){
   glOk = window.__gl===1;
-  const D=liveFrom(books.deribit), exps=expiries(D).filter(e=>dte(e)>=0.5), xs=[]; for(let x=0.6;x<=1.6001;x+=0.04) xs.push(+x.toFixed(2));
-  const rows=exps.map(e=>{ const L=D.filter(b=>b.exp===e); const F=L[0]?L[0].F:spot; return {e,d:dte(e),ivs:xs.map(x=>smileAt(L,F,x))}; });
-  const o=base(), mode=S.surfMode||"3d"; $$(".sf-m").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.sm===mode)));
-  const c=ch("c-surf"); if(c){
-    if(mode==="3d" && glOk){ const data=[]; rows.forEach(r=>r.ivs.forEach((v,i)=>data.push([xs[i],+r.d.toFixed(2),v==null?"-":+v.toFixed(2)])));
-      c.setOption({backgroundColor:"transparent",tooltip:{formatter:p=>`K/F ${p.value[0]} · ${p.value[1]} T<br>IV <b>${(+p.value[2]).toFixed(1)} %</b>`},
-        visualMap:{show:false,dimension:2,min:Math.min(...data.map(d=>+d[2]||99)),max:Math.max(...data.map(d=>+d[2]||0)),inRange:{color:[css("--accent"),css("--bull"),css("--warn"),css("--bear")]}},
-        xAxis3D:{type:"value",name:"Strike / Forward",nameTextStyle:{color:css("--muted")},axisLabel:{color:css("--muted")}},yAxis3D:{type:"value",name:"Tage",nameTextStyle:{color:css("--muted")},axisLabel:{color:css("--muted")}},zAxis3D:{type:"value",name:"IV %",nameTextStyle:{color:css("--muted")},axisLabel:{color:css("--muted")}},
-        grid3D:{boxWidth:120,boxDepth:90,axisLine:{lineStyle:{color:css("--line")}},splitLine:{lineStyle:{color:css("--line")}},axisPointer:{lineStyle:{color:css("--accent")}},viewControl:{alpha:24,beta:38,distance:210},light:{main:{intensity:1.1},ambient:{intensity:.35}}},
-        series:[{type:"surface",data,shading:"lambert",wireframe:{show:true,lineStyle:{color:"rgba(255,255,255,.12)",width:.6}},dataShape:[rows.length,xs.length]}]},true); }
-    else gridHeat("c-surf", rows.map(r=>r.e), xs, (e,x,j,i)=>rows[j].ivs[i], "seq", v=>v.toFixed(1), "IV % bei K/F");
+  const D=liveFrom(books.deribit), exps=expiries(D).filter(e=>dte(e)>=0.5), axis=S.surfAxis||"delta", mode=S.surfMode||"3d";
+  $$(".sf-m").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.sm===mode))); $$(".sf-a").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.sa===axis)));
+  let xs, xl, rows;
+  if(axis==="delta"){ xs=SURF_D.map((_,i)=>i); xl=SURF_D.map(d=>d[2]);
+    rows=exps.map(e=>{ const a=atmIv(D,e); return {e,d:dte(e),ivs:SURF_D.map(([cp,d])=>cp==="A"?a:deltaIv(D,e,cp,d))}; }).filter(r=>r.ivs.filter(v=>v!=null).length>=10);
+  } else { xs=[]; for(let x=0.6;x<=1.6001;x+=0.04) xs.push(+x.toFixed(2)); xl=xs.map(String);
+    rows=exps.map(e=>{ const L=D.filter(b=>b.exp===e); const F=L[0]?L[0].F:spot; return {e,d:dte(e),ivs:xs.map(x=>smileAt(L,F,x))}; }); }
+  rows.forEach(r=>{ for(let i=0;i<r.ivs.length;i++) if(r.ivs[i]==null){ let a=i-1,b=i+1; while(a>=0&&r.ivs[a]==null)a--; while(b<r.ivs.length&&r.ivs[b]==null)b++; r.ivs[i]= a>=0&&b<r.ivs.length? r.ivs[a]+(r.ivs[b]-r.ivs[a])*(i-a)/(b-a) : (a>=0?r.ivs[a]:b<r.ivs.length?r.ivs[b]:null); } });
+  const all=rows.flatMap(r=>r.ivs).filter(v=>v!=null), mn=all.length?Math.floor(Math.min(...all)):0, mx=all.length?Math.ceil(Math.max(...all)):100;
+  const o=base(), c=ch("c-surf"); if(c){
+    if(mode==="3d" && glOk){ const data=[], SX=axis==="delta"?4:1, SY=4, nx=xs.length, ny=rows.length, mob=innerWidth<700;
+      const at=(j,i)=>{ const v=rows[j]&&rows[j].ivs[i]; return v==null?null:v; };
+      for(let fj=0; fj<=(ny-1)*SY; fj++){ const y=fj/SY, j0=Math.floor(y), j1=Math.min(j0+1,ny-1), ty=y-j0;
+        for(let fi=0; fi<=(nx-1)*SX; fi++){ const x=fi/SX, i0=Math.floor(x), i1=Math.min(i0+1,nx-1), tx=x-i0;
+          const a=at(j0,i0),b=at(j0,i1),c2=at(j1,i0),d=at(j1,i1); let v=null; if(a!=null&&b!=null&&c2!=null&&d!=null) v=(a*(1-tx)+b*tx)*(1-ty)+(c2*(1-tx)+d*tx)*ty;
+          const xv = axis==="delta"? x : xs[i0]+(xs[i1]-xs[i0])*tx; data.push([+xv.toFixed(3),+y.toFixed(3),v==null?"-":+v.toFixed(2)]); } }
+      const lab={color:css("--muted"),fontSize:mob?9:11}, dist=S.surfDist||(mob?370:200);
+      c.setOption({backgroundColor:"transparent",tooltip:{formatter:p=>`${axis==="delta"?(xl[Math.round(p.value[0])]||""):"K/F "+p.value[0]} · ${rows[Math.round(p.value[1])]?rows[Math.round(p.value[1])].e:""}<br>IV <b>${(+p.value[2]).toFixed(1)} %</b>`},
+        visualMap:{show:true,dimension:2,min:mn,max:mx,calculable:false,right:8,top:mob?6:20,itemHeight:mob?110:180,itemWidth:mob?8:12,text:[mx+"%",mn+"%"],textStyle:{color:css("--muted"),fontSize:10},inRange:{color:SURF_COL}},
+        xAxis3D:{type:"value",name:"",min:xs[0],max:xs[xs.length-1],interval:axis==="delta"?3:0.2,axisLabel:{...lab,formatter:v=>axis==="delta"?(xl[Math.round(v)]||""):v}},
+        yAxis3D:{type:"value",name:"",min:0,max:Math.max(rows.length-1,1),interval:1,axisLabel:{...lab,formatter:v=>rows[Math.round(v)]?rows[Math.round(v)].e.replace(/(\d+)([A-Z]{3})(\d+)/,(m,d,mo,y)=>d+" "+mo[0]+mo.slice(1).toLowerCase()):""}},
+        zAxis3D:{type:"value",name:"",min:mn,max:mx,axisLabel:{...lab,formatter:"{value}%"}},
+        grid3D:{boxWidth:130,boxDepth:100,boxHeight:70,axisLine:{lineStyle:{color:css("--line")}},splitLine:{lineStyle:{color:"rgba(255,255,255,.06)"}},axisPointer:{lineStyle:{color:css("--accent")}},
+          viewControl:{alpha:S.surfAlpha??22,beta:S.surfBeta??-35,distance:dist,minDistance:80,maxDistance:500,rotateSensitivity:1.2,zoomSensitivity:1.2,panSensitivity:1},light:{main:{intensity:1.05,alpha:40,beta:20},ambient:{intensity:.45}}},
+        series:[{type:"surface",data,shading:"color",wireframe:{show:true,lineStyle:{color:"rgba(0,0,0,.28)",width:.6}},dataShape:[(ny-1)*SY+1,(nx-1)*SX+1]}]},true); }
+    else gridHeat("c-surf", rows.map(r=>r.e), xl, (e,x,j,i)=>rows[j].ivs[i], "seq", v=>v.toFixed(1), axis==="delta"?"IV % je Delta":"IV % bei K/F");
   }
-  const n=$("surf-note"); if(n) n.textContent = mode==="3d"&&!glOk ? "Die 3D-Bibliothek konnte nicht geladen werden, deshalb wird die Fläche als Heatmap gezeigt." : "Deribit-Optionen außerhalb des Geldes (Puts unter, Calls über dem Forward), linear interpoliert. In 3D mit der Maus drehen und zoomen.";
+  const n=$("surf-note"); if(n) n.textContent = mode==="3d"&&!glOk ? "Die 3D-Bibliothek konnte nicht geladen werden, deshalb wird die Fläche als Heatmap gezeigt." : (axis==="delta"?"Deribit-IV je Delta (5p = 5-Delta-Put … ATM … 5c = 5-Delta-Call) und Verfall.":"Deribit-Optionen außerhalb des Geldes (Puts unter, Calls über dem Forward), linear interpoliert.")+" Drehen mit einem Finger, Zoomen mit zwei Fingern oder mit + / −.";
   const c2=ch("c-smiles"); if(c2) c2.setOption({...o,legend:{type:"scroll",top:4,textStyle:{color:css("--muted"),fontSize:10}},grid:{...o.grid,top:40,right:20},tooltip:{...o.tooltip,valueFormatter:v=>typeof v==="number"?v.toFixed(1)+" %":v},
-    xAxis:ax(o,{type:"category",data:xs.map(String),name:"Strike / Forward",nameLocation:"middle",nameGap:24,splitLine:{show:false}}),yAxis:ax(o,{type:"value",scale:true,axisLabel:{...o._axis.axisLabel,formatter:"{value}%"}}),
+    xAxis:ax(o,{type:"category",data:xl,name:axis==="delta"?"Delta":"Strike / Forward",nameLocation:"middle",nameGap:24,splitLine:{show:false}}),yAxis:ax(o,{type:"value",scale:true,axisLabel:{...o._axis.axisLabel,formatter:"{value}%"}}),
     series:rows.slice(0,10).map((r,i)=>({name:r.e,type:"line",data:r.ivs.map(v=>v==null?null:+v.toFixed(2)),showSymbol:false,lineStyle:{width:1.6,color:`hsl(${190+i*16},85%,${62-i*2}%)`}}))},true);
 }
+function surfZoom(f){ const c=echarts.getInstanceByDom($("c-surf")); if(!c) return;
+  if(f===0){ S.surfDist=0; S.surfAlpha=22; S.surfBeta=-35; }
+  else { try{ const gm=c.getModel().getComponent("grid3D",0), ctl=gm&&gm.coordinateSystem&&gm.coordinateSystem.viewGL&&gm.coordinateSystem.viewGL._controller; if(ctl){ S.surfAlpha=ctl.getAlpha(); S.surfBeta=ctl.getBeta(); } }catch(e){}
+    S.surfDist=Math.max(80,Math.min(500,(S.surfDist||(innerWidth<700?370:200))*f)); }
+  save(); renderSurf(); }
 function renderVMetrics(lb){
   const exps=expiries(lb), ref=refSnap(snaps,24), rows=[]; let prev=null;
   exps.forEach(e=>{ const a=atmIv(lb,e); if(!a) return; const T=Math.max(dte(e),0.01)/365, w25=wingsAt(lb,e,0.25), w10=wingsAt(lb,e,0.10);
@@ -2333,7 +2414,7 @@ const V2HTML = {
  tail: P2("Tail Strike","Flügel-Risiko und implizite Wahrscheinlichkeiten",'<div class="form"><label for="tail-exp">Verfall <select id="tail-exp"></select></label></div><div class="cards" id="tail-cards"></div>',"wide")+
    P2("Implizite Wahrscheinlichkeiten","aus dem Vola-Smile (risikoneutral)",'<div class="chart tall" id="c-tailprob"></div>',"wide")+
    P2("Größte Flügel-Strikes","jenseits ±15 % vom Forward",'<div class="tw"><table><thead><tr><th class="l">Kontrakt</th><th>Abstand</th><th>OI</th><th>IV</th><th>P(im Geld)</th><th>Mark</th></tr></thead><tbody id="tail-t"></tbody></table></div>',"wide"),
- surf: P2("Volatility Surface","IV über Moneyness und Laufzeit",'<div class="form"><span class="seg" role="group" aria-label="Ansicht"><button class="sf-m" data-sm="3d">3D</button><button class="sf-m" data-sm="2d">Heatmap</button></span></div><div class="chart" id="c-surf" style="height:min(70vh,600px)"></div><div class="note" id="surf-note"></div>',"wide")+
+ surf: P2("Volatility Surface","IV über Moneyness und Laufzeit",'<div class="form"><span class="seg" role="group" aria-label="Achse"><button class="sf-a" data-sa="delta">Delta</button><button class="sf-a" data-sa="strike">Strike</button></span><span class="seg" role="group" aria-label="Ansicht"><button class="sf-m" data-sm="2d">Heatmap</button><button class="sf-m" data-sm="3d">3D</button></span></div><div style="position:relative"><div class="sf-zoom"><button class="iconbtn" data-sz="1" aria-label="Hineinzoomen">+</button><button class="iconbtn" data-sz="-1" aria-label="Herauszoomen">−</button><button class="iconbtn" data-sz="0" aria-label="Ansicht zurücksetzen">↻</button></div><div class="chart" id="c-surf" style="height:min(70vh,600px)"></div></div><div class="note" id="surf-note"></div>',"wide")+
    P2("Smile je Verfall","",'<div class="chart tall" id="c-smiles"></div>',"wide"),
  vmetrics: P2("Vol Metrics","je Verfall",'<div class="tw free"><table><thead><tr><th class="l">Verfall</th><th>DTE</th><th>ATM IV</th><th>IV Δ 24 h</th><th>25Δ RR</th><th>25Δ BF</th><th>10Δ RR</th><th>10Δ BF</th><th>Forward-Vola</th></tr></thead><tbody id="vm-t"></tbody></table></div><div class="note" id="vm-note"></div>',"wide")+
    P2("ATM IV und Forward-Vola","Forward-Vola = implizite Vola zwischen zwei Verfällen",'<div class="chart" id="c-fwd"></div>',"wide"),
@@ -2358,6 +2439,8 @@ const V2HTML = {
 document.addEventListener("click",e=>{
   const b=e.target.closest(".hm2"); if(b){ S.hmMetric=b.dataset.hm; save(); render(); return; }
   const cp=e.target.closest(".hm-cp"); if(cp){ S.hmCp=cp.dataset.hcp; save(); $$(".hm-cp").forEach(x=>x.setAttribute("aria-pressed",String(x===cp))); render(); return; }
+  const sz=e.target.closest("[data-sz]"); if(sz){ const v=+sz.dataset.sz; surfZoom(v===0?0:v>0?0.8:1.25); return; }
+  const sa=e.target.closest(".sf-a"); if(sa){ S.surfAxis=sa.dataset.sa; save(); const c=echarts.getInstanceByDom($("c-surf")); if(c) c.dispose(); render(); return; }
   const sm=e.target.closest(".sf-m"); if(sm){ S.surfMode=sm.dataset.sm; save(); const c=echarts.getInstanceByDom($("c-surf")); if(c) c.dispose(); render(); return; }
   const lv=e.target.closest(".tslive"); if(lv){ const s=$(lv.dataset.sl); s.value=s.max; s.dataset.live="1"; render(); return; }
 });
@@ -2502,7 +2585,7 @@ $("div-min").value=S.divMin; $("div-min").addEventListener("change",e=>{ S.divMi
 /* ---------- Design & Einstellungen ---------- */
 const ACCENTS=["#00e5ff","#7c9cff","#f0a93b","#b36bff","#ff5fa2","#e8e8e8"];
 function applyLook(){
-  const r=document.documentElement; r.dataset.skin=S.skin;
+  if(!["neon","glass","graphite","paper"].includes(S.skin)) S.skin="neon"; const r=document.documentElement; r.dataset.skin=S.skin;
   r.classList.toggle("d3",!!S.d3); r.classList.toggle("glass",!!S.glass); r.classList.toggle("compact",!!S.compact); r.classList.toggle("drag",!!S.drag);
   ["accent","bull","bear"].forEach(k=>{ if(S[k]) r.style.setProperty("--"+k,S[k]); else r.style.removeProperty("--"+k); });
   if(S.accent) r.style.setProperty("--edge",S.accent+"55"), r.style.setProperty("--glow",S.accent+"28"); else { r.style.removeProperty("--edge"); r.style.removeProperty("--glow"); }
@@ -2616,7 +2699,7 @@ if(!CATS.includes("Block-RFQ")) CATS.splice(3,0,"Block-RFQ");
 function restart(){
   if(trades.length) saveX();
   gen++; if(ws){ try{ ws.close(); }catch(e){} } for(const v in xws){ try{ xws[v].close(); }catch(e){} } xws={};
-  books={deribit:[],bybit:[],okx:[],paradex:[],delta:[],thalex:[],aevo:[]}; vstat={deribit:"",bybit:"",okx:"",paradex:"",delta:"",thalex:"",aevo:""}; lastDeribitTs=0; book=[]; futBook=[]; trades=[]; tradeIds=new Set(); sweepMap=new Map(); spot=0; rv30=null; rvSeries=[]; dvol=null; dvolHist=[]; funding=[]; pending.clear(); backfilled=false; lbCache=null;
+  books={deribit:[],bybit:[],okx:[],paradex:[],delta:[],thalex:[],aevo:[],derive:[],hypercall:[]}; vstat={deribit:"",bybit:"",okx:"",paradex:"",delta:"",thalex:"",aevo:"",derive:"",hypercall:""}; lastDeribitTs=0; book=[]; futBook=[]; trades=[]; tradeIds=new Set(); sweepMap=new Map(); spot=0; rv30=null; rvSeries=[]; dvol=null; dvolHist=[]; funding=[]; pending.clear(); backfilled=false; lbCache=null;
   loadGexHist(); loadOiHist(); candles={t:[],o:[],h:[],l:[],c:[]}; document.title = "TQI · "+S.cur+" Terminal";
   $("loading").hidden=false; $("loading").textContent="Lade Trades …"; setStatus("","Verbinde mit Deribit …");
   blocksD=new Map(); blocksO=new Map(); histTrades=[]; snaps=[]; oiSnaps=[]; dvolMin=[]; dvolHour=[]; perp1m={t:[],c:[]}; loadSnaps();
@@ -2631,7 +2714,7 @@ setInterval(()=>{ if(ws&&ws.readyState===1) loadFunding(); },15*60000);
 setInterval(()=>{ if(ws&&ws.readyState===1) rpc("public/get_index_price",{index_name:S.cur.toLowerCase()+"_usd"}).then(r=>{spot=r.index_price;}).catch(()=>{}); },10000);
 setInterval(()=>{ const c=Date.now()-7*DAY-3600e3; if(trades.length&&trades[0].ts<c) trades=trades.filter(t=>t.ts>=c); scheduleRender(); },30000);
 setInterval(()=>{ if(ws&&ws.readyState===1&&backfilled) backfill(gen, lastDeribitTs||windowStart()).then(scheduleRender).catch(()=>{}); },20000);
-setInterval(()=>{ ["bybit","okx","paradex","delta"].forEach(v=>{ if(S.venues[v]) BOOK[v]().then(scheduleRender).catch(()=>{ vstat[v]="err"; renderVenueSeg(); }); }); },60000);
+setInterval(()=>{ ["bybit","okx","paradex","delta","derive"].forEach(v=>{ if(S.venues[v]) BOOK[v]().then(scheduleRender).catch(()=>{ vstat[v]="err"; renderVenueSeg(); }); }); },60000);
 setInterval(saveX, 120000);
 setInterval(()=>{ if(ws&&ws.readyState===1) loadDeribitRfq(false); },60000);
 setInterval(loadOkxBlocks, 5*60000);
@@ -2641,6 +2724,828 @@ window.addEventListener("beforeunload", saveX);
   for(let i=0;i<N;i++){ const x=i-12; let v=Math.exp(-Math.pow((x-4)/2.6,2))+0.3*Math.exp(-Math.pow((x-9)/1.8,2))-0.85*Math.exp(-Math.pow((x+3)/2.2,2))-0.2*Math.exp(-Math.pow((x+9)/2,2));
     const hgt=Math.min(4,Math.abs(v)*4), w=100/N; out+=`<rect x="${i*w+w*0.18}" y="${v>=0?4-hgt:4}" width="${w*0.64}" height="${hgt}" fill="var(${v>=0?"--bull":"--bear"})"/>`; }
   el.innerHTML=out; })();
+/* S3-BEGIN */
+/* ====================== Session 3: Infrastruktur ====================== */
+const V3 = {}, R3 = {}, NB3 = new Set();   // Seiten-HTML, Renderer, Seiten ohne Optionskette
+function nav3(group, items, afterKey){
+  const g=NAV2.find(x=>x.g===group); if(!g) return;
+  let at = afterKey? g.items.findIndex(([k])=>k===afterKey)+1 : g.items.length; if(at<=0) at=g.items.length;
+  g.items.splice(at,0,...items);
+}
+const sel3 = (id,opts,val,lbl) => `<label${lbl?"":' class="sr"'}>${lbl||""} <select id="${id}">${opts.map(([v,l])=>`<option value="${v}"${String(v)===String(val)?" selected":""}>${l}</option>`).join("")}</select></label>`;
+const seg3 = (cls,key,vals) => `<span class="seg" role="group">${vals.map(([v,l])=>`<button class="${cls}" data-k="${key}" data-v="${v}">${l}</button>`).join("")}</span>`;
+const num3 = (id,val,step,lbl,w=90) => `<label>${lbl} <input id="${id}" type="number" step="${step}" value="${val}" class="chip num" style="width:${w}px"></label>`;
+document.addEventListener("click",e=>{ const b=e.target.closest("button[data-k][data-v]"); if(!b) return; const k=b.dataset.k, v=b.dataset.v; S[k]= isNaN(+v)||v===""? v : +v; save(); sync3(); render(); });
+function sync3(){ $$("button[data-k][data-v]").forEach(b=>b.setAttribute("aria-pressed",String(String(S[b.dataset.k])===b.dataset.v))); }
+const tbl3 = (head,rows,cls="") => `<div class="tw ${cls}"><table><thead><tr>${head.map((h,i)=>`<th${i===0?' class="l"':""}>${h}</th>`).join("")}</tr></thead><tbody>${rows.join("")}</tbody></table></div>`;
+const cls3 = v => v>0?"pos":v<0?"neg":"";
+const sgn3 = (v,f=fmtUsd) => v==null||!isFinite(v)?"–":(v>0?"+":"")+f(v);
+const pct3 = (v,d=2) => v==null||!isFinite(v)?"–":(v>0?"+":"")+v.toFixed(d)+" %";
+const lvMemo = { t:0, lb:null, lv:null };
+function lv3(lb){ const n=Date.now(); if(lvMemo.lb===lb && n-lvMemo.t<3000) return lvMemo.lv; lvMemo.lb=lb; lvMemo.t=n; lvMemo.lv=levelsOf(lb); return lvMemo.lv; }
+const _render0 = render;
+render = function(){
+  _render0();
+  const f=R3[S.view]; if(!f) return;
+  try{ if(book.length){ const lb=liveBook(); f(lb, lv3(lb), windowTrades()); } else if(NB3.has(S.view)) f([], {}, windowTrades()); }catch(e){ console.error("S3",S.view,e); }
+};
+function mount3(){
+  const anchor=document.getElementById("v-blocks");
+  for(const [id,html] of Object.entries(V3)){ if(document.getElementById("v-"+id)){ document.getElementById("v-"+id).insertAdjacentHTML("beforeend",html); continue; }
+    const d=document.createElement("div"); d.className="view"; d.dataset.view=id; d.id="v-"+id; d.hidden=true; d.innerHTML=html; anchor.parentNode.insertBefore(d,anchor); }
+  sync3();
+}
+const normC = r => { if(!r||!r.ticks) return r; const c=r.close||[]; return {...r, open:r.open||c, high:r.high||c, low:r.low||c, volume:r.volume||c.map(()=>0)}; };
+async function dRpc(m,p){ try{ return await rpc(m,p); }catch(e){ return null; } }
+const getJ3 = async u => { try{ return await getJ(u); }catch(e){ return null; } };
+
+/* ---------- Spot je Börse (Live-Feeds, 1-Sekunden-Raster) ---------- */
+const SPV = {deribit:{n:"Deribit Index",c:"#3ad0ff"}, deribitp:{n:"Deribit Perp",c:"#7fe3ff"}, binance:{n:"Binance Perp",c:"#f0b90b"}, bybit:{n:"Bybit Perp",c:"#f7a600"}, okx:{n:"OKX Perp",c:"#cfd3dc"},
+  derive:{n:"Derive",c:"#2fe0a8"}, thalex:{n:"Thalex",c:"#e9e05a"}, aevo:{n:"Aevo",c:"#ff6fb0"}, hypercall:{n:"Hypercall",c:"#9be15d"}, paradex:{n:"Paradex",c:"#a58bff"}, delta:{n:"Delta",c:"#ff8a5c"}};
+const SPOTS = new Map(), SPH = {}, SP_N = 3600;   // aktueller Preis, 1-s-Historie (1 h)
+const PERP = {binance:{}, bybit:{}, okx:{}, deribit:{}};   // Funding, OI, Mark, Index
+const CVD = {t:[], v:[], cum:0, buy:0, sell:0, lastMin:0};
+const LIQ = [];   // {ts, venue, side:"long"|"short", qty, px, usd}
+const s3ws = {}; let s3gen=0;
+function setSpot(v,px,ts){ if(!(px>0)) return; SPOTS.set(v,{px:+px, ts:ts||Date.now()}); }
+setInterval(()=>{ const t=Math.floor(Date.now()/1000);
+  for(const [v,o] of SPOTS){ const h=SPH[v]||(SPH[v]={t:[],p:[]}); if(Date.now()-o.ts>15000) continue; if(h.t.length && h.t[h.t.length-1]===t) continue; h.t.push(t); h.p.push(o.px); if(h.t.length>SP_N){ h.t.shift(); h.p.shift(); } } },1000);
+function ws3(key, url, onopen, onmsg, pingMsg, pingMs=20000){
+  const my=s3gen; let w; try{ w=new WebSocket(url); }catch(e){ return; } s3ws[key]=w; let pi=null; w.__last=0;
+  w.onopen=()=>{ if(my!==s3gen){ w.close(); return; } try{ onopen(w); }catch(e){} if(pingMsg) pi=setInterval(()=>{ try{ w.send(typeof pingMsg==="function"?pingMsg():pingMsg); }catch(e){} },pingMs); };
+  w.onmessage=e=>{ w.__last=Date.now(); if(e.data==="pong") return; let m; try{ m=JSON.parse(e.data); }catch(err){ return; } try{ onmsg(m,w); }catch(err){} };
+  w.onclose=()=>{ clearInterval(pi); if(my!==s3gen) return; setTimeout(()=>ws3(key,url,onopen,onmsg,pingMsg,pingMs),5000); };
+  w.onerror=()=>{};
+}
+function start3(){
+  s3gen++; for(const k in s3ws){ try{ s3ws[k].close(); }catch(e){} }
+  SPOTS.clear(); for(const k in SPH) delete SPH[k]; LIQ.length=0; CVD.t=[]; CVD.v=[]; CVD.cum=0; CVD.buy=0; CVD.sell=0; for(const k in PERP) PERP[k]={};
+  const C=S.cur, c=C.toLowerCase(), usdt=C+"USDT";
+  // Deribit: Index + Perp-Ticker (eigene Verbindung)
+  ws3("deribit3","wss://www.deribit.com/ws/api/v2", w=>w.send(JSON.stringify({jsonrpc:"2.0",id:1,method:"public/subscribe",params:{channels:[`deribit_price_index.${c}_usd`,`ticker.${C}-PERPETUAL.100ms`]}})),
+    m=>{ const p=m.params; if(!p||!p.data) return; if(p.channel.indexOf("deribit_price_index")===0) setSpot("deribit",p.data.price,p.data.timestamp);
+      else { setSpot("deribitp",p.data.mark_price,p.data.timestamp); PERP.deribit={mark:p.data.mark_price,index:p.data.index_price,fund8h:p.data.funding_8h,oi:p.data.open_interest,ts:Date.now()}; } },
+    JSON.stringify({jsonrpc:"2.0",id:9,method:"public/test",params:{}}));
+  // Binance USDⓈ-M: Mark/Index/Funding 1 s, Trades (CVD), Liquidationen
+  ws3("binance3",`wss://fstream.binance.com/stream?streams=${c}usdt@markPrice@1s/${c}usdt@aggTrade/${c}usdt@forceOrder`, ()=>{},
+    m=>{ const d=m.data||{}; if(d.e==="markPriceUpdate"){ setSpot("binance",d.p,d.E); PERP.binance={...PERP.binance,mark:+d.p,index:+d.i,fund:+d.r,next:+d.T,ts:Date.now()}; }
+      else if(d.e==="aggTrade"){ const q=+d.q, px=+d.p; if(d.m){ CVD.sell+=q; CVD.cum-=q; } else { CVD.buy+=q; CVD.cum+=q; } const mn=Math.floor(d.T/60000)*60000; if(mn!==CVD.lastMin){ CVD.lastMin=mn; CVD.t.push(mn); CVD.v.push(CVD.cum); if(CVD.t.length>1440){ CVD.t.shift(); CVD.v.shift(); } } else CVD.v[CVD.v.length-1]=CVD.cum; PERP.binance.last=px; }
+      else if(d.e==="forceOrder"){ const o=d.o||{}; const q=+o.q, px=+(o.ap||o.p); LIQ.push({ts:+o.T,venue:"binance",side:o.S==="SELL"?"long":"short",qty:q,px,usd:q*px}); } });
+  // Bybit linear: Ticker + Liquidationen
+  ws3("bybit3","wss://stream.bybit.com/v5/public/linear", w=>w.send(JSON.stringify({op:"subscribe",args:[`tickers.${usdt}`,`allLiquidation.${usdt}`]})),
+    m=>{ if(!m.topic) return; if(m.topic.indexOf("tickers")===0){ const d=m.data||{}; const P=PERP.bybit; if(d.markPrice) P.mark=+d.markPrice; if(d.indexPrice) P.index=+d.indexPrice; if(d.fundingRate) P.fund=+d.fundingRate; if(d.openInterestValue) P.oiUsd=+d.openInterestValue; if(d.nextFundingTime) P.next=+d.nextFundingTime; P.ts=Date.now(); if(d.lastPrice) setSpot("bybit",d.lastPrice,m.ts); else if(d.markPrice) setSpot("bybit",d.markPrice,m.ts); }
+      else if(m.topic.indexOf("allLiquidation")===0){ for(const x of m.data||[]){ const q=+x.v, px=+x.p; LIQ.push({ts:+x.T,venue:"bybit",side:x.S==="Buy"?"long":"short",qty:q,px,usd:q*px}); } } },
+    JSON.stringify({op:"ping"}));
+  // OKX: Swap-Ticker, Index, Funding
+  ws3("okx3","wss://ws.okx.com:8443/ws/v5/public", w=>w.send(JSON.stringify({op:"subscribe",args:[{channel:"tickers",instId:`${C}-USDT-SWAP`},{channel:"index-tickers",instId:`${C}-USD`},{channel:"funding-rate",instId:`${C}-USDT-SWAP`},{channel:"open-interest",instId:`${C}-USDT-SWAP`}]})),
+    m=>{ if(!m.arg||!m.data) return; const d=m.data[0]||{}, P=PERP.okx; if(m.arg.channel==="tickers"){ setSpot("okx",d.last,+d.ts); P.last=+d.last; }
+      else if(m.arg.channel==="index-tickers") P.index=+d.idxPx; else if(m.arg.channel==="funding-rate"){ P.fund=+d.fundingRate; P.next=+d.fundingTime; } else if(m.arg.channel==="open-interest"){ P.oi=+d.oiCcy; } P.ts=Date.now(); }, "ping");
+  // Derive: Perp-Ticker per RPC-Abfrage
+  ws3("derive3",DERIVE_WS, w=>{ const q=()=>{ try{ w.send(JSON.stringify({method:"public/get_ticker",params:{instrument_name:C+"-PERP"},id:7})); }catch(e){} }; q(); w.__q=setInterval(()=>{ if(w.readyState===1) q(); else clearInterval(w.__q); },2000); },
+    m=>{ if(m.id===7 && m.result){ setSpot("derive",m.result.I||m.result.M,m.result.t); } });
+  // Hypercall: Index-Preise
+  ws3("hyper3","wss://api.hypercall.xyz/ws", w=>w.send(JSON.stringify({type:"Subscribe",channel:"index_prices"})),
+    m=>{ if(m.type==="IndexPriceUpdate") for(const p of m.prices||[]) if(p.underlying===C) setSpot("hypercall",p.price,p.timestamp); });
+  // OKX-Liquidationen (REST)
+  pollOkxLiq(); loadPerpStats(); loadFundHist(); loadFutX();
+}
+const _tt3=thalexTicker; thalexTicker=function(n,t){ if(t && +t.index) setSpot("thalex",+t.index); return _tt3(n,t); };
+const _at3=aevoTickers; aevoTickers=function(list){ const t=(list||[])[0]; if(t && +t.index_price) setSpot("aevo",+t.index_price); return _at3(list); };
+setInterval(()=>{ const p=books.paradex[0], d=books.delta[0]; if(p&&p.underlying_price) setSpot("paradex",p.underlying_price); if(d&&d.underlying_price) setSpot("delta",d.underlying_price); },15000);
+let okxLiqSeen=new Set();
+async function pollOkxLiq(){ const r=await getJ3(`https://www.okx.com/api/v5/public/liquidation-orders?instType=SWAP&uly=${S.cur}-USDT&state=filled`); if(!r||!r.data) return;
+  for(const g of r.data) for(const x of g.details||[]){ const k=x.ts+x.sz+x.bkPx; if(okxLiqSeen.has(k)) continue; okxLiqSeen.add(k); const q=+x.sz*0.01, px=+x.bkPx; LIQ.push({ts:+x.ts,venue:"okx",side:x.posSide==="long"||x.side==="sell"?"long":"short",qty:q,px,usd:q*px}); }
+  LIQ.sort((a,b)=>a.ts-b.ts); }
+setInterval(()=>{ pollOkxLiq(); const c=Date.now()-24*3600e3; while(LIQ.length && LIQ[0].ts<c) LIQ.shift(); },30000);
+
+/* ---------- Perp-Statistiken: Long/Short, Taker, OI (Binance, Bybit) ---------- */
+const PST = {ls:[], top:[], taker:[], oi:[], byls:[], byoi:[], per:"1h"};
+async function loadPerpStats(){
+  const s=S.cur+"USDT", per=S.lsPer||"1h", B="https://fapi.binance.com/futures/data/";
+  const [ls,top,tk,oi,byls,byoi]=await Promise.all([getJ3(`${B}globalLongShortAccountRatio?symbol=${s}&period=${per}&limit=200`),getJ3(`${B}topLongShortPositionRatio?symbol=${s}&period=${per}&limit=200`),
+    getJ3(`${B}takerlongshortRatio?symbol=${s}&period=${per}&limit=200`),getJ3(`${B}openInterestHist?symbol=${s}&period=${per}&limit=200`),
+    getJ3(`https://api.bybit.com/v5/market/account-ratio?category=linear&symbol=${s}&period=${per}&limit=200`),getJ3(`https://api.bybit.com/v5/market/open-interest?category=linear&symbol=${s}&intervalTime=${per}&limit=200`)]);
+  PST.ls=(ls||[]).map(x=>[+x.timestamp,+x.longShortRatio,+x.longAccount]); PST.top=(top||[]).map(x=>[+x.timestamp,+x.longShortRatio]);
+  PST.taker=(tk||[]).map(x=>[+x.timestamp,+x.buySellRatio,+x.buyVol,+x.sellVol]); PST.oi=(oi||[]).map(x=>[+x.timestamp,+x.sumOpenInterestValue]);
+  PST.byls=((byls&&byls.result&&byls.result.list)||[]).map(x=>[+x.timestamp,+x.buyRatio/(+x.sellRatio||1)]).reverse();
+  PST.byoi=((byoi&&byoi.result&&byoi.result.list)||[]).map(x=>[+x.timestamp,+x.openInterest]).reverse(); PST.per=per; scheduleRender();
+}
+setInterval(loadPerpStats, 5*60000);
+
+/* ---------- Funding-Historie aller Börsen ---------- */
+const FH = {binance:[], bybit:[], okx:[]};
+async function loadFundHist(){
+  const s=S.cur+"USDT";
+  const [b,y,o]=await Promise.all([getJ3(`https://fapi.binance.com/fapi/v1/fundingRate?symbol=${s}&limit=200`),getJ3(`https://api.bybit.com/v5/market/funding/history?category=linear&symbol=${s}&limit=200`),getJ3(`https://www.okx.com/api/v5/public/funding-rate-history?instId=${S.cur}-USDT-SWAP&limit=100`)]);
+  FH.binance=(b||[]).map(x=>[+x.fundingTime,+x.fundingRate]); FH.bybit=((y&&y.result&&y.result.list)||[]).map(x=>[+x.fundingRateTimestamp,+x.fundingRate]).reverse();
+  FH.okx=((o&&o.data)||[]).map(x=>[+x.fundingTime,+x.realizedRate||+x.fundingRate]).reverse(); scheduleRender();
+}
+setInterval(loadFundHist, 30*60000);
+
+/* ---------- Futures aller Börsen (Term Structure) ---------- */
+let FUTX = [];   // {venue, name, expTs, mark, idx}
+async function loadFutX(){
+  const C=S.cur, out=[];
+  for(const f of futBook) if(!f.perp && f.expTs) out.push({venue:"Deribit",name:f.instrument_name,expTs:f.expTs,mark:f.mark_price,idx:f.estimated_delivery_price||spot});
+  const [bn,by,ok1,ok2]=await Promise.all([getJ3("https://fapi.binance.com/fapi/v1/premiumIndex"),getJ3(`https://api.bybit.com/v5/market/tickers?category=linear&baseCoin=${C}`),
+    getJ3(`https://www.okx.com/api/v5/public/mark-price?instType=FUTURES&instFamily=${C}-USD`),getJ3(`https://www.okx.com/api/v5/public/mark-price?instType=FUTURES&instFamily=${C}-USDT`)]);
+  for(const x of bn||[]){ const m=new RegExp("^"+C+"USDT_(\\d{6})$").exec(x.symbol); if(!m) continue; const d=m[1]; out.push({venue:"Binance",name:x.symbol,expTs:Date.UTC(2000+ +d.slice(0,2),+d.slice(2,4)-1,+d.slice(4,6),8),mark:+x.markPrice,idx:+x.indexPrice}); }
+  for(const x of (by&&by.result&&by.result.list)||[]){ if(!x.deliveryTime||+x.deliveryTime===0) continue; out.push({venue:"Bybit",name:x.symbol,expTs:+x.deliveryTime,mark:+x.markPrice,idx:+x.indexPrice}); }
+  for(const r of [ok1,ok2]) for(const x of (r&&r.data)||[]){ const d=x.instId.split("-")[2]; if(!/^\d{6}$/.test(d)) continue; out.push({venue:"OKX",name:x.instId,expTs:Date.UTC(2000+ +d.slice(0,2),+d.slice(2,4)-1,+d.slice(4,6),8),mark:+x.markPx,idx:spot}); }
+  FUTX=out.filter(f=>f.expTs>Date.now() && f.mark>0 && f.idx>0); scheduleRender();
+}
+setInterval(loadFutX, 2*60000);
+
+/* ---------- News (RSS über rss2json) ---------- */
+const NEWS_FEEDS = [["Cointelegraph","https://cointelegraph.com/rss"],["CoinDesk","https://www.coindesk.com/arc/outboundfeeds/rss/"],["Decrypt","https://decrypt.co/feed"],["Bitcoin Magazine","https://bitcoinmagazine.com/.rss/full/"],["The Block","https://www.theblock.co/rss.xml"],["CryptoSlate","https://cryptoslate.com/feed/"]];
+let NEWS = [], newsAt=0, newsBusy=false;
+async function loadNews(force){
+  if(newsBusy || (!force && Date.now()-newsAt<5*60000)) return; newsBusy=true;
+  const res=await Promise.all(NEWS_FEEDS.map(([n,u])=>getJ3("https://api.rss2json.com/v1/api.json?rss_url="+encodeURIComponent(u)).then(r=>({n,r}))));
+  const out=[]; for(const {n,r} of res){ if(!r||r.status!=="ok") continue; for(const it of r.items||[]) out.push({src:n,title:it.title,link:it.link,ts:Date.parse((it.pubDate||"").replace(" ","T")+"Z")||Date.now(),desc:String(it.description||"").replace(/<[^>]+>/g,"").slice(0,240)}); }
+  const seen=new Set(); NEWS=out.filter(x=>{ const k=x.title; if(seen.has(k)) return false; seen.add(k); return true; }).sort((a,b)=>b.ts-a.ts); newsAt=Date.now(); newsBusy=false; scheduleRender();
+}
+
+/* ---------- Quellen-Status ---------- */
+const SRC_LOG = {};   // key -> [[t,ok]]
+setInterval(()=>{ const t=Date.now(), st=srcStatus(); for(const s of st){ const a=SRC_LOG[s.k]||(SRC_LOG[s.k]=[]); a.push([t,s.ok?1:0]); if(a.length>2880) a.shift(); } },30000);
+function srcStatus(){
+  const W=(w)=>w&&w.readyState===1, age=t=>t?Math.round((Date.now()-t)/1000):null, out=[];
+  out.push({k:"deribit",n:"Deribit (Optionen, Trades, DVOL, RFQ)",url:"wss://www.deribit.com/ws/api/v2",ok:W(ws),age:age(lastDeribitTs)});
+  for(const v of XLIST){ const w=xws[v]; out.push({k:v,n:VEN[v].name+(v==="paradex"?" (REST)":v==="hypercall"?" (Trades)":""),url:XWS[v]?XWS[v].url():"REST",ok:v==="paradex"?books.paradex.length>0:W(w),age:w&&w.__last?age(w.__last):null,en:!!S.venues[v]}); }
+  const lbl={deribit3:"Deribit Index/Perp",binance3:"Binance Perp (Mark, Trades, Liquidationen)",bybit3:"Bybit Perp (Ticker, Liquidationen)",okx3:"OKX Perp (Ticker, Funding, OI)",derive3:"Derive Perp",hyper3:"Hypercall Index"};
+  for(const k in lbl){ const w=s3ws[k]; out.push({k,n:lbl[k],url:w?w.url:"",ok:W(w),age:w&&w.__last?age(w.__last):null}); }
+  out.push({k:"news",n:"News (rss2json)",url:"api.rss2json.com",ok:NEWS.length>0,age:newsAt?age(newsAt):null});
+  return out;
+}
+
+/* ====================== Session 3: Märkte, Börsen, Futures ====================== */
+const spotMedian = () => { const a=[...SPOTS.values()].filter(o=>Date.now()-o.ts<30000).map(o=>o.px).sort((x,y)=>x-y); return a.length? a[a.length>>1] : spot; };
+const bps = (p,m) => m? (p/m-1)*1e4 : null;
+
+/* --- Spot je Börse --- */
+V3.spot = P2("Spot je Börse","Live-Preis des Basiswerts je Quelle, Abweichung zum Median in Basispunkten",'<div class="cards" id="sp-cards"></div><div class="note">USDT-Perps (Binance, Bybit, OKX) zeigen die USDT/USD-Basis als dauerhaften Aufschlag, das ist keine veraltete Quelle.</div>',"wide")+
+  P2("Preis je Quelle","letzte 60 Minuten, 1-Sekunden-Raster",'<div class="chart tall" id="c-sphist"></div>',"wide")+
+  P2("Zeit auf Preis","Perp-Kerzen mit Volumen-Profil",'<div class="form">'+seg3("k3","spRes",[["15","15m"],["60","1h"],["240","4h"],["1D","1D"]])+'</div><div class="chart tall" id="c-spcandle"></div>',"wide");
+let spCand={k:"",t:[],o:[],h:[],l:[],c:[],v:[]};
+async function loadSpCand(){ const res=S.spRes||"60", span={"15":3,"60":7,"240":30,"1D":365}[res]||7, k=S.cur+res; if(spCand.k===k && Date.now()-spCand.at<60000) return;
+  let now=Date.now(), r=await dRpc("public/get_tradingview_chart_data",{instrument_name:S.cur+"-PERPETUAL",start_timestamp:now-span*DAY,end_timestamp:now,resolution:res});
+  if(r){ r=normC(r); spCand={k,at:Date.now(),t:r.ticks,o:r.open,h:r.high,l:r.low,c:r.close,v:r.volume}; } scheduleRender(); }
+NB3.add("spot");
+R3.spot = () => {
+  const m=spotMedian(), rows=[...SPOTS.entries()].sort((a,b)=>b[1].px-a[1].px);
+  $("sp-cards").innerHTML = (m?cardH("Median ("+rows.length+" Quellen)","$"+fmtNum(m,2),"Bereich "+(rows.length>1?fmtNum(bps(rows[0][1].px,rows[rows.length-1][1].px),1):"–")+" bps"):"")+
+    rows.map(([v,o])=>{ const b=bps(o.px,m), age=(Date.now()-o.ts)/1000; return cardH(SPV[v]?SPV[v].n:v,"$"+fmtNum(o.px,2),`${b==null?"–":(b>0?"+":"")+b.toFixed(1)} bps · ${age<1?"live":age.toFixed(0)+" s"}`,b>5?"pos":b<-5?"neg":""); }).join("") || '<div class="empty">Verbinde mit den Börsen …</div>';
+  const o=base(), c=ch("c-sphist"); if(c){ const series=Object.entries(SPH).filter(([,h])=>h.t.length>1).map(([v,h])=>({name:SPV[v]?SPV[v].n:v,type:"line",showSymbol:false,sampling:"lttb",lineStyle:{width:1.3,color:(SPV[v]||{}).c},itemStyle:{color:(SPV[v]||{}).c},data:h.t.map((t,i)=>[t*1000,h.p[i]])}));
+    c.setOption({...o,legend:{...o.legend,type:"scroll"},grid:{...o.grid,top:44},xAxis:ax(o,{type:"time",splitLine:{show:false}}),yAxis:ax(o,{type:"value",scale:true,axisLabel:{...o._axis.axisLabel,formatter:v=>fmtNum(v)}}),series},true); }
+  loadSpCand(); const c2=ch("c-spcandle"); if(c2 && spCand.t.length){ const cl=spCand.c, lo=Math.min(...spCand.l), hi=Math.max(...spCand.h), nb=40, st=(hi-lo)/nb||1, vp=new Array(nb).fill(0);
+    spCand.c.forEach((x,i)=>{ const b=Math.min(nb-1,Math.floor((x-lo)/st)); vp[b]+=spCand.v[i]||0; });
+    c2.setOption({...o,grid:[{left:64,right:150,top:20,bottom:30},{right:20,width:120,top:20,bottom:30}],tooltip:{...o.tooltip,trigger:"axis"},
+      xAxis:[ax(o,{type:"category",data:spCand.t.map(t=>fmtDT(t)),splitLine:{show:false}}),ax(o,{gridIndex:1,type:"value",show:false})],
+      yAxis:[ax(o,{type:"value",scale:true,min:lo,max:hi,axisLabel:{...o._axis.axisLabel,formatter:v=>fmtNum(v)}}),ax(o,{gridIndex:1,type:"category",data:vp.map((_,i)=>fmtNum(lo+st*(i+.5))),show:false})],
+      series:[{type:"candlestick",data:spCand.t.map((_,i)=>[spCand.o[i],cl[i],spCand.l[i],spCand.h[i]]),itemStyle:{color:css("--bull"),color0:css("--bear"),borderColor:css("--bull"),borderColor0:css("--bear")}},
+        {type:"bar",xAxisIndex:1,yAxisIndex:1,data:vp.map(v=>+v.toFixed(0)),barWidth:"80%",itemStyle:{color:alpha(css("--accent"),.45)}}]},true); }
+};
+
+/* --- Basis-Spread (Quellen + je Strike) --- */
+V3.basisx = P2("Spot-Index-Spread","jede Quelle gegen den Median",'<div id="bx-t"></div>',"wide")+
+  P2("Spread-Verlauf","letzte 60 Minuten, in bps zum Median",'<div class="chart" id="c-bxhist"></div>',"wide")+
+  P2("Aktualität","wie alt die Daten jeder Quelle sind",'<div class="cards" id="bx-fresh"></div>',"wide")+
+  P2("Mark-Divergenz je Strike","USD-Mark gleicher Kontrakte über Börsen",'<div class="form"><label>Verfall <select id="bx-exp"></select></label></div><div class="chart tall" id="c-bxstrike"></div><div class="note">Zeigt nur Strikes, die mindestens zwei Börsen quotieren. Ein dauerhafter Versatz erklärt systematische IV-Abweichungen beim selben Strike.</div>',"wide");
+R3.basisx = (lb) => {
+  const m=spotMedian(), rows=[...SPOTS.entries()].sort((a,b)=>a[1].px-b[1].px);
+  $("bx-t").innerHTML = tbl3(["Quelle","Spot (USD)","vs. Median","Alter"], rows.map(([v,o])=>{ const b=bps(o.px,m); return `<tr><td class="l">${SPV[v]?SPV[v].n:v}</td><td>$${fmtNum(o.px,2)}</td><td class="${cls3(b)}">${b==null?"–":(b>0?"+":"")+b.toFixed(1)} bps</td><td>${((Date.now()-o.ts)/1000).toFixed(0)} s</td></tr>`; }).concat(m?[`<tr><td class="l"><b>Median</b></td><td><b>$${fmtNum(m,2)}</b></td><td>Bereich ${rows.length>1?bps(rows[rows.length-1][1].px,rows[0][1].px).toFixed(1):"–"} bps</td><td></td></tr>`]:[]),"free");
+  const o=base(), c=ch("c-bxhist"); if(c){ const ks=Object.keys(SPH), T=new Map(); ks.forEach(v=>SPH[v].t.forEach((t,i)=>{ if(!T.has(t)) T.set(t,{}); T.get(t)[v]=SPH[v].p[i]; }));
+    const ts=[...T.keys()].sort((a,b)=>a-b).filter((_,i,a)=>i%5===0||i===a.length-1), med=t=>{ const a=Object.values(T.get(t)).sort((x,y)=>x-y); return a[a.length>>1]; };
+    c.setOption({...o,legend:{...o.legend,type:"scroll"},grid:{...o.grid,top:44},xAxis:ax(o,{type:"time",splitLine:{show:false}}),yAxis:ax(o,{type:"value",name:"bps",nameTextStyle:{color:o.textStyle.color,fontSize:10}}),
+      series:ks.map(v=>({name:SPV[v]?SPV[v].n:v,type:"line",showSymbol:false,connectNulls:true,lineStyle:{width:1.2,color:(SPV[v]||{}).c},itemStyle:{color:(SPV[v]||{}).c},data:ts.map(t=>{ const x=T.get(t)[v]; return [t*1000, x? +bps(x,med(t)).toFixed(2):null]; })}))},true); }
+  const fr=srcStatus(); $("bx-fresh").innerHTML = fr.filter(s=>s.en!==false).map(s=>cardH(s.n.split(" (")[0], s.ok?(s.age==null?"live":s.age+" s"):"getrennt", s.ok?"verbunden":"–", s.ok?(s.age>30?"warn":"pos"):"neg")).join("");
+  const all=liveFrom([].concat(...VLIST.map(v=>books[v]))), exps=expiries(all); if(!S.bxExp||!exps.includes(S.bxExp)) S.bxExp=nearestExpTo(all,14)||exps[0]; fillOne("bx-exp",exps,S.bxExp);
+  const L=all.filter(b=>b.exp===S.bxExp && Math.abs(b.strike/spot-1)<0.15), by=new Map(); L.forEach(b=>{ const k=b.strike+b.cp; if(!by.has(k)) by.set(k,[]); by.get(k).push(b); });
+  const keys=[...by.keys()].filter(k=>new Set(by.get(k).map(b=>b.venue)).size>=2).sort((a,b)=>parseFloat(a)-parseFloat(b)||a.localeCompare(b)), vs=[...new Set(L.map(b=>b.venue))];
+  const c2=ch("c-bxstrike"); if(c2) c2.setOption({...o,legend:{...o.legend,type:"scroll"},grid:{...o.grid,top:44,bottom:50},tooltip:{...o.tooltip,valueFormatter:v=>typeof v==="number"?"$"+fmtNum(v,1):v},
+    xAxis:ax(o,{type:"category",data:keys.map(k=>fmtNum(parseFloat(k))+k.slice(-1)),axisLabel:{...o._axis.axisLabel,rotate:45}}),yAxis:ax(o,{type:"value",name:"Mark minus Mittel ($)",nameTextStyle:{color:o.textStyle.color,fontSize:10}}),
+    series:vs.map(v=>({name:VEN[v].name,type:"bar",itemStyle:{color:VEN[v].col},data:keys.map(k=>{ const arr=by.get(k), mean=arr.reduce((a,b)=>a+b.mark_price*b.F,0)/arr.length, x=arr.find(b=>b.venue===v); return x? +(x.mark_price*x.F-mean).toFixed(2) : null; })}))},true);
+};
+document.addEventListener("change",e=>{ if(e.target.id==="bx-exp"){ S.bxExp=e.target.value; save(); render(); } });
+
+/* --- Lead-Lag-Matrix --- */
+V3.leadlag = P2("Lead-Lag-Matrix","Kreuzkorrelation der Preisbewegungen, Zeile führt Spalte",'<div class="form">'+seg3("k3","llWin",[[300,"5 Min."],[900,"15 Min."],[1800,"30 Min."],[3600,"60 Min."]])+seg3("k3","llLag",[[1,"1 s"],[5,"5 s"],[15,"15 s"]])+'</div><div class="chart" id="c-llmat" style="height:min(60vh,520px)"></div><div class="note" id="ll-note"></div>',"wide")+
+  P2("Bester Lag je Paar","welche Quelle zuerst reagiert",'<div id="ll-t"></div>',"wide")+P2("Führungs-Ranking","Anzahl Paare, die eine Quelle anführt",'<div class="chart" id="c-llrank"></div>',"wide");
+function llSeries(win){ const now=Math.floor(Date.now()/1000), out={};
+  for(const [v,h] of Object.entries(SPH)){ if(h.t.length<30) continue; const m=new Map(h.t.map((t,i)=>[t,h.p[i]])), arr=[]; let last=null; for(let t=now-win;t<=now;t++){ if(m.has(t)) last=m.get(t); arr.push(last); }
+    const r=[]; for(let i=1;i<arr.length;i++) r.push(arr[i]&&arr[i-1]? Math.log(arr[i]/arr[i-1]) : 0); out[v]=r; } return out; }
+function corrLag(a,b,lag){ const n=a.length-lag; if(n<20) return null; let sa=0,sb=0,saa=0,sbb=0,sab=0; for(let i=0;i<n;i++){ const x=a[i], y=b[i+lag]; sa+=x; sb+=y; saa+=x*x; sbb+=y*y; sab+=x*y; }
+  const cv=sab/n-sa*sb/n/n, va=saa/n-sa*sa/n/n, vb=sbb/n-sb*sb/n/n; return va>0&&vb>0? cv/Math.sqrt(va*vb) : null; }
+NB3.add("leadlag");
+R3.leadlag = () => {
+  const win=S.llWin||300, lagMax=S.llLag||5, R=llSeries(win), vs=Object.keys(R), o=base(), cells=[], pairs=[];
+  vs.forEach((a,i)=>vs.forEach((b,j)=>{ if(a===b){ cells.push([j,i,1]); return; } let best=-2,bl=0; for(let l=1;l<=lagMax;l++){ const c=corrLag(R[a],R[b],l); if(c!=null&&c>best){ best=c; bl=l; } } const c0=corrLag(R[a],R[b],0);
+    cells.push([j,i,best>-2?+best.toFixed(3):null]); if(i<j) pairs.push({a,b,c0,best,bl,rev:null}); }));
+  pairs.forEach(p=>{ let best=-2,bl=0; for(let l=1;l<=lagMax;l++){ const c=corrLag(R[p.b],R[p.a],l); if(c!=null&&c>best){ best=c; bl=l; } } p.rev=best; p.rbl=bl; p.leader = p.best>=p.rev? p.a : p.b; p.lc=Math.max(p.best,p.rev); p.lag=p.best>=p.rev?p.bl:p.rbl; });
+  const nm=v=>SPV[v]?SPV[v].n:v, c=ch("c-llmat");
+  if(c) c.setOption({backgroundColor:"transparent",animation:false,textStyle:o.textStyle,tooltip:{...o.tooltip,trigger:"item",formatter:p=>`${nm(vs[p.value[1]])} → ${nm(vs[p.value[0]])}<br>beste Korrelation bis ${lagMax} s Lag: <b>${p.value[2]}</b>`},
+    grid:{left:120,right:20,top:10,bottom:90},xAxis:ax(o,{type:"category",data:vs.map(nm),axisLabel:{...o._axis.axisLabel,rotate:40}}),yAxis:ax(o,{type:"category",data:vs.map(nm)}),
+    visualMap:{show:false,min:-0.2,max:1,inRange:{color:[css("--panel-2"),alpha(css("--accent"),.5),css("--accent")]}},series:[{type:"heatmap",data:cells,label:{show:vs.length<=10,fontSize:9,color:css("--fg"),formatter:p=>p.value[2]==null?"":(+p.value[2]).toFixed(2)},itemStyle:{borderColor:css("--bg"),borderWidth:1}}]},true);
+  $("ll-note").textContent = vs.length<2? "Sammle Preisdaten … Die Matrix braucht mindestens 30 Sekunden Live-Daten von zwei Quellen." : `Fenster ${win/60} Min., ${vs.length} Quellen, 1-Sekunden-Renditen. Werte nahe 1 bedeuten, dass die Spalte der Zeile mit diesem Lag folgt.`;
+  pairs.sort((x,y)=>(y.lc||0)-(x.lc||0));
+  $("ll-t").innerHTML = tbl3(["Paar","Gleichzeitig","Führt","Lag","Korrelation"], pairs.slice(0,30).map(p=>`<tr><td class="l">${nm(p.a)} ↔ ${nm(p.b)}</td><td>${p.c0==null?"–":p.c0.toFixed(2)}</td><td>${nm(p.leader)}</td><td>${p.lag} s</td><td>${p.lc>-2?p.lc.toFixed(2):"–"}</td></tr>`),"free");
+  const rank={}; pairs.forEach(p=>{ if(p.lc>0.05) rank[p.leader]=(rank[p.leader]||0)+1; }); const rk=Object.entries(rank).sort((a,b)=>b[1]-a[1]);
+  const c2=ch("c-llrank"); if(c2) c2.setOption({...o,grid:{...o.grid,right:20},xAxis:ax(o,{type:"category",data:rk.map(r=>nm(r[0])),splitLine:{show:false}}),yAxis:ax(o,{type:"value",minInterval:1}),series:[{type:"bar",name:"geführte Paare",data:rk.map(r=>({value:r[1],itemStyle:barStyle((SPV[r[0]]||{}).c||css("--accent"))})),barMaxWidth:40}]},true);
+};
+
+/* --- Funding-Raten aller Börsen --- */
+V3.funding = P2("Funding-Raten","Perpetual Swaps, live",'<div class="cards" id="fd-cards"></div>',"wide")+P2("Funding-Historie","annualisiert, je Abrechnung",'<div class="chart tall" id="c-fdhist"></div>',"wide")+
+  P2("Funding-Spread","höchste minus niedrigste Rate",'<div class="chart" id="c-fdspread"></div>',"wide");
+NB3.add("funding");
+R3.funding = () => {
+  const P=PERP, cd=(n,r,per,mark,next)=>cardH(n, r==null?"–":(r*100).toFixed(4)+" %", `${per} · ann. ${r==null?"–":pct3(r*100*(per==="8h"?3*365:per==="1h"?24*365:3*365))}${mark?" · $"+fmtNum(mark):""}${next?" · nächstes in "+Math.max(0,Math.round((next-Date.now())/60000))+" Min.":""}`, cls3(r));
+  $("fd-cards").innerHTML = cd("Deribit",P.deribit.fund8h,"8h",P.deribit.mark)+cd("Binance",P.binance.fund,"8h",P.binance.mark,P.binance.next)+cd("Bybit",P.bybit.fund,"8h",P.bybit.mark,P.bybit.next)+cd("OKX",P.okx.fund,"8h",P.okx.last,P.okx.next);
+  const o=base(), ser=[["Binance",FH.binance,"#f0b90b"],["Bybit",FH.bybit,"#f7a600"],["OKX",FH.okx,"#cfd3dc"],["Deribit",(funding||[]).filter((_,i)=>i%8===0).map(f=>[f.timestamp,f.interest_8h]),"#3ad0ff"]];
+  const c=ch("c-fdhist"); if(c) c.setOption({...o,legend:{...o.legend},grid:{...o.grid,top:40},tooltip:{...o.tooltip,valueFormatter:v=>typeof v==="number"?v.toFixed(2)+" %":v},xAxis:ax(o,{type:"time",splitLine:{show:false}}),yAxis:ax(o,{type:"value",axisLabel:{...o._axis.axisLabel,formatter:"{value}%"}}),
+    series:ser.map(([n,d,col])=>({name:n,type:"line",showSymbol:false,step:"end",lineStyle:{width:1.4,color:col},itemStyle:{color:col},data:d.map(x=>[x[0],+(x[1]*100*3*365).toFixed(2)])}))},true);
+  const T=new Map(); ser.slice(0,3).forEach(([n,d])=>d.forEach(x=>{ const k=Math.round(x[0]/3600e3)*3600e3; if(!T.has(k)) T.set(k,[]); T.get(k).push(x[1]); }));
+  const sp=[...T.entries()].filter(([,a])=>a.length>=2).sort((a,b)=>a[0]-b[0]).map(([t,a])=>[t,+((Math.max(...a)-Math.min(...a))*100*3*365).toFixed(2)]);
+  const c2=ch("c-fdspread"); if(c2) c2.setOption({...o,grid:{...o.grid,right:20},tooltip:{...o.tooltip,valueFormatter:v=>typeof v==="number"?v.toFixed(2)+" % p.a.":v},xAxis:ax(o,{type:"time",splitLine:{show:false}}),yAxis:ax(o,{type:"value",axisLabel:{...o._axis.axisLabel,formatter:"{value}%"}}),series:[{type:"bar",name:"Spread",data:sp,itemStyle:{color:css("--warn")},barMaxWidth:8}]},true);
+};
+
+/* --- Futures Term Structure (alle Börsen) --- */
+V3.fterm = P2("Futures Term Structure","annualisierte Prämie je Laufzeit und Börse",'<div class="form">'+seg3("k3","ftMode",[["apr","Annualisiert"],["prem","Prämie %"]])+'</div><div class="chart tall" id="c-fterm"></div>',"wide")+P2("Instrumente","alle laufenden Futures",'<div id="ft-t"></div>',"wide");
+NB3.add("fterm");
+R3.fterm = () => {
+  const o=base(), COL={Deribit:"#3ad0ff",Binance:"#f0b90b",Bybit:"#f7a600",OKX:"#cfd3dc"}, apr=S.ftMode!=="prem", rows=FUTX.map(f=>{ const d=(f.expTs-Date.now())/DAY, pr=(f.mark/f.idx-1)*100; return {...f,d,pr,apr:pr*365/Math.max(d,0.5)}; }).sort((a,b)=>a.expTs-b.expTs);
+  const vs=[...new Set(rows.map(r=>r.venue))], c=ch("c-fterm");
+  if(c) c.setOption({...o,legend:{...o.legend},grid:{...o.grid,top:40},tooltip:{...o.tooltip,trigger:"item",formatter:p=>`${p.data.n}<br>${p.value[0].toFixed(0)} Tage · <b>${p.value[1].toFixed(2)} %</b>`},xAxis:ax(o,{type:"value",name:"Tage bis Verfall",nameLocation:"middle",nameGap:24}),yAxis:ax(o,{type:"value",scale:true,axisLabel:{...o._axis.axisLabel,formatter:"{value}%"}}),
+    series:vs.map(v=>({name:v,type:"line",symbolSize:7,lineStyle:{color:COL[v],width:1.6},itemStyle:{color:COL[v]},data:rows.filter(r=>r.venue===v).map(r=>({value:[r.d,+(apr?r.apr:r.pr).toFixed(3)],n:r.name}))}))},true);
+  $("ft-t").innerHTML = tbl3(["Instrument","Börse","Verfall","DTE","Mark","Prämie","Annualisiert"], rows.map(r=>`<tr><td class="l">${r.name}</td><td>${r.venue}</td><td>${new Date(r.expTs).toISOString().slice(0,10)}</td><td>${r.d.toFixed(0)}</td><td>$${fmtNum(r.mark,1)}</td><td class="${cls3(r.pr)}">${pct3(r.pr)}</td><td class="${cls3(r.apr)}">${pct3(r.apr)}</td></tr>`),"free");
+};
+
+/* --- Basis-Historie --- */
+V3.bhist = P2("Basis-Historie","annualisierte Basis je Deribit-Future im Zeitverlauf",'<div class="form">'+seg3("k3","bhSpan",[[7,"7T"],[30,"30T"],[90,"90T"],[180,"180T"]])+seg3("k3","bhMode",[["apr","APR %"],["basis","Basis %"]])+'</div><div class="chart tall" id="c-bhist"></div><div class="note">Basis gegen den Deribit-Perpetual als Spot-Näherung, aus Stundenkerzen (4h bei langen Fenstern).</div>',"wide");
+let BH={k:"",d:{}};
+async function loadBH(){ const span=S.bhSpan||30, k=S.cur+span; if(BH.k===k && Date.now()-BH.at<10*60000) return; BH={k,at:Date.now(),d:{}};
+  const now=Date.now(), res=span>30?"240":"60", st=now-span*DAY, fut=futBook.filter(f=>!f.perp&&f.expTs);
+  const [p,...fs]=await Promise.all([dRpc("public/get_tradingview_chart_data",{instrument_name:S.cur+"-PERPETUAL",start_timestamp:st,end_timestamp:now,resolution:res})].concat(fut.map(f=>dRpc("public/get_tradingview_chart_data",{instrument_name:f.instrument_name,start_timestamp:st,end_timestamp:now,resolution:res}))));
+  if(!p) return; const pm=new Map(p.ticks.map((t,i)=>[t,p.close[i]]));
+  fut.forEach((f,j)=>{ const r=fs[j]; if(!r) return; BH.d[f.instrument_name]=r.ticks.map((t,i)=>{ const s=pm.get(t); if(!s) return null; const b=(r.close[i]/s-1)*100, d=(f.expTs-t)/DAY; return [t,b,d>0.5?b*365/d:null]; }).filter(Boolean); });
+  scheduleRender(); }
+R3.bhist = () => { loadBH(); const o=base(), apr=S.bhMode!=="basis", c=ch("c-bhist"); if(!c) return; const ks=Object.keys(BH.d);
+  c.setOption({...o,legend:{...o.legend,type:"scroll"},grid:{...o.grid,top:44},tooltip:{...o.tooltip,valueFormatter:v=>typeof v==="number"?v.toFixed(2)+" %":v},xAxis:ax(o,{type:"time",splitLine:{show:false}}),yAxis:ax(o,{type:"value",scale:true,axisLabel:{...o._axis.axisLabel,formatter:"{value}%"}}),
+    series:ks.map((k,i)=>({name:k.split("-")[1],type:"line",showSymbol:false,lineStyle:{width:1.4,color:`hsl(${190+i*22},80%,${65-i*3}%)`},itemStyle:{color:`hsl(${190+i*22},80%,${65-i*3}%)`},data:BH.d[k].map(x=>[x[0],x[apr?2:1]==null?null:+x[apr?2:1].toFixed(3)])}))},true); };
+
+/* --- OI-Profil nach Marktwert --- */
+V3.oiprof = P2("OI-Profil nach Marktwert","Kontrakte, Marktwert und innerer Wert je Strike",'<div class="form"><label>Verfall <select id="op-exp"></select></label>'+seg3("k3","opMode",[["mv","Marktwert"],["oi","Kontrakte"],["intr","Innerer Wert"],["avg","Ø Prämie"]])+'</div><div class="cards" id="op-cards"></div><div class="chart tall" id="c-oiprof"></div>',"wide");
+R3.oiprof = (lb) => {
+  const exps=expiries(lb); if(S.opExp!=="all" && !exps.includes(S.opExp)) S.opExp="all"; fillOne("op-exp",["all"].concat(exps),S.opExp||"all"); const se=$("op-exp"); if(se&&se.options[0]) se.options[0].text="Alle Verfälle";
+  const L=lb.filter(b=>(S.opExp==="all"||b.exp===S.opExp) && Math.abs(b.strike/spot-1)<0.35), ks=[...new Set(L.map(b=>b.strike))].sort((a,b)=>a-b), mode=S.opMode||"mv";
+  const agg=ks.map(k=>{ const r={k,c:0,p:0,cmv:0,pmv:0,ci:0,pi:0}; L.filter(b=>b.strike===k).forEach(b=>{ const mv=b.mark_price*b.F*b.open_interest, iv=(b.cp==="C"?Math.max(spot-k,0):Math.max(k-spot,0))*b.open_interest; if(b.cp==="C"){ r.c+=b.open_interest; r.cmv+=mv; r.ci+=iv; } else { r.p+=b.open_interest; r.pmv+=mv; r.pi+=iv; } }); return r; });
+  const tc=agg.reduce((a,r)=>a+r.c,0), tp=agg.reduce((a,r)=>a+r.p,0), tcm=agg.reduce((a,r)=>a+r.cmv,0), tpm=agg.reduce((a,r)=>a+r.pmv,0), ti=agg.reduce((a,r)=>a+r.ci+r.pi,0);
+  $("op-cards").innerHTML = cardH("Calls",fmtNum(tc,0)+" "+S.cur,"Nominal "+fmtUsd(tc*spot)+" · Markt "+fmtUsd(tcm),"pos")+cardH("Puts",fmtNum(tp,0)+" "+S.cur,"Nominal "+fmtUsd(tp*spot)+" · Markt "+fmtUsd(tpm),"neg")+cardH("P/C-Ratio",(tp/(tc||1)).toFixed(2),"nach Kontrakten")+cardH("Innerer Wert gesamt",fmtUsd(ti),"bei aktuellem Spot");
+  const v=(r,s)=> mode==="oi"? (s==="c"?r.c:r.p) : mode==="intr"? (s==="c"?r.ci:r.pi) : mode==="avg"? ((s==="c"?r.cmv/(r.c||1):r.pmv/(r.p||1))) : (s==="c"?r.cmv:r.pmv);
+  const o=base(), c=ch("c-oiprof"); if(c) c.setOption({...o,legend:{...o.legend},grid:{...o.grid,top:40,bottom:50},tooltip:{...o.tooltip,valueFormatter:x=>typeof x==="number"?(mode==="oi"?fmtNum(x,1):fmtUsd(x)):x},xAxis:ax(o,{type:"category",data:ks.map(k=>fmtNum(k)),axisLabel:{...o._axis.axisLabel,rotate:45}}),yAxis:ax(o,{type:"value",axisLabel:{...o._axis.axisLabel,formatter:x=>mode==="oi"?fmtNum(x):fmtUsd(x)}}),
+    series:[{name:"Calls",type:"bar",stack:"a",data:agg.map(r=>+v(r,"c").toFixed(2)),itemStyle:{color:css("--bull")}},{name:"Puts",type:"bar",stack:"a",data:agg.map(r=>+v(r,"p").toFixed(2)),itemStyle:{color:css("--bear")}}],
+    ...{} },true);
+};
+document.addEventListener("change",e=>{ if(e.target.id==="op-exp"){ S.opExp=e.target.value; save(); render(); } });
+
+/* --- Liquidationen --- */
+V3.liq = P2("Liquidationen","Perps auf Binance, Bybit, OKX, live seit dem Öffnen",'<div class="cards" id="lq-cards"></div>',"wide")+P2("Liquidationen je Minute","Long- vs. Short-Liquidationen mit Preis",'<div class="chart tall" id="c-liq"></div>',"wide")+
+  P2("Liquidations-Feed","neueste zuerst",'<div class="form">'+num3("lq-min",S.lqMin||10000,5000,"ab $",110)+'</div><div id="lq-t"></div>',"wide");
+NB3.add("liq");
+R3.liq = () => {
+  const now=Date.now(), w=LIQ.filter(x=>x.ts>now-24*3600e3), sum=(f)=>w.filter(f).reduce((a,x)=>a+x.usd,0), L1=sum(x=>x.side==="long"), S1=sum(x=>x.side==="short"), h1=w.filter(x=>x.ts>now-3600e3);
+  const big=w.reduce((a,x)=>x.usd>(a?a.usd:0)?x:a,null);
+  $("lq-cards").innerHTML = cardH("Long-Liquidationen",fmtUsd(L1),"seit Start","neg")+cardH("Short-Liquidationen",fmtUsd(S1),"seit Start","pos")+cardH("Letzte Stunde",fmtUsd(h1.reduce((a,x)=>a+x.usd,0)),h1.length+" Orders")+
+    cardH("Größte",big?fmtUsd(big.usd):"–",big?`${big.side==="long"?"Long":"Short"} · ${big.venue} · $${fmtNum(big.px)}`:"")+["binance","bybit","okx"].map(v=>cardH(v[0].toUpperCase()+v.slice(1),fmtUsd(w.filter(x=>x.venue===v).reduce((a,x)=>a+x.usd,0)),w.filter(x=>x.venue===v).length+" Orders")).join("");
+  const bm=new Map(); w.forEach(x=>{ const k=Math.floor(x.ts/60000)*60000; const b=bm.get(k)||{l:0,s:0}; b[x.side==="long"?"l":"s"]+=x.usd; bm.set(k,b); }); const ks=[...bm.keys()].sort((a,b)=>a-b);
+  const o=base(), c=ch("c-liq"); if(c) c.setOption({...o,legend:{...o.legend},grid:{...o.grid,top:40},tooltip:{...o.tooltip,valueFormatter:v=>typeof v==="number"?(Math.abs(v)>1000?fmtUsd(v):fmtNum(v)):v},xAxis:ax(o,{type:"time",splitLine:{show:false}}),
+    yAxis:[ax(o,{type:"value",axisLabel:{...o._axis.axisLabel,formatter:v=>fmtUsd(v)}}),ax(o,{type:"value",scale:true,position:"right",splitLine:{show:false},axisLabel:{...o._axis.axisLabel,formatter:v=>fmtNum(v)}})],
+    series:[{name:"Longs liquidiert",type:"bar",stack:"l",data:ks.map(k=>[k,-bm.get(k).l]),itemStyle:{color:css("--bear")},barMaxWidth:6},{name:"Shorts liquidiert",type:"bar",stack:"l",data:ks.map(k=>[k,bm.get(k).s]),itemStyle:{color:css("--bull")},barMaxWidth:6},
+      {name:"Preis",type:"line",yAxisIndex:1,showSymbol:false,data:(SPH.binance||SPH.deribit||{t:[]}).t.filter((_,i)=>i%10===0).map((t,i)=>[t*1000,(SPH.binance||SPH.deribit).p[i*10]]),lineStyle:{color:css("--warn"),width:1.2}}]},true);
+  const mn=+(S.lqMin||10000); $("lq-t").innerHTML = tbl3(["Zeit","Börse","Seite","Menge","Preis","Wert"], w.filter(x=>x.usd>=mn).slice(-200).reverse().map(x=>`<tr><td class="l">${new Date(x.ts).toLocaleTimeString(LOC3,{hour:"2-digit",minute:"2-digit",second:"2-digit"})}</td><td>${x.venue}</td><td class="${x.side==="long"?"neg":"pos"}">${x.side==="long"?"Long liquidiert":"Short liquidiert"}</td><td>${fmtNum(x.qty,3)}</td><td>$${fmtNum(x.px,1)}</td><td>${fmtUsd(x.usd)}</td></tr>`));
+};
+document.addEventListener("change",e=>{ if(e.target.id==="lq-min"){ S.lqMin=+e.target.value||0; save(); render(); } });
+const LOC3="de-DE";
+
+/* --- Long/Short & Taker --- */
+V3.lsr = P2("Long/Short-Verhältnis","Anteil der Konten long vs. short",'<div class="form">'+seg3("k3","lsPer",[["5m","5m"],["15m","15m"],["1h","1h"],["4h","4h"],["1d","1T"]])+'</div><div class="cards" id="ls-cards"></div><div class="chart" id="c-ls"></div>',"wide")+
+  P2("Taker Buy/Sell","aggressive Käufe vs. Verkäufe (Binance Perp)",'<div class="chart" id="c-taker"></div>',"wide");
+NB3.add("lsr");
+R3.lsr = () => {
+  if(PST.per!==(S.lsPer||"1h")){ PST.per=S.lsPer||"1h"; loadPerpStats(); }
+  const last=a=>a.length?a[a.length-1][1]:null, o=base();
+  $("ls-cards").innerHTML = cardH("Binance Konten L/S",last(PST.ls)?last(PST.ls).toFixed(2):"–",PST.ls.length?(PST.ls[PST.ls.length-1][2]*100).toFixed(1)+" % long":"")+cardH("Binance Top-Trader (Position)",last(PST.top)?last(PST.top).toFixed(2):"–","Long/Short")+
+    cardH("Bybit Konten L/S",last(PST.byls)?last(PST.byls).toFixed(2):"–","")+cardH("Taker Buy/Sell",last(PST.taker)?last(PST.taker).toFixed(2):"–",">1 = Käufer aggressiver",last(PST.taker)>1?"pos":"neg");
+  const c=ch("c-ls"); if(c) c.setOption({...o,legend:{...o.legend},grid:{...o.grid,top:40},tooltip:{...o.tooltip,valueFormatter:v=>typeof v==="number"?v.toFixed(3):v},xAxis:ax(o,{type:"time",splitLine:{show:false}}),yAxis:ax(o,{type:"value",scale:true}),
+    series:[["Binance Konten",PST.ls,"#f0b90b"],["Binance Top-Trader",PST.top,"#ffd86b"],["Bybit Konten",PST.byls,"#f7a600"]].map(([n,d,col])=>({name:n,type:"line",showSymbol:false,data:d.map(x=>[x[0],x[1]]),lineStyle:{color:col,width:1.5},itemStyle:{color:col}}))},true);
+  const c2=ch("c-taker"); if(c2) c2.setOption({...o,legend:{...o.legend},grid:{...o.grid,top:40},xAxis:ax(o,{type:"time",splitLine:{show:false}}),yAxis:[ax(o,{type:"value",axisLabel:{...o._axis.axisLabel,formatter:v=>fmtNum(v)}}),ax(o,{type:"value",scale:true,position:"right",splitLine:{show:false}})],
+    series:[{name:"Taker-Käufe",type:"bar",stack:"t",data:PST.taker.map(x=>[x[0],x[2]]),itemStyle:{color:css("--bull")},barMaxWidth:8},{name:"Taker-Verkäufe",type:"bar",stack:"t",data:PST.taker.map(x=>[x[0],-x[3]]),itemStyle:{color:css("--bear")},barMaxWidth:8},{name:"Verhältnis",type:"line",yAxisIndex:1,showSymbol:false,data:PST.taker.map(x=>[x[0],x[1]]),lineStyle:{color:css("--warn"),width:1.4}}]},true);
+};
+
+/* --- Perp-OI & CVD --- */
+V3.perpoi = P2("Perp Open Interest","Binance (USD) und Bybit (Coins)",'<div class="cards" id="po-cards"></div><div class="chart" id="c-poi"></div>',"wide")+P2("CVD","Cumulative Volume Delta, Binance Perp seit dem Öffnen (in "+"Coins)",'<div class="chart" id="c-cvd"></div>',"wide");
+NB3.add("perpoi");
+R3.perpoi = () => {
+  const o=base(), l=a=>a.length?a[a.length-1][1]:null, ch24=a=>{ if(a.length<2) return null; const t=a[a.length-1][0]-DAY; const r=a.find(x=>x[0]>=t)||a[0]; return (a[a.length-1][1]/r[1]-1)*100; };
+  $("po-cards").innerHTML = cardH("Binance OI",fmtUsd(l(PST.oi)),pct3(ch24(PST.oi))+" in 24 h",cls3(ch24(PST.oi)))+cardH("Bybit OI",l(PST.byoi)?fmtNum(l(PST.byoi),0)+" "+S.cur:"–",pct3(ch24(PST.byoi))+" in 24 h")+cardH("Bybit OI live",PERP.bybit.oiUsd?fmtUsd(PERP.bybit.oiUsd):"–","")+cardH("OKX OI live",PERP.okx.oi?fmtNum(PERP.okx.oi,0)+" "+S.cur:"–","")+cardH("CVD (seit Start)",fmtNum(CVD.cum,1)+" "+S.cur,"Käufe "+fmtNum(CVD.buy,0)+" · Verkäufe "+fmtNum(CVD.sell,0),cls3(CVD.cum));
+  const c=ch("c-poi"); if(c) c.setOption({...o,legend:{...o.legend},grid:{...o.grid,top:40},xAxis:ax(o,{type:"time",splitLine:{show:false}}),yAxis:[ax(o,{type:"value",scale:true,axisLabel:{...o._axis.axisLabel,formatter:v=>fmtUsd(v)}}),ax(o,{type:"value",scale:true,position:"right",splitLine:{show:false},axisLabel:{...o._axis.axisLabel,formatter:v=>fmtNum(v)}})],
+    series:[{name:"Binance OI ($)",type:"line",showSymbol:false,data:PST.oi,lineStyle:{color:"#f0b90b",width:1.6},itemStyle:{color:"#f0b90b"},areaStyle:{color:"#f0b90b",opacity:.06}},{name:"Bybit OI ("+S.cur+")",type:"line",yAxisIndex:1,showSymbol:false,data:PST.byoi,lineStyle:{color:"#f7a600",width:1.2,type:"dashed"},itemStyle:{color:"#f7a600"}}]},true);
+  const c2=ch("c-cvd"); if(c2) c2.setOption({...o,legend:{...o.legend},grid:{...o.grid,top:40},xAxis:ax(o,{type:"time",splitLine:{show:false}}),yAxis:[ax(o,{type:"value",scale:true}),ax(o,{type:"value",scale:true,position:"right",splitLine:{show:false},axisLabel:{...o._axis.axisLabel,formatter:v=>fmtNum(v)}})],
+    series:[{name:"CVD",type:"line",showSymbol:false,data:CVD.t.map((t,i)=>[t,+CVD.v[i].toFixed(2)]),lineStyle:{color:css("--accent"),width:1.6},itemStyle:{color:css("--accent")},areaStyle:{color:css("--accent"),opacity:.08}},{name:"Preis",type:"line",yAxisIndex:1,showSymbol:false,data:(SPH.binance||{t:[],p:[]}).t.filter((_,i)=>i%15===0).map((t,i)=>[t*1000,SPH.binance.p[i*15]]),lineStyle:{color:css("--warn"),width:1.1}}],
+    title:CVD.t.length<2?{text:"CVD wird ab jetzt live aufgezeichnet …",left:"center",top:"middle",textStyle:{color:css("--muted"),fontSize:12,fontWeight:400}}:undefined},true);
+};
+
+/* --- Market Tide, NOPE, Hedge-Impact --- */
+V3.tide = P2("Market Tide","kumulierte Netto-Call- minus Netto-Put-Premium mit Preis",'<div class="form"><span class="seg tf"></span></div><div class="cards" id="td-cards"></div><div class="chart tall" id="c-tide"></div>',"wide")+
+  P2("Hedge-Impact","geschätzter Delta-Hedge-Flow der Dealer aus jedem Options-Trade (HIRO-Stil)",'<div class="chart tall" id="c-hiro"></div><div class="note">Kunde kauft Call/verkauft Put → Dealer wird short Delta und kauft den Basiswert. Positiv = Kaufdruck aus Hedging, negativ = Verkaufsdruck. Calls und Puts getrennt.</div>',"wide")+
+  P2("NOPE","Netto-Options-Delta im Verhältnis zum Perp-Volumen",'<div class="chart" id="c-nope"></div><div class="note">NOPE = Σ(Delta × Menge × Seite) der Options-Trades ÷ Deribit-Perp-Volumen im selben Intervall, in %. Hohe Werte zeigen, dass Options-Hedging einen großen Teil des Spot-Flows ausmacht.</div>',"wide");
+let perpVol={t:[],v:[],at:0};
+async function loadPerpVol(){ if(Date.now()-perpVol.at<60000) return; perpVol.at=Date.now(); let now=Date.now(), r=await dRpc("public/get_tradingview_chart_data",{instrument_name:S.cur+"-PERPETUAL",start_timestamp:now-7*DAY,end_timestamp:now,resolution:"5"}); if(r){ r=normC(r); perpVol={t:r.ticks,v:r.volume,c:r.close,at:Date.now()}; } }
+R3.tide = (lb,lv,list) => {
+  loadPerpVol(); $$("#v-tide .seg.tf").forEach(el=>{ if(!el.innerHTML) el.innerHTML=TFS.map(m=>`<button class="nf-int" data-int="${m}">${m<60?m+"m":(m/60)+"h"}</button>`).join(""); el.querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed",String(+b.dataset.int===S.nfInt))); });
+  const ms=(S.nfInt||5)*60000, bk=new Map(), dmap=new Map(); lb.forEach(b=>{ if(!dmap.has(b.instrument_name)||b.venue==="deribit") dmap.set(b.instrument_name,b.g.delta); });
+  for(const t of list){ const k=Math.floor(t.ts/ms)*ms; let b=bk.get(k); if(!b){ b={c:0,p:0,hc:0,hp:0,nd:0,px:t.idx}; bk.set(k,b); } const sg=t.side==="buy"?1:-1, d=dmap.has(t.inst)?dmap.get(t.inst):(t.cp==="C"?0.5:-0.5);
+    if(t.cp==="C") b.c+=sg*t.prem; else b.p+=sg*t.prem; const hedge=sg*d*t.amt*t.idx; if(t.cp==="C") b.hc+=hedge; else b.hp+=hedge; b.nd+=sg*d*t.amt; b.px=t.idx; }
+  const ks=[...bk.keys()].sort((a,b)=>a-b); let cc=0,cp=0,hc=0,hp=0; const tide=[], hiro=[];
+  ks.forEach(k=>{ const b=bk.get(k); cc+=b.c; cp+=b.p; hc+=b.hc; hp+=b.hp; tide.push([k,cc,cp,cc-cp,b.px]); hiro.push([k,hc,hp,hc+hp,b.px]); });
+  const L=tide[tide.length-1]||[0,0,0,0], H=hiro[hiro.length-1]||[0,0,0,0];
+  $("td-cards").innerHTML = cardH("Netto-Call-Premium",sgn3(L[1]),"Käufe − Verkäufe",cls3(L[1]))+cardH("Netto-Put-Premium",sgn3(L[2]),"Käufe − Verkäufe",cls3(-L[2]))+cardH("Tide",sgn3(L[3]),"Call − Put",cls3(L[3]))+cardH("Hedge-Impact",sgn3(H[3]),"Calls "+sgn3(H[1])+" · Puts "+sgn3(H[2]),cls3(H[3]));
+  const o=base(), y2=ax(o,{type:"value",scale:true,position:"right",splitLine:{show:false},axisLabel:{...o._axis.axisLabel,formatter:v=>fmtNum(v)}}), yU=ax(o,{type:"value",axisLabel:{...o._axis.axisLabel,formatter:v=>fmtUsd(v)}});
+  const c=ch("c-tide"); if(c) c.setOption({...o,legend:{...o.legend},grid:{...o.grid,top:40},tooltip:{...o.tooltip,valueFormatter:v=>typeof v==="number"?(Math.abs(v)<5e5&&v>1000?"$"+fmtNum(v):fmtUsd(v)):v},xAxis:ax(o,{type:"time",splitLine:{show:false}}),yAxis:[yU,y2],
+    series:[{name:"Netto-Calls",type:"line",showSymbol:false,data:tide.map(x=>[x[0],Math.round(x[1])]),lineStyle:{color:css("--bull"),width:1.8},itemStyle:{color:css("--bull")}},{name:"Netto-Puts",type:"line",showSymbol:false,data:tide.map(x=>[x[0],Math.round(x[2])]),lineStyle:{color:css("--bear"),width:1.8},itemStyle:{color:css("--bear")}},
+      {name:"Tide",type:"line",showSymbol:false,data:tide.map(x=>[x[0],Math.round(x[3])]),lineStyle:{color:css("--accent"),width:1.2,type:"dashed"},itemStyle:{color:css("--accent")},areaStyle:{color:css("--accent"),opacity:.06}},{name:"Preis",type:"line",yAxisIndex:1,showSymbol:false,data:tide.map(x=>[x[0],x[4]]),lineStyle:{color:css("--warn"),width:1.1},itemStyle:{color:css("--warn")}}]},true);
+  const c2=ch("c-hiro"); if(c2) c2.setOption({...o,legend:{...o.legend},grid:{...o.grid,top:40},tooltip:{...o.tooltip,valueFormatter:v=>typeof v==="number"?(v>1000?"$"+fmtNum(v):fmtUsd(v)):v},xAxis:ax(o,{type:"time",splitLine:{show:false}}),yAxis:[yU,y2],
+    series:[{name:"Hedge-Flow gesamt",type:"line",showSymbol:false,data:hiro.map(x=>[x[0],Math.round(x[3])]),lineStyle:{color:css("--accent"),width:2},itemStyle:{color:css("--accent")},areaStyle:{color:css("--accent"),opacity:.08}},{name:"aus Calls",type:"line",showSymbol:false,data:hiro.map(x=>[x[0],Math.round(x[1])]),lineStyle:{color:css("--bull"),width:1.1},itemStyle:{color:css("--bull")}},
+      {name:"aus Puts",type:"line",showSymbol:false,data:hiro.map(x=>[x[0],Math.round(x[2])]),lineStyle:{color:css("--bear"),width:1.1},itemStyle:{color:css("--bear")}},{name:"Preis",type:"line",yAxisIndex:1,showSymbol:false,data:hiro.map(x=>[x[0],x[4]]),lineStyle:{color:css("--warn"),width:1.1},itemStyle:{color:css("--warn")}}]},true);
+  const pv=new Map(); perpVol.t.forEach((t,i)=>{ const k=Math.floor(t/ms)*ms; pv.set(k,(pv.get(k)||0)+(perpVol.v[i]||0)); });
+  const nope=ks.map(k=>{ const v=pv.get(k); return [k, v? +(bk.get(k).nd/v*100).toFixed(3) : null]; }).filter(x=>x[1]!=null);
+  const c3=ch("c-nope"); if(c3) c3.setOption({...o,grid:{...o.grid,right:20},tooltip:{...o.tooltip,valueFormatter:v=>typeof v==="number"?v.toFixed(2)+" %":v},xAxis:ax(o,{type:"time",splitLine:{show:false}}),yAxis:ax(o,{type:"value",axisLabel:{...o._axis.axisLabel,formatter:"{value}%"}}),
+    series:[{type:"bar",name:"NOPE",data:nope.map(x=>({value:x,itemStyle:{color:x[1]>=0?css("--bull"):css("--bear")}})),barMaxWidth:6}]},true);
+};
+
+/* --- News --- */
+V3.news = P2("Crypto-News","Cointelegraph, CoinDesk, Decrypt, Bitcoin Magazine, The Block, CryptoSlate",'<div class="form"><input id="nw-q" class="chip" placeholder="Stichwort, z. B. ETF, Fed, Options …" style="flex:1;min-width:180px" value="'+esc(S.nwQ||"")+'">'+seg3("k3","nwOnly",[["","Alle"],["cur","Nur "+"BTC/ETH-Bezug"]])+'<button class="btn ghost" id="nw-ref">Aktualisieren</button></div><div id="nw-list" class="nwl"></div>',"wide");
+NB3.add("news");
+R3.news = () => { loadNews(false); const q=(S.nwQ||"").trim().toLowerCase(), terms=q.split(/\s+/).filter(Boolean), only=S.nwOnly==="cur", rx=S.cur==="BTC"?/bitcoin|btc/i:/ether|eth\b/i;
+  const L=NEWS.filter(n=>(!terms.length||terms.every(t=>(n.title+" "+n.desc).toLowerCase().includes(t)))&&(!only||rx.test(n.title+" "+n.desc))).slice(0,120);
+  const hl=s=>{ let h=esc(s); terms.forEach(t=>{ h=h.replace(new RegExp("("+t.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+")","ig"),"<mark>$1</mark>"); }); return h; };
+  $("nw-list").innerHTML = L.length? L.map(n=>`<a class="nwi" href="${esc(n.link)}" target="_blank" rel="noopener"><div class="nwh"><span class="vtag">${esc(n.src)}</span><span class="mut">${fmtDT(n.ts)}</span></div><div class="nwt">${hl(n.title)}</div><div class="mut nwd">${hl(n.desc)}</div></a>`).join("") : `<div class="empty">${NEWS.length?"Keine Treffer für diese Suche.":"Lade News …"}</div>`; };
+document.addEventListener("input",e=>{ if(e.target.id==="nw-q"){ S.nwQ=e.target.value; save(); clearTimeout(window.__nwT); window.__nwT=setTimeout(render,250); } });
+document.addEventListener("click",e=>{ if(e.target.id==="nw-ref"){ loadNews(true); } });
+
+/* --- Quellen-Status --- */
+V3.sources = P2("Datenquellen","Status aller Verbindungen dieses Terminals",'<div id="src-t"></div>',"wide")+P2("Verfügbarkeit","seit dem Öffnen, alle 30 Sekunden geprüft",'<div class="chart tall" id="c-src"></div>',"wide");
+NB3.add("sources");
+R3.sources = () => { const st=srcStatus();
+  $("src-t").innerHTML = tbl3(["Quelle","Aktiviert","Verbunden","Letzte Nachricht","Endpunkt"], st.map(s=>`<tr><td class="l">${s.n}</td><td>${s.en===false?"nein":"ja"}</td><td class="${s.ok?"pos":"neg"}">${s.ok?"● live":"○ getrennt"}</td><td>${s.age==null?"–":s.age+" s"}</td><td class="l mut" style="font-size:11px">${esc(s.url||"")}</td></tr>`),"free");
+  const o=base(), keys=Object.keys(SRC_LOG), c=ch("c-src"); if(c) c.setOption({backgroundColor:"transparent",animation:false,textStyle:o.textStyle,tooltip:{...o.tooltip,trigger:"item",formatter:p=>`${keys[p.value[1]]}<br>${fmtDT(p.value[0])}: ${p.value[2]?"verbunden":"getrennt"}`},grid:{left:120,right:20,top:10,bottom:30},
+    xAxis:ax(o,{type:"time",splitLine:{show:false}}),yAxis:ax(o,{type:"category",data:keys}),visualMap:{show:false,min:0,max:1,inRange:{color:[css("--bear"),css("--bull")]}},
+    series:[{type:"scatter",symbol:"rect",symbolSize:[6,14],data:keys.flatMap((k,i)=>SRC_LOG[k].map(([t,ok])=>[t,i,ok]))}]},true); };
+
+/* ====================== Session 3: Gamma, Greeks, Positionierung ====================== */
+function gexByStrike(lb, pct=0.25){ const m=new Map(); for(const b of lb){ if(Math.abs(b.strike/spot-1)>pct) continue; m.set(b.strike,(m.get(b.strike)||0)+exposureOf(b,"gex")); } return [...m.entries()].sort((a,b)=>a[0]-b[0]); }
+function keyLevels(lb, lv){
+  const g=gexByStrike(lb,0.3), pos=g.filter(x=>x[1]>0).sort((a,b)=>b[1]-a[1]), neg=g.filter(x=>x[1]<0).sort((a,b)=>a[1]-b[1]), abs=[...g].sort((a,b)=>Math.abs(b[1])-Math.abs(a[1]));
+  const net=g.reduce((a,x)=>a+x[1],0), below=neg.filter(x=>x[0]<spot);
+  return {calls:pos.slice(0,3), puts:neg.slice(0,3), abs:abs[0]||null, flip:lv.flip, net, hedge:below[0]||null, regime: net>0?"Long Gamma":"Short Gamma", g};
+}
+
+/* --- GEX-Profil: Kerzen + Gamma-Heatmap über die Zeit --- */
+V3.gexprof = P2("GEX-Profil","Netto-Dealer-Gamma je Strike · Kerzen mit Gamma-Oberfläche im Zeitverlauf",'<div class="form">'+seg3("k3","gpSpan",[[6,"6h"],[12,"12h"],[24,"24h"],[72,"3T"]])+seg3("k3","gpRange",[[0.02,"±2 %"],[0.05,"±5 %"],[0.1,"±10 %"]])+seg3("k3","gpScale",[["abs","Absolut"],["rel","Relativ"]])+'</div><div class="cards" id="gp-cards"></div><div class="chart" id="c-gpheat" style="height:min(72vh,640px)"></div><div class="note" id="gp-note"></div>',"wide")+
+  P2("GEX je Strike","aktueller Snapshot mit Call Wall, Put Wall, Spot und Flip",'<div class="form"><label>Verfall <select id="gp-exp"></select></label></div><div class="chart tall" id="c-gpbar"></div>',"wide");
+let gpCand={k:"",t:[],o:[],h:[],l:[],c:[]};
+async function loadGpCand(span){ const k=S.cur+span; if(gpCand.k===k && Date.now()-gpCand.at<60000) return; let now=Date.now(), r=await dRpc("public/get_tradingview_chart_data",{instrument_name:S.cur+"-PERPETUAL",start_timestamp:now-span*3600e3,end_timestamp:now,resolution:span>24?"60":"15"});
+  if(r){ r=normC(r); gpCand={k,at:Date.now(),t:r.ticks,o:r.open,h:r.high,l:r.low,c:r.close}; } scheduleRender(); }
+R3.gexprof = (lb,lv) => {
+  const span=S.gpSpan||24, rg=S.gpRange||0.05, rel=S.gpScale==="rel"; loadGpCand(span);
+  const K=keyLevels(lb,lv); $("gp-cards").innerHTML = cardH("Netto-GEX",sgn3(K.net),K.regime,cls3(K.net))+cardH("Call Wall",K.calls[0]?"$"+fmtNum(K.calls[0][0]):"–",K.calls[0]?pct3((K.calls[0][0]/spot-1)*100,1)+" vom Spot":"","pos")+cardH("Put Wall",K.puts[0]?"$"+fmtNum(K.puts[0][0]):"–",K.puts[0]?pct3((K.puts[0][0]/spot-1)*100,1)+" vom Spot":"","neg")+cardH("GEX Flip",K.flip?"$"+fmtNum(K.flip):"–",K.flip?pct3((K.flip/spot-1)*100,1)+" vom Spot":"","warn")+cardH("Spot","$"+fmtNum(spot),"");
+  const now=Date.now(), S0=snaps.filter(s=>s.t>=now-span*3600e3), lo=spot*(1-rg), hi=spot*(1+rg), o=base(), data=[]; let mx=0;
+  S0.forEach((s,j)=>{ const w=(S0[j+1]?S0[j+1].t:now)-s.t; s.ks.forEach((k,i)=>{ if(k<lo||k>hi) return; const v=s.st.gex[i]; if(!v) return; data.push([s.t,k,v,w]); mx=Math.max(mx,Math.abs(v)); }); });
+  if(rel){ const byT=new Map(); data.forEach(d=>byT.set(d[0],Math.max(byT.get(d[0])||0,Math.abs(d[2])))); data.forEach(d=>d[2]=d[2]/(byT.get(d[0])||1)); mx=1; }
+  const ks=[...new Set(lb.map(b=>b.strike))].filter(k=>k>=lo&&k<=hi).sort((a,b)=>a-b), dk=ks.length>1? Math.min(...ks.slice(1).map((k,i)=>k-ks[i])) : spot*0.01;
+  const c=ch("c-gpheat"); if(c){ const lines=[["Call Wall",K.calls[0]&&K.calls[0][0],css("--bull")],["Put Wall",K.puts[0]&&K.puts[0][0],css("--bear")],["Flip",K.flip,css("--warn")]].filter(x=>x[1]);
+    c.setOption({backgroundColor:"transparent",animation:false,textStyle:o.textStyle,grid:{left:70,right:20,top:16,bottom:46},tooltip:{...o.tooltip,trigger:"item"},
+      xAxis:ax(o,{type:"time",splitLine:{show:false},min:now-span*3600e3,max:now}),yAxis:ax(o,{type:"value",min:lo,max:hi,axisLabel:{...o._axis.axisLabel,formatter:v=>fmtNum(v)}}),
+      visualMap:{show:true,orient:"horizontal",left:"center",bottom:0,itemHeight:140,itemWidth:10,min:-mx||-1,max:mx||1,dimension:2,seriesIndex:0,calculable:false,text:[rel?"+max":fmtUsd(mx),rel?"-max":fmtUsd(-mx)],textStyle:{color:css("--muted"),fontSize:10},inRange:{color:[css("--bear"),alpha(css("--bear"),.25),css("--panel-2"),alpha(css("--bull"),.25),css("--bull")]}},
+      series:[{type:"custom",renderItem:(p,api)=>{ const t=api.value(0), k=api.value(1), w=api.value(3); const a=api.coord([t,k+dk/2]), b=api.coord([t+w,k-dk/2]); return {type:"rect",shape:{x:a[0],y:a[1],width:Math.max(1,b[0]-a[0]),height:Math.max(1,b[1]-a[1])},style:{fill:api.visual("color")}}; },encode:{x:0,y:1},data,
+          tooltip:{formatter:p=>`${fmtDT(p.value[0])} · Strike ${fmtNum(p.value[1])}<br>GEX <b>${rel?(p.value[2]*100).toFixed(0)+" %":fmtUsd(p.value[2])}</b>`}},
+        {type:"candlestick",name:"Perp",data:gpCand.t.map((t,i)=>[t,gpCand.o[i],gpCand.c[i],gpCand.l[i],gpCand.h[i]]),itemStyle:{color:css("--fg"),color0:"transparent",borderColor:css("--fg"),borderColor0:css("--fg")},barMaxWidth:8,
+          markLine:{symbol:"none",silent:true,data:lines.map(([n,v,col])=>({yAxis:v,lineStyle:{color:col,type:"dashed",width:1.2},label:{formatter:n+" "+fmtNum(v),color:col,position:"insideEndTop",fontSize:10}}))}}]},true); }
+  $("gp-note").textContent = S0.length? `${S0.length} Gamma-Snapshots im Fenster (alle 5 Minuten aufgezeichnet, solange das Terminal offen ist). Grün = Dealer long Gamma (bremst), rot = short Gamma (beschleunigt).` : "Die Gamma-Oberfläche entsteht aus Snapshots alle 5 Minuten. Lass das Terminal offen, dann füllt sich die Heatmap. Die Kerzen sind sofort da.";
+  const exps=expiries(lb); if(S.gpExp!=="all" && !exps.includes(S.gpExp)) S.gpExp="all"; fillOne("gp-exp",["all"].concat(exps),S.gpExp||"all"); const se=$("gp-exp"); if(se&&se.options[0]) se.options[0].text="Alle Verfälle";
+  const g=gexByStrike(S.gpExp==="all"?lb:lb.filter(b=>b.exp===S.gpExp),0.15), c2=ch("c-gpbar");
+  if(c2) c2.setOption({...o,grid:{...o.grid,right:24,bottom:50},tooltip:{...o.tooltip,valueFormatter:v=>typeof v==="number"?fmtUsd(v):v},xAxis:ax(o,{type:"category",data:g.map(x=>String(x[0])),axisLabel:{...o._axis.axisLabel,rotate:45,formatter:v=>fmtNum(+v)}}),yAxis:ax(o,{type:"value",axisLabel:{...o._axis.axisLabel,formatter:v=>fmtUsd(v)}}),
+    series:[{type:"bar",name:"Netto-GEX",data:g.map(x=>({value:Math.round(x[1]),itemStyle:barStyle(x[1]>=0?css("--bull"):css("--bear"))})),markLine:{symbol:"none",silent:true,data:levelMarks(g.map(x=>x[0]),lv)}}]},true);
+};
+document.addEventListener("change",e=>{ if(e.target.id==="gp-exp"){ S.gpExp=e.target.value; save(); render(); } });
+
+/* --- Key Levels --- */
+V3.keylv = P2("Key Levels","GEX-gewichtet, alle Verfälle",'<div class="cards" id="kl-cards"></div><div class="form">'+seg3("k3","klRes",[["15","15m"],["60","1h"],["240","4h"],["1D","1D"]])+'</div><div class="chart" id="c-kl" style="height:min(66vh,560px)"></div>',"wide")+
+  P2("Level-Tabelle","mit Abstand zum Spot und GEX-Stärke",'<div id="kl-t"></div><div class="note">Call Wall = größte positive GEX (Widerstand), Put Wall = größte negative GEX (Unterstützung), Flip = Netto-GEX kreuzt null. Absolute Gamma = Strike mit dem größten Betrag. Hedge Wall = stärkste negative GEX unter dem Spot. Vol Trigger ≈ Flip: darunter steigt die Volatilität tendenziell.</div>',"wide");
+let klCand={k:""};
+async function loadKlCand(){ const res=S.klRes||"60", span={"15":2,"60":7,"240":30,"1D":180}[res], k=S.cur+res; if(klCand.k===k && Date.now()-klCand.at<60000) return; let now=Date.now(), r=await dRpc("public/get_tradingview_chart_data",{instrument_name:S.cur+"-PERPETUAL",start_timestamp:now-span*DAY,end_timestamp:now,resolution:res}); if(r){ r=normC(r); klCand={k,at:Date.now(),t:r.ticks,o:r.open,h:r.high,l:r.low,c:r.close}; } scheduleRender(); }
+R3.keylv = (lb,lv) => {
+  loadKlCand(); const K=keyLevels(lb,lv), mx=Math.max(...K.g.map(x=>Math.abs(x[1])),1);
+  $("kl-cards").innerHTML = cardH("Regime",K.regime,"Netto-GEX "+sgn3(K.net),cls3(K.net))+cardH("GEX Flip",K.flip?"$"+fmtNum(K.flip):"–",K.flip?pct3((K.flip/spot-1)*100,1):"","warn")+cardH("Absolute Gamma",K.abs?"$"+fmtNum(K.abs[0]):"–",K.abs?fmtUsd(K.abs[1]):"")+cardH("Hedge Wall",K.hedge?"$"+fmtNum(K.hedge[0]):"–",K.hedge?fmtUsd(K.hedge[1]):"","neg");
+  const rows=[...K.calls.map((x,i)=>["Call Wall "+(i+1),x,"pos"]),["GEX Flip",K.flip?[K.flip,null]:null,"warn"],["Vol Trigger",K.flip?[K.flip,null]:null,"warn"],...(K.abs?[["Absolute Gamma",K.abs,""]]:[]),...(K.hedge?[["Hedge Wall",K.hedge,"neg"]]:[]),...K.puts.map((x,i)=>["Put Wall "+(i+1),x,"neg"])].filter(r=>r[1]);
+  $("kl-t").innerHTML = tbl3(["Level","Strike","vs. Spot","GEX","Stärke"], rows.map(([n,x,c])=>`<tr><td class="l ${c}">${n}</td><td>$${fmtNum(x[0])}</td><td>${pct3((x[0]/spot-1)*100,1)}</td><td>${x[1]==null?"–":fmtUsd(x[1])}</td><td class="l"><span class="bar ${c}" style="display:inline-block;height:8px;border-radius:3px;width:${x[1]==null?0:Math.round(Math.abs(x[1])/mx*120)}px;background:var(--${c==="pos"?"bull":c==="neg"?"bear":"warn"})"></span></td></tr>`),"free");
+  const o=base(), c=ch("c-kl"); if(c && klCand.t){ const col={pos:css("--bull"),neg:css("--bear"),warn:css("--warn"),"":css("--accent")};
+    c.setOption({...o,grid:{...o.grid,right:90},tooltip:{...o.tooltip,trigger:"axis"},xAxis:ax(o,{type:"category",data:klCand.t.map(t=>fmtDT(t)),splitLine:{show:false}}),yAxis:ax(o,{type:"value",scale:true,axisLabel:{...o._axis.axisLabel,formatter:v=>fmtNum(v)}}),
+      series:[{type:"candlestick",name:"Perp",data:klCand.t.map((_,i)=>[klCand.o[i],klCand.c[i],klCand.l[i],klCand.h[i]]),itemStyle:{color:css("--bull"),color0:css("--bear"),borderColor:css("--bull"),borderColor0:css("--bear")},
+        markLine:{symbol:"none",silent:true,data:rows.filter(r=>r[0]!=="Vol Trigger").map(([n,x,cc])=>({yAxis:x[0],lineStyle:{color:col[cc],type:n.indexOf("Flip")>=0?"dashed":"solid",width:1.1,opacity:.9},label:{formatter:n,color:col[cc],position:"end",fontSize:10}}))}}]},true); }
+};
+
+/* --- Höhere Greeks --- */
+const HG = {vanna:["Vanna","$ Delta je +1 Vola-Punkt"],charm:["Charm","$ Delta-Drift je Tag"],vomma:["Vomma","Vega-Änderung je Vola-Punkt"],speed:["Speed","Gamma-Änderung je 1 % Spot"],zomma:["Zomma","Gamma-Änderung je Vola-Punkt"],color:["Color","Gamma-Drift je Tag"]};
+function hgOf(b,k){ const F=b.F, K=b.strike, T=b.T, s=b.sig, sT=s*Math.sqrt(T), d1=(Math.log(F/K)+s*s*T/2)/sT, d2=d1-sT, pd=npdf(d1), gam=pd/(F*sT), sg=b.cp==="C"?1:-1, oi=b.open_interest;
+  switch(k){ case "vanna": return sg*(-pd*d2/s)*oi*F*0.01; case "charm": return sg*(pd*d2/(2*T))/365*oi*F; case "vomma": return sg*F*pd*Math.sqrt(T)*d1*d2/s/10000*oi;
+    case "speed": return sg*(-gam/F*(d1/sT+1))*oi*F*F*F*0.0001; case "zomma": return sg*gam*(d1*d2-1)/s*oi*F*F*0.0001; case "color": return sg*(-pd/(2*F*T*sT)*(1-d1*d2))/365*oi*F*F*0.01; } return 0; }
+V3.higher = P2("Höhere Greeks","Dealer-Exposure zweiter und dritter Ordnung",'<div class="form">'+seg3("k3","hgK",Object.entries(HG).map(([k,v])=>[k,v[0]]))+'<label>Verfall <select id="hg-exp"></select></label></div><div class="cards" id="hg-cards"></div><div class="chart tall" id="c-hg"></div><div class="note" id="hg-note"></div>',"wide")+
+  P2("Je Verfall","Summe aller sechs Greeks",'<div id="hg-t"></div>',"wide");
+R3.higher = (lb) => {
+  const k=S.hgK||"vanna", exps=expiries(lb); if(S.hgExp!=="all" && !exps.includes(S.hgExp)) S.hgExp="all"; fillOne("hg-exp",["all"].concat(exps),S.hgExp||"all"); const se=$("hg-exp"); if(se&&se.options[0]) se.options[0].text="Alle Verfälle";
+  const L=lb.filter(b=>(S.hgExp==="all"||b.exp===S.hgExp)&&Math.abs(b.strike/spot-1)<0.2&&b.T>0.0005), m=new Map(); L.forEach(b=>m.set(b.strike,(m.get(b.strike)||0)+hgOf(b,k))); const g=[...m.entries()].sort((a,b)=>a[0]-b[0]);
+  const tot=K=>L.reduce((a,b)=>a+hgOf(b,K),0);
+  $("hg-cards").innerHTML = Object.entries(HG).map(([K,v])=>{ const t=tot(K); return cardH("Netto-"+v[0],sgn3(t,Math.abs(t)>1e3?fmtUsd:x=>fmtNum(x,2)),v[1],cls3(t)); }).join("");
+  const o=base(), c=ch("c-hg"); if(c) c.setOption({...o,grid:{...o.grid,right:24,bottom:50},tooltip:{...o.tooltip,valueFormatter:v=>typeof v==="number"?(Math.abs(v)>1e3?fmtUsd(v):fmtNum(v,2)):v},xAxis:ax(o,{type:"category",data:g.map(x=>String(x[0])),axisLabel:{...o._axis.axisLabel,rotate:45,formatter:v=>fmtNum(+v)}}),yAxis:ax(o,{type:"value",axisLabel:{...o._axis.axisLabel,formatter:v=>Math.abs(v)>1e3?fmtUsd(v):fmtNum(v,1)}}),
+    series:[{type:"bar",name:HG[k][0],data:g.map(x=>({value:+x[1].toFixed(2),itemStyle:barStyle(x[1]>=0?css("--bull"):css("--bear"))})),markLine:{symbol:"none",silent:true,data:[{xAxis:String(near(g.map(x=>x[0]),spot)),lineStyle:{color:css("--accent"),type:"dashed"},label:{formatter:"Spot",color:css("--accent")}}]}}]},true);
+  $("hg-note").textContent = HG[k][0]+": "+HG[k][1]+". Vorzeichen nach Dealer-Konvention (long Calls, short Puts). Vanna zeigt Hedge-Flow bei Vola-Bewegungen, Charm den täglichen Delta-Verfall, Speed/Zomma/Color wie schnell sich das Gamma verändert.";
+  $("hg-t").innerHTML = tbl3(["Verfall","DTE"].concat(Object.values(HG).map(v=>v[0])), exps.slice(0,14).map(e=>{ const E=lb.filter(b=>b.exp===e&&b.T>0.0005); return `<tr><td class="l">${e}</td><td>${dte(e).toFixed(1)}</td>${Object.keys(HG).map(K=>{ const t=E.reduce((a,b)=>a+hgOf(b,K),0); return `<td class="${cls3(t)}">${Math.abs(t)>1e3?fmtUsd(t):fmtNum(t,2)}</td>`; }).join("")}</tr>`; }),"free");
+};
+document.addEventListener("change",e=>{ if(e.target.id==="hg-exp"){ S.hgExp=e.target.value; save(); render(); } });
+
+/* --- Exposure-Heatmap: Thermography-Kennzahlen --- */
+V3.xheat = P2("Thermography","Kennzahlen zur Exposure-Heatmap",'<div class="cards" id="th-cards"></div>',"wide");
+R3.xheat = (lb,lv) => { const g=gexByStrike(lb,0.5), net=g.reduce((a,x)=>a+x[1],0), near10=g.filter(x=>Math.abs(x[0]/spot-1)<=0.1).reduce((a,x)=>a+Math.abs(x[1]),0), all=g.reduce((a,x)=>a+Math.abs(x[1]),0)||1;
+  const top=[...g].sort((a,b)=>Math.abs(b[1])-Math.abs(a[1]))[0], exps=expiries(lb), ex=exps.map(e=>[e,lb.filter(b=>b.exp===e).reduce((a,b)=>a+Math.abs(exposureOf(b,"gex")),0)]).sort((a,b)=>b[1]-a[1])[0];
+  $("th-cards").innerHTML = cardH("Netto-Gamma",sgn3(net),net>0?"Dealer long Gamma":"Dealer short Gamma",cls3(net))+cardH("Flip-Strike",lv.flip?"$"+fmtNum(lv.flip):"–","")+cardH("Nahe Spot (±10 %)",(near10/all*100).toFixed(1)+" %","Anteil des absoluten GEX")+cardH("Stärkster Strike",top?"$"+fmtNum(top[0]):"–",top?fmtUsd(top[1]):"")+cardH("Stärkster Verfall",ex?ex[0]:"–",ex?fmtUsd(ex[1])+" |GEX|":""); };
+
+/* --- Premium-Matrix --- */
+V3.premium = P2("Premium-Matrix","Wo das Geld in der Kette sitzt: Dollar-Prämie je Strike × Verfall",'<div class="form">'+seg3("k3","pmMode",[["oi","Offenes OI"],["buy","Kauf-Flow"],["sell","Verkaufs-Flow"],["net","Netto-Flow"]])+seg3("k3","pmCp",[["all","Beide"],["C","Calls"],["P","Puts"]])+seg3("k3","pmN",[[20,"Nächste 20"],[0,"Alle Strikes"]])+seg3("k3","pmSrc",[["all","Alle Börsen"],["deribit","Deribit"]])+'</div><div id="pm-t"></div><div class="note">Offenes OI = Mark-Preis × Open Interest. Flow = Premium der Trades im gewählten Zeitfenster. Σ-Spalte und Σ-Zeile zeigen die Summen.</div>',"wide");
+R3.premium = (lb,lv,list) => {
+  const mode=S.pmMode||"oi", cp=S.pmCp||"all", src=S.pmSrc||"all", L=lb.filter(b=>(cp==="all"||b.cp===cp)&&(src==="all"||b.venue===src)), exps=expiries(lb).slice(0,16);
+  let ks=[...new Set(L.map(b=>b.strike))].sort((a,b)=>a-b); if(+(S.pmN??20)){ ks=ks.sort((a,b)=>Math.abs(a-spot)-Math.abs(b-spot)).slice(0,+(S.pmN??20)).sort((a,b)=>a-b); }
+  const M=new Map(), key=(k,e)=>k+"|"+e, add=(k,e,v)=>M.set(key(k,e),(M.get(key(k,e))||0)+v);
+  if(mode==="oi") L.forEach(b=>add(b.strike,b.exp,b.mark_price*b.F*b.open_interest));
+  else list.forEach(t=>{ if(cp!=="all"&&t.cp!==cp) return; if(src!=="all"&&t.venue!==src) return; const s=t.side==="buy"?1:-1; if(mode==="buy"&&s<0) return; if(mode==="sell"&&s>0) return; add(t.strike,t.exp,mode==="net"?s*t.prem:t.prem); });
+  const vals=[...M.values()].map(Math.abs), mx=Math.max(...vals,1), atm=near(ks,spot);
+  const cell=v=>{ if(!v) return `<td class="mut">·</td>`; const a=Math.sqrt(Math.abs(v)/mx); return `<td style="background:${alpha(v<0?css("--bear"):css("--accent"),0.08+a*0.55)}">${fmtUsd(v).replace("$","$")}</td>`; };
+  const head=["Strike"].concat(exps.map(e=>e+`<br><span class="mut">${Math.max(0,dte(e)).toFixed(0)}T</span>`),["Σ Strike"]);
+  const rows=ks.slice().reverse().map(k=>{ const r=exps.map(e=>M.get(key(k,e))||0), s=r.reduce((a,b)=>a+b,0); return `<tr><td class="l">${fmtNum(k)}${k===atm?' <span class="soon">ATM</span>':""}</td>${r.map(cell).join("")}<td><b>${fmtUsd(s)}</b></td></tr>`; });
+  const colS=exps.map(e=>ks.reduce((a,k)=>a+(M.get(key(k,e))||0),0)); rows.push(`<tr><td class="l"><b>Σ Verfall</b></td>${colS.map(v=>`<td><b>${fmtUsd(v)}</b></td>`).join("")}<td><b>${fmtUsd(colS.reduce((a,b)=>a+b,0))}</b></td></tr>`);
+  $("pm-t").innerHTML = `<div class="tw free pmx"><table><thead><tr>${head.map((h,i)=>`<th${i===0?' class="l"':""}>${h}</th>`).join("")}</tr></thead><tbody>${rows.join("")}</tbody></table></div>`;
+};
+
+/* --- Options-Screener --- */
+V3.screener = P2("Options-Screener","börsenübergreifend filtern und sortieren, Klick öffnet den Kontrakt",'<div class="form">'+sel3("sc-ven",[["all","Alle Börsen"]].concat(VLIST.map(v=>[v,VEN[v].name])),S.scVen||"all","Börse")+sel3("sc-cp",[["all","Calls + Puts"],["C","Calls"],["P","Puts"]],S.scCp||"all","Typ")+'<label>Verfall <select id="sc-exp"></select></label>'+num3("sc-oi",S.scOi??0,10,"OI ≥",80)+num3("sc-dmin",S.scDmin??0,0.05,"|Δ| ≥",70)+num3("sc-dmax",S.scDmax??1,0.05,"|Δ| ≤",70)+num3("sc-ivmin",S.scIvMin??0,1,"IV ≥",70)+num3("sc-ivmax",S.scIvMax??500,1,"IV ≤",70)+sel3("sc-grp",[["","Keine Gruppe"],["exp","nach Verfall"],["venue","nach Börse"]],S.scGrp||"","Gruppe")+'</div>',"wide")+
+  P2("Top Mover","Mark-Änderung seit etwa 5 Minuten",'<div class="chips" id="sc-movers"></div>',"wide")+P2("Ergebnisse","",'<div id="sc-t"></div>',"wide");
+let markPrev=new Map(), markPrevT=0, markNow=new Map();
+setInterval(()=>{ if(!book.length) return; markPrev=markNow; markPrevT=Date.now(); markNow=new Map(book.filter(b=>b.venue==="deribit").map(b=>[b.instrument_name,b.mark_price])); }, 5*60000);
+const SC_COL=[["instrument_name","Kontrakt"],["venue","Börse"],["exp","Verfall"],["strike","Strike"],["cp","Typ"],["mark","Mark $"],["mark_iv","IV"],["delta","Δ"],["gamma","Γ"],["vega","Vega $"],["theta","Θ $/T"],["oi","OI"],["prem","OI-Wert"],["vol","Vol 24 h"]];
+R3.screener = (lb) => {
+  const exps=expiries(lb); if(S.scExp!=="all"&&!exps.includes(S.scExp)) S.scExp="all"; fillOne("sc-exp",["all"].concat(exps),S.scExp||"all"); const se=$("sc-exp"); if(se&&se.options[0]) se.options[0].text="Alle";
+  let L=lb.filter(b=>(S.scVen==="all"||!S.scVen||b.venue===S.scVen)&&(S.scCp==="all"||!S.scCp||b.cp===S.scCp)&&(S.scExp==="all"||!S.scExp||b.exp===S.scExp)&&b.open_interest>=(S.scOi||0)&&Math.abs(b.g.delta)>=(S.scDmin||0)&&Math.abs(b.g.delta)<=(S.scDmax??1)&&b.mark_iv>=(S.scIvMin||0)&&b.mark_iv<=(S.scIvMax??500))
+    .map(b=>({...b,mark:b.mark_price*b.F,delta:b.g.delta,gamma:b.g.gamma,vega:b.g.vega,theta:b.g.theta,oi:b.open_interest,prem:b.mark_price*b.F*b.open_interest,vol:b.volume||0}));
+  const sk=S.scSort||"oi", dir=S.scDir||-1; L.sort((a,b)=>{ const x=a[sk],y=b[sk]; return (typeof x==="string"?String(x).localeCompare(y):(x-y))*dir; });
+  const mv=[]; if(markPrev.size) for(const b of book) if(b.venue==="deribit"){ const p=markPrev.get(b.instrument_name); if(p>0&&b.mark_price>0&&b.open_interest>20) mv.push([b.instrument_name,(b.mark_price/p-1)*100]); }
+  $("sc-movers").innerHTML = mv.length? mv.sort((a,b)=>Math.abs(b[1])-Math.abs(a[1])).slice(0,12).map(([n,v])=>`<button class="chip" data-sci="${n}">${n} <b class="${cls3(v)}">${pct3(v,1)}</b></button>`).join("") : '<span class="mut">Erste Werte nach 5 Minuten.</span>';
+  const fmt={mark:v=>"$"+fmtNum(v,1),mark_iv:v=>v.toFixed(1),delta:v=>v.toFixed(3),gamma:v=>v.toExponential(2),vega:v=>fmtNum(v,1),theta:v=>fmtNum(v,1),oi:v=>fmtNum(v,1),prem:fmtUsd,vol:v=>fmtNum(v,1),strike:v=>fmtNum(v),venue:v=>VEN[v]?VEN[v].short:v};
+  const head=SC_COL.map(([k,l])=>`<th class="${k==="instrument_name"?"l":""} sort" data-scs="${k}">${l}${k===sk?(dir>0?" ▲":" ▼"):""}</th>`).join(""), row=b=>`<tr class="click" data-inst="${b.instrument_name}">${SC_COL.map(([k])=>`<td class="${k==="instrument_name"?"l":""}">${fmt[k]?fmt[k](b[k]):b[k]}</td>`).join("")}</tr>`;
+  let body; if(S.scGrp){ const g=new Map(); L.forEach(b=>{ const k=b[S.scGrp]; if(!g.has(k)) g.set(k,[]); g.get(k).push(b); }); body=[...g.entries()].map(([k,a])=>`<tr><td class="l" colspan="${SC_COL.length}"><b>${S.scGrp==="venue"?VEN[k].name:k}</b> <span class="mut">${a.length} Kontrakte</span></td></tr>`+a.slice(0,80).map(row).join("")).join(""); }
+  else body=L.slice(0,400).map(row).join("");
+  $("sc-t").innerHTML = `<div class="mut" style="margin:0 0 6px">${fmtNum(L.length)} Kontrakte · bis 400 angezeigt</div><div class="tw free"><table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`;
+};
+document.addEventListener("change",e=>{ const id=e.target.id, M={"sc-ven":"scVen","sc-cp":"scCp","sc-exp":"scExp","sc-grp":"scGrp"}, N={"sc-oi":"scOi","sc-dmin":"scDmin","sc-dmax":"scDmax","sc-ivmin":"scIvMin","sc-ivmax":"scIvMax"};
+  if(M[id]){ S[M[id]]=e.target.value; save(); render(); } if(N[id]){ S[N[id]]=+e.target.value; save(); render(); } });
+document.addEventListener("click",e=>{ const h=e.target.closest("[data-scs]"); if(h){ const k=h.dataset.scs; if(S.scSort===k) S.scDir=-(S.scDir||-1); else { S.scSort=k; S.scDir=-1; } save(); render(); return; }
+  const m=e.target.closest("[data-sci]"); if(m){ S.contract=m.dataset.sci; save(); go("contract"); } });
+
+/* --- Arb-Scanner --- */
+const FEES = {deribit:0.0003,bybit:0.0003,okx:0.0003,paradex:0.0003,delta:0.0003,thalex:0.0003,aevo:0.0005,derive:0.0003,hypercall:0.0005};
+V3.arb = P2("Arb-Scanner","IV-Unterschiede gleicher Kontrakte über Börsen, nach Gebühren",'<div class="form">'+num3("ar-min",S.arMin??1,0.5,"Netto-Edge ≥ Vol-Pkt.",70)+num3("ar-oi",S.arOi??1,1,"OI ≥",70)+'</div><div class="cards" id="ar-cards"></div><div id="ar-t"></div>',"wide")+
+  P2("So funktioniert der Trade","Schritt für Schritt",'<div class="note" style="line-height:1.7">1. <b>Kaufen</b> auf der Börse mit der niedrigeren IV, <b>verkaufen</b> auf der Börse mit der höheren IV, gleicher Strike, gleicher Verfall, gleiche Menge.<br>2. Die Position ist damit fast Greek-neutral: Delta, Gamma und Vega heben sich weitgehend auf, übrig bleibt der IV-Spread.<br>3. Der Gewinn entsteht, wenn sich die IVs annähern (oft innerhalb von Minuten) oder beim gemeinsamen Verfall.<br>4. <b>Gebühren:</b> pro Seite etwa 0,03 % vom Basiswert, höchstens 12,5 % des Optionspreises. Der Netto-Edge zieht beide Seiten ab, umgerechnet in Vola-Punkte über Vega.<br>5. <b>Risiken:</b> unterschiedliche Abrechnung (USD vs. USDT vs. BTC), Margin auf zwei Börsen, Spread zwischen Bid und Ask (hier mit Mark-Preisen gerechnet), Ausfall einer Börse.<br>Nur Hinweis auf mögliche Fehlbewertung, keine garantierte Arbitrage.</div>',"wide");
+R3.arb = () => {
+  const all=liveFrom([].concat(...VLIST.map(v=>books[v]))).filter(b=>b.open_interest>=(S.arOi??1)||b.venue==="deribit"), by=new Map();
+  all.forEach(b=>{ if(!by.has(b.instrument_name)) by.set(b.instrument_name,[]); by.get(b.instrument_name).push(b); });
+  const out=[]; for(const [n,a] of by){ if(a.length<2) continue; const lo=a.reduce((x,y)=>y.mark_iv<x.mark_iv?y:x), hi=a.reduce((x,y)=>y.mark_iv>x.mark_iv?y:x); if(lo.venue===hi.venue) continue;
+    const vg=lo.g.vega||1e-9, prem=lo.mark_price*lo.F, fee=v=>Math.min(FEES[v]*lo.F, 0.125*prem), feeVol=(fee(lo.venue)+fee(hi.venue))/vg, sp=hi.mark_iv-lo.mark_iv, net=sp-feeVol;
+    if(net>=(S.arMin??1)) out.push({n,lo,hi,sp,feeVol,net,usd:net*vg}); }
+  out.sort((a,b)=>b.net-a.net);
+  $("ar-cards").innerHTML = cardH("Gelegenheiten",fmtNum(out.length),"Netto-Edge ≥ "+(S.arMin??1)+" Vol-Pkt.")+cardH("Bester Edge",out[0]?out[0].net.toFixed(2)+" Pkt.":"–",out[0]?out[0].n:"")+cardH("Ø Edge",out.length?(out.reduce((a,x)=>a+x.net,0)/out.length).toFixed(2)+" Pkt.":"–","");
+  $("ar-t").innerHTML = tbl3(["Kontrakt","Kaufen bei","IV","Verkaufen bei","IV","Spread","Gebühren","Netto-Edge","$ je Kontrakt"], out.slice(0,80).map(x=>`<tr class="click" data-inst="${x.n}"><td class="l">${x.n}</td><td>${VEN[x.lo.venue].name}</td><td>${x.lo.mark_iv.toFixed(1)}</td><td>${VEN[x.hi.venue].name}</td><td>${x.hi.mark_iv.toFixed(1)}</td><td>${x.sp.toFixed(2)}</td><td class="mut">${x.feeVol.toFixed(2)}</td><td class="pos"><b>${x.net.toFixed(2)}</b></td><td>$${fmtNum(x.usd,1)}</td></tr>`));
+};
+document.addEventListener("change",e=>{ if(e.target.id==="ar-min"){ S.arMin=+e.target.value; save(); render(); } if(e.target.id==="ar-oi"){ S.arOi=+e.target.value; save(); render(); } });
+NB3.add("arb");
+
+/* --- Stats --- */
+V3.stats = P2("Marktzustand","Spot, IV, Regime, Walls auf einen Blick",'<div class="cards" id="st-cards"></div>',"wide")+
+  P2("Volatilitäts-Scoreboard","BTC vs. ETH: ATM IV 30T, DVOL, realisierte Vola (Parkinson), VRP, IV Rank",'<div class="chart" id="c-stscore" style="height:300px"></div>',"wide")+
+  P2("Straddle-Break-even","ATM-Straddle je Verfall: eingepreiste Bewegung",'<div id="st-strd"></div>',"wide")+
+  P2("Skew-Sparklines","25Δ Risk Reversal je Verfall",'<div class="chart" id="c-stskew"></div>')+P2("IV-Crush-Kalender","Verfälle mit erhöhter IV gegenüber dem nächsten Verfall",'<div id="st-crush"></div>')+
+  P2("P/C-OI-Verlauf","Put/Call-Open-Interest aus den OI-Snapshots",'<div class="chart" id="c-stpc"></div>')+P2("ATM-IV-Term-Structure im Verlauf","ATM IV je Verfall aus den 5-Minuten-Snapshots",'<div class="chart" id="c-stterm"></div>');
+const XA = {at:0, d:{}};
+async function loadXA(){ if(Date.now()-XA.at<5*60000) return; XA.at=Date.now(); const now=Date.now();
+  for(const C of ["BTC","ETH"]){ const [bk,dv,cd]=await Promise.all([dRpc("public/get_book_summary_by_currency",{currency:C,kind:"option"}),dRpc("public/get_volatility_index_data",{currency:C,start_timestamp:now-365*DAY,end_timestamp:now,resolution:"1D"}),dRpc("public/get_tradingview_chart_data",{instrument_name:C+"-PERPETUAL",start_timestamp:now-35*DAY,end_timestamp:now,resolution:"1D"})]);
+    let iv30=null; if(bk){ const L=liveFrom(bk.map(b=>({...b,...parseInst(b.instrument_name),venue:"deribit"})).filter(b=>b.strike)); const e=nearestExpTo(L,30); if(e) iv30=atmIv(L,e); }
+    const dvs=dv&&dv.data?dv.data.map(d=>d[4]):[], d0=dvs[dvs.length-1], rank=dvs.length? (d0-Math.min(...dvs))/(Math.max(...dvs)-Math.min(...dvs)||1)*100 : null;
+    let pk=null; if(cd&&cd.high){ const n=Math.min(30,cd.high.length), hs=cd.high.slice(-n), ls=cd.low.slice(-n); pk=Math.sqrt(hs.reduce((a,h,i)=>a+Math.pow(Math.log(h/ls[i]),2),0)/(4*Math.log(2)*n))*Math.sqrt(365)*100; }
+    XA.d[C]={iv30,dvol:d0,rv:pk,vrp:iv30!=null&&pk!=null?iv30-pk:null,rank}; } scheduleRender(); }
+R3.stats = (lb,lv) => {
+  loadXA(); const reg=(()=>{ const p=ivPct(); return p==null?"–":REG.find(r=>p>=r[1]&&p<r[2])[0]; })(), e30=nearestExpTo(lb,30), a30=e30?atmIv(lb,e30):null, K=keyLevels(lb,lv), te=expiries(lb), top=te.map(e=>[e,lb.filter(b=>b.exp===e).reduce((a,b)=>a+b.open_interest,0)]).sort((a,b)=>b[1]-a[1])[0];
+  $("st-cards").innerHTML = cardH("Spot","$"+fmtNum(spot),"")+cardH("ATM IV 30T",a30?a30.toFixed(1)+" %":"–",e30||"")+cardH("Vol-Regime",reg,"IV Rank "+(ivRank()!=null?ivRank().toFixed(0):"–"))+cardH("Gamma-Regime",K.regime,sgn3(K.net),cls3(K.net))+cardH("Call Wall",K.calls[0]?"$"+fmtNum(K.calls[0][0]):"–","","pos")+cardH("Put Wall",K.puts[0]?"$"+fmtNum(K.puts[0][0]):"–","","neg")+cardH("Flip",lv.flip?"$"+fmtNum(lv.flip):"–","","warn")+cardH("Top-Verfall",top?top[0]:"–",top?fmtNum(top[1],0)+" OI":"")+cardH("Verfälle",te.length,"")+cardH("Quellen live",srcStatus().filter(s=>s.ok).length+"/"+srcStatus().length,"");
+  const o=base(), M=[["ATM IV 30T","iv30"],["DVOL","dvol"],["RV 30T (Parkinson)","rv"],["VRP","vrp"],["IV Rank","rank"]], c=ch("c-stscore");
+  if(c) c.setOption({...o,legend:{...o.legend},grid:{...o.grid,top:40,right:20},tooltip:{...o.tooltip,valueFormatter:v=>typeof v==="number"?v.toFixed(1):v},xAxis:ax(o,{type:"category",data:M.map(m=>m[0]),splitLine:{show:false}}),yAxis:ax(o,{type:"value"}),
+    series:[["BTC","#f7931a"],["ETH","#8ea2ff"]].map(([C,col])=>({name:C,type:"bar",barMaxWidth:34,label:{show:true,position:"top",color:css("--fg"),fontSize:10,formatter:p=>p.value==null?"":(+p.value).toFixed(1)},itemStyle:{color:col},data:M.map(m=>XA.d[C]&&XA.d[C][m[1]]!=null?+XA.d[C][m[1]].toFixed(2):null)}))},true);
+  const strd=te.slice(0,10).map(e=>{ const L=lb.filter(b=>b.exp===e&&b.venue==="deribit"); if(!L.length) return null; const F=L[0].F, k=near([...new Set(L.map(b=>b.strike))],F), c1=L.find(b=>b.strike===k&&b.cp==="C"), p1=L.find(b=>b.strike===k&&b.cp==="P"); if(!c1||!p1) return null; const cost=(c1.mark_price+p1.mark_price)*F; return {e,k,cost,pct:cost/F*100,lo:k-cost,hi:k+cost}; }).filter(Boolean);
+  $("st-strd").innerHTML = tbl3(["Verfall","DTE","Strike","Call + Put","Bewegung","Break-even unten","Break-even oben"], strd.map(s=>`<tr><td class="l">${s.e}</td><td>${dte(s.e).toFixed(1)}</td><td>${fmtNum(s.k)}</td><td>$${fmtNum(s.cost)}</td><td>±${s.pct.toFixed(2)} %</td><td>$${fmtNum(s.lo)}</td><td>$${fmtNum(s.hi)}</td></tr>`),"free");
+  const sk=te.slice(0,12).map(e=>{ const w=wingsAt(lb,e,0.25); return [e,w?w.rr:null]; }), c2=ch("c-stskew");
+  if(c2) c2.setOption({...o,grid:{...o.grid,right:20,bottom:40},xAxis:ax(o,{type:"category",data:sk.map(x=>x[0]),axisLabel:{...o._axis.axisLabel,rotate:30}}),yAxis:ax(o,{type:"value"}),series:[{type:"bar",name:"25Δ RR",data:sk.map(x=>({value:x[1]==null?null:+x[1].toFixed(2),itemStyle:{color:x[1]>=0?css("--bull"):css("--bear")}})),barMaxWidth:22}]},true);
+  const cr=te.slice(0,10).map((e,i)=>{ const a=atmIv(lb,e), b=te[i+1]?atmIv(lb,te[i+1]):null; return {e,a,b,d:a!=null&&b!=null?a-b:null}; });
+  $("st-crush").innerHTML = tbl3(["Verfall","ATM IV","nächster","Differenz","Hinweis"], cr.map(x=>`<tr><td class="l">${x.e}</td><td>${x.a?x.a.toFixed(1):"–"}</td><td>${x.b?x.b.toFixed(1):"–"}</td><td class="${x.d>2?"warn":""}">${x.d==null?"–":(x.d>0?"+":"")+x.d.toFixed(1)}</td><td class="l">${x.d>3?"<b>IV-Crush wahrscheinlich</b>":x.d>1.5?"erhöht":""}</td></tr>`),"free");
+  const pc=oiSnaps.map(s=>{ let c=0,p=0; for(const n in s.o){ if(n.endsWith("-C")) c+=s.o[n]; else p+=s.o[n]; } return [s.t,c?+(p/c).toFixed(3):null]; }), c3=ch("c-stpc");
+  if(c3) c3.setOption({...o,grid:{...o.grid,right:20},xAxis:ax(o,{type:"time",splitLine:{show:false}}),yAxis:ax(o,{type:"value",scale:true}),series:[{type:"line",name:"P/C OI",showSymbol:pc.length<30,data:pc,lineStyle:{color:css("--accent"),width:1.6},itemStyle:{color:css("--accent")}}],
+    title:pc.length<2?{text:"Sammle OI-Snapshots … (alle 15 Minuten)",left:"center",top:"middle",textStyle:{color:css("--muted"),fontSize:12,fontWeight:400}}:undefined},true);
+  const ex=te.slice(0,6), c4=ch("c-stterm"); if(c4) c4.setOption({...o,legend:{...o.legend,type:"scroll"},grid:{...o.grid,right:20,top:40},tooltip:{...o.tooltip,valueFormatter:v=>typeof v==="number"?v.toFixed(1)+" %":v},xAxis:ax(o,{type:"time",splitLine:{show:false}}),yAxis:ax(o,{type:"value",scale:true}),
+    series:ex.map((e,i)=>({name:e,type:"line",showSymbol:false,connectNulls:true,lineStyle:{width:1.4,color:`hsl(${190+i*28},80%,${64-i*3}%)`},itemStyle:{color:`hsl(${190+i*28},80%,${64-i*3}%)`},data:snaps.map(s=>[s.t,s.atm&&s.atm[e]!=null?s.atm[e]:null])}))},true);
+};
+
+/* --- TQI Vol-Index (modellfrei, VIX-Methode) --- */
+V3.tqivix = P2("TQI Vol-Index","modellfreie 30-Tage-Volatilität aus der Deribit-Kette (VIX-Methode)",'<div class="cards" id="tv-cards"></div><div class="chart tall" id="c-tvix"></div><div class="note">Berechnung wie beim VIX: Varianz aus allen OTM-Optionen der zwei Verfälle um 30 Tage, gewichtet mit ΔK/K², auf 30 Tage interpoliert. Wird jede Minute neu berechnet und im Browser gespeichert. Zum Vergleich: Deribit DVOL.</div>',"wide");
+function vixVar(L,T){ const F=L[0].F, ks=[...new Set(L.map(b=>b.strike))].sort((a,b)=>a-b), K0=ks.filter(k=>k<=F).pop()||ks[0]; let s=0;
+  ks.forEach((k,i)=>{ const dK=i===0?ks[1]-k:i===ks.length-1?k-ks[i-1]:(ks[i+1]-ks[i-1])/2; const q=k<K0?L.find(b=>b.strike===k&&b.cp==="P"):k>K0?L.find(b=>b.strike===k&&b.cp==="C"):null;
+    let Q; if(k===K0){ const c=L.find(b=>b.strike===k&&b.cp==="C"), p=L.find(b=>b.strike===k&&b.cp==="P"); Q=((c?c.mark_price:0)+(p?p.mark_price:0))/2*F; } else Q=q?q.mark_price*F:0; s+=dK/(k*k)*Q; });
+  return 2/T*s - 1/T*Math.pow(F/K0-1,2); }
+function tqiVix(lb){ const D=lb.filter(b=>b.venue==="deribit"), ex=expiries(D).map(e=>[e,dte(e)]).filter(x=>x[1]>1); const n1=ex.filter(x=>x[1]<=30).pop(), n2=ex.find(x=>x[1]>30); if(!n1||!n2) return null;
+  const v1=vixVar(D.filter(b=>b.exp===n1[0]),n1[1]/365), v2=vixVar(D.filter(b=>b.exp===n2[0]),n2[1]/365), T1=n1[1]/365, T2=n2[1]/365, T30=30/365;
+  const v=(T1*v1*(T2-T30)/(T2-T1)+T2*v2*(T30-T1)/(T2-T1))/T30; return v>0? Math.sqrt(v)*100 : null; }
+let TVX=[]; try{ TVX=JSON.parse(localStorage.getItem("tqivix-"+S.cur)||"[]"); }catch(e){}
+setInterval(()=>{ if(!book.length) return; const v=tqiVix(liveBook()); if(v){ TVX.push([Date.now(),+v.toFixed(2),dvol]); TVX=TVX.filter(x=>x[0]>Date.now()-7*DAY); try{ localStorage.setItem("tqivix-"+S.cur,JSON.stringify(TVX)); }catch(e){} } },60000);
+R3.tqivix = (lb) => { const v=tqiVix(lb), last=TVX[TVX.length-1], ch1=TVX.find(x=>x[0]>=Date.now()-3600e3);
+  $("tv-cards").innerHTML = cardH("TQI Vol-Index",v?v.toFixed(2):"–",ch1&&v?sgn3(v-ch1[1],x=>x.toFixed(2))+" in 1 h":"30 Tage, modellfrei")+cardH("Deribit DVOL",dvol?dvol.toFixed(2):"–","Referenz")+cardH("Differenz",v&&dvol?sgn3(v-dvol,x=>x.toFixed(2)):"–","TQI minus DVOL")+cardH("Regime",(()=>{ const p=ivPct(); return p==null?"–":REG.find(r=>p>=r[1]&&p<r[2])[0]; })(),"");
+  const o=base(), c=ch("c-tvix"); if(c) c.setOption({...o,legend:{...o.legend},grid:{...o.grid,top:40,right:20},tooltip:{...o.tooltip,valueFormatter:x=>typeof x==="number"?x.toFixed(2):x},xAxis:ax(o,{type:"time",splitLine:{show:false}}),yAxis:ax(o,{type:"value",scale:true}),
+    series:[{name:"TQI Vol-Index",type:"line",showSymbol:false,data:TVX.map(x=>[x[0],x[1]]),lineStyle:{color:css("--accent"),width:2},itemStyle:{color:css("--accent")},areaStyle:{color:css("--accent"),opacity:.07}},{name:"DVOL",type:"line",showSymbol:false,data:dvolMin.length?dvolMin.map(d=>[d[0],d[4]]):TVX.map(x=>[x[0],x[2]]),lineStyle:{color:css("--warn"),width:1.2,type:"dashed"},itemStyle:{color:css("--warn")}}],
+    title:TVX.length<2?{text:"Der Index wird ab jetzt jede Minute aufgezeichnet …",left:"center",top:"middle",textStyle:{color:css("--muted"),fontSize:12,fontWeight:400}}:undefined},true); };
+
+/* ====================== Session 3: Werkzeuge, Strategie, Quant ====================== */
+const dLb = () => liveFrom(books.deribit);
+const expSel = (id,lb,key,def=7) => { const ex=expiries(lb); if(!S[key]||!ex.includes(S[key])) S[key]=nearestExpTo(lb,def)||ex[0]; fillOne(id,ex,S[key]); return S[key]; };
+const instSel = (id,lb,key) => { const L=lb.filter(b=>Math.abs(b.strike/spot-1)<0.3).sort((a,b)=>a.expTs-b.expTs||a.strike-b.strike||a.cp.localeCompare(b.cp)); const names=L.map(b=>b.instrument_name);
+  if(!S[key]||!names.includes(S[key])){ const e=nearestExpTo(lb,14), c=L.filter(b=>b.exp===e&&b.cp==="C").sort((a,b)=>Math.abs(a.strike-spot*1.03)-Math.abs(b.strike-spot*1.03))[0]; S[key]=c?c.instrument_name:names[0]; }
+  const el=$(id); if(el && el.dataset.h!==names.length+S.cur){ el.innerHTML=names.map(n=>`<option${n===S[key]?" selected":""}>${n}</option>`).join(""); el.dataset.h=names.length+S.cur; } if(el) el.value=S[key]; return S[key]; };
+const PAY = (cp,K,x) => cp==="C"?Math.max(x-K,0):Math.max(K-x,0);
+const gridX = (lo,hi,n=161) => Array.from({length:n},(_,i)=>lo+(hi-lo)*i/(n-1));
+function legsValue(legs,x,tShift){ return legs.reduce((a,l)=>{ const T=Math.max(l.T-tShift,0); return a+l.q*(T>0? bsPrice(x,l.K,T,l.sig,l.cp) : PAY(l.cp,l.K,x)); },0); }
+function popOf(legs,cost,F,T,sig){ const xs=gridX(F*0.3,F*2.2,400); let p=0, s=0; const mu=-sig*sig*T/2, sd=sig*Math.sqrt(T);
+  xs.forEach((x,i)=>{ if(!i) return; const z=(Math.log(x/F)-mu)/sd, w=npdf(z)/(x*sd)*(xs[i]-xs[i-1]); s+=w; if(legsValue(legs,x,1e9)-cost>0) p+=w; }); return s? p/s : null; }
+
+/* --- Rechner: Vorlagen, σ-Bänder, Payoff-Heatmap, Greeks vs. Spot --- */
+const TPL = {cc:"Covered Call",csp:"Cash-Secured Put",lstr:"Long Straddle",sstrg:"Short Strangle",ic:"Iron Condor",bcs:"Bull Call Spread",bps:"Bear Put Spread",bfly:"Call Butterfly",rr:"Risk Reversal"};
+V3.calc = P2("Strategie-Vorlagen","fügt die Legs mit dem gewählten Verfall ein (ersetzt die aktuellen)",'<div class="chips">'+Object.entries(TPL).map(([k,v])=>`<button class="chip" data-tpl="${k}">${v}</button>`).join("")+'</div>',"wide")+
+  P2("Payoff-Heatmap","Gewinn/Verlust über Spot (x) und Zeit bis Verfall (y)",'<div class="chart tall" id="c-payheat"></div>',"wide")+
+  P2("Greeks vs. Spot","Delta, Gamma, Vega, Theta der Gesamtposition heute",'<div class="chart tall" id="c-cgreeks"></div>',"wide");
+document.addEventListener("click",e=>{ const b=e.target.closest("[data-tpl]"); if(!b) return; const lb=dLb(), es=$("cl-exp"), exp=es&&es.value?es.value:nearestExpTo(lb,30), L=lb.filter(x=>x.exp===exp), F=L[0]?L[0].F:spot;
+  const ks=[...new Set(L.map(x=>x.strike))].sort((a,b)=>a-b), at=m=>near(ks,F*m), I=(k,cp)=>`${S.cur}-${exp}-${k}-${cp}`, T={
+    cc:[[I(at(1.08),"C"),-1]], csp:[[I(at(0.92),"P"),-1]], lstr:[[I(at(1),"C"),1],[I(at(1),"P"),1]], sstrg:[[I(at(1.1),"C"),-1],[I(at(0.9),"P"),-1]],
+    ic:[[I(at(0.85),"P"),1],[I(at(0.92),"P"),-1],[I(at(1.08),"C"),-1],[I(at(1.15),"C"),1]], bcs:[[I(at(1),"C"),1],[I(at(1.08),"C"),-1]], bps:[[I(at(1),"P"),1],[I(at(0.92),"P"),-1]],
+    bfly:[[I(at(0.95),"C"),1],[I(at(1),"C"),-2],[I(at(1.05),"C"),1]], rr:[[I(at(1.08),"C"),1],[I(at(0.92),"P"),-1]]}[b.dataset.tpl];
+  S.legs=T.map(([inst,q])=>({inst,qty:Math.abs(q),side:Math.sign(q)})); save(); toast("Vorlage „"+TPL[b.dataset.tpl]+"“ geladen"); render(); });
+R3.calc = () => {
+  const lb=dLb(), legs=S.legs.map(l=>({l, b:lb.find(b=>b.instrument_name===l.inst)})).filter(x=>x.b).map(({l,b})=>({q:l.qty*l.side,K:b.strike,cp:b.cp,T:b.T,sig:b.sig,F:b.F,px:b.mark_price*b.F}));
+  const o=base(), c=ch("c-payheat"), c2=ch("c-cgreeks"); if(!legs.length){ [c,c2].forEach(x=>x&&x.clear()); return; }
+  const cost=legs.reduce((a,l)=>a+l.q*l.px,0), T0=Math.min(...legs.map(l=>l.T)), xs=gridX(spot*0.75,spot*1.25,41), ts=Array.from({length:11},(_,i)=>T0*i/10), data=[]; let mx=1;
+  ts.forEach((t,j)=>xs.forEach((x,i)=>{ const v=legsValue(legs,x,t)-cost; data.push([i,j,+v.toFixed(0)]); mx=Math.max(mx,Math.abs(v)); }));
+  if(c) c.setOption({backgroundColor:"transparent",animation:false,textStyle:o.textStyle,tooltip:{...o.tooltip,trigger:"item",formatter:p=>`Spot $${fmtNum(xs[p.value[0]])} · noch ${((T0-ts[p.value[1]])*365).toFixed(1)} Tage<br>P&L <b>${fmtUsd(p.value[2])}</b>`},grid:{left:70,right:20,top:10,bottom:60},
+    xAxis:ax(o,{type:"category",data:xs.map(x=>fmtNum(x)),axisLabel:{...o._axis.axisLabel,interval:4}}),yAxis:ax(o,{type:"category",data:ts.map(t=>((T0-t)*365).toFixed(1)+" T"),name:"Restlaufzeit",nameTextStyle:{color:o.textStyle.color,fontSize:10}}),
+    visualMap:{...divMap(mx),show:true,orient:"horizontal",left:"center",bottom:0,itemHeight:140,calculable:false,textStyle:{color:css("--muted")}},series:[{type:"heatmap",data,itemStyle:{borderColor:css("--bg"),borderWidth:1}}]},true);
+  const xg=gridX(spot*0.75,spot*1.25,81), gr=xg.map(x=>legs.reduce((a,l)=>{ const g=greeks(x,l.K,Math.max(l.T,1e-6),l.sig,l.cp); a.d+=l.q*g.delta; a.g+=l.q*g.gamma*x*x*0.01; a.v+=l.q*g.vega; a.t+=l.q*g.theta; return a; },{d:0,g:0,v:0,t:0}));
+  if(c2) c2.setOption({...o,legend:{...o.legend},grid:[{left:64,right:20,top:36,height:"36%"},{left:64,right:20,top:"62%",height:"28%"}],tooltip:{...o.tooltip},xAxis:[ax(o,{type:"value",min:xg[0],max:xg[xg.length-1],axisLabel:{show:false}}),ax(o,{gridIndex:1,type:"value",min:xg[0],max:xg[xg.length-1],axisLabel:{...o._axis.axisLabel,formatter:v=>fmtNum(v)}})],
+    yAxis:[ax(o,{type:"value",name:"Delta / Gamma",nameTextStyle:{color:o.textStyle.color,fontSize:10}}),ax(o,{gridIndex:1,type:"value",name:"Vega / Theta $",nameTextStyle:{color:o.textStyle.color,fontSize:10}})],
+    series:[{name:"Delta",type:"line",showSymbol:false,data:xg.map((x,i)=>[x,+gr[i].d.toFixed(3)]),lineStyle:{color:css("--accent"),width:1.8},itemStyle:{color:css("--accent")}},{name:"Gamma ($ Δ je 1 %)",type:"line",showSymbol:false,data:xg.map((x,i)=>[x,+(gr[i].g).toFixed(3)]),lineStyle:{color:css("--warn"),width:1.4},itemStyle:{color:css("--warn")}},
+      {name:"Vega",type:"line",xAxisIndex:1,yAxisIndex:1,showSymbol:false,data:xg.map((x,i)=>[x,+gr[i].v.toFixed(2)]),lineStyle:{color:css("--bull"),width:1.5},itemStyle:{color:css("--bull")}},{name:"Theta",type:"line",xAxisIndex:1,yAxisIndex:1,showSymbol:false,data:xg.map((x,i)=>[x,+gr[i].t.toFixed(2)]),lineStyle:{color:css("--bear"),width:1.5},itemStyle:{color:css("--bear")}}]},true);
+  const cp=ch("c-payoff"); if(cp){ const iv=legs.reduce((a,l)=>a+l.sig,0)/legs.length, sd=spot*iv*Math.sqrt(T0); cp.setOption({series:[{name:"Verlust",markArea:{silent:true,itemStyle:{color:alpha(css("--accent"),.05)},data:[[{xAxis:spot-sd},{xAxis:spot+sd}],[{xAxis:spot-2*sd},{xAxis:spot+2*sd}]]}}]}); }
+};
+
+/* --- Break-even --- */
+V3.breakeven = P2("Break-even","Break-even-Preise und N(d2)-Wahrscheinlichkeit je Strike",'<div class="form"><label>Verfall <select id="be-exp"></select></label>'+seg3("k3","beCp",[["C","Calls"],["P","Puts"]])+'</div><div class="chart tall" id="c-be"></div>',"wide")+P2("N(d2): Wahrscheinlichkeit im Geld","risikoneutral aus der Mark-IV",'<div class="chart" id="c-nd2"></div>',"wide")+P2("Tabelle","",'<div id="be-t"></div>',"wide");
+R3.breakeven = () => { const lb=dLb(), e=expSel("be-exp",lb,"beExp",7), cp=S.beCp||"C", L=lb.filter(b=>b.exp===e&&b.cp===cp&&Math.abs(b.strike/spot-1)<0.25).sort((a,b)=>a.strike-b.strike);
+  const rows=L.map(b=>{ const px=b.mark_price*b.F, be=cp==="C"?b.strike+px:b.strike-px, sT=b.sig*Math.sqrt(b.T), d2=(Math.log(b.F/b.strike)-b.sig*b.sig*b.T/2)/sT, p=cp==="C"?ncdf(d2):ncdf(-d2); return {k:b.strike,px,be,p,move:(be/spot-1)*100,iv:b.mark_iv}; });
+  const o=base(), c=ch("c-be"); if(c) c.setOption({...o,legend:{...o.legend},grid:{...o.grid,top:40},tooltip:{...o.tooltip,valueFormatter:v=>typeof v==="number"?"$"+fmtNum(v):v},xAxis:ax(o,{type:"category",data:rows.map(r=>fmtNum(r.k))}),yAxis:ax(o,{type:"value",scale:true,axisLabel:{...o._axis.axisLabel,formatter:v=>fmtNum(v)}}),
+    series:[{name:"Break-even",type:"line",data:rows.map(r=>Math.round(r.be)),lineStyle:{color:css("--accent"),width:2},itemStyle:{color:css("--accent")}},{name:"Strike",type:"line",data:rows.map(r=>r.k),lineStyle:{color:css("--muted"),type:"dashed"},itemStyle:{color:css("--muted")},showSymbol:false},{name:"Spot",type:"line",data:rows.map(()=>Math.round(spot)),lineStyle:{color:css("--warn"),width:1},showSymbol:false,itemStyle:{color:css("--warn")}}]},true);
+  const c2=ch("c-nd2"); if(c2) c2.setOption({...o,grid:{...o.grid,right:20},tooltip:{...o.tooltip,valueFormatter:v=>typeof v==="number"?v.toFixed(1)+" %":v},xAxis:ax(o,{type:"category",data:rows.map(r=>fmtNum(r.k))}),yAxis:ax(o,{type:"value",max:100,axisLabel:{...o._axis.axisLabel,formatter:"{value}%"}}),series:[{type:"bar",name:"P(im Geld)",data:rows.map(r=>+(r.p*100).toFixed(1)),itemStyle:{color:cp==="C"?css("--bull"):css("--bear")},barMaxWidth:18}]},true);
+  $("be-t").innerHTML = tbl3(["Strike","Prämie","Break-even","nötige Bewegung","N(d2)","IV"], rows.map(r=>`<tr><td class="l">${fmtNum(r.k)}</td><td>$${fmtNum(r.px)}</td><td>$${fmtNum(r.be)}</td><td class="${cls3(r.move)}">${pct3(r.move)}</td><td>${(r.p*100).toFixed(1)} %</td><td>${r.iv.toFixed(1)}</td></tr>`),"free"); };
+document.addEventListener("change",e=>{ if(e.target.id==="be-exp"){ S.beExp=e.target.value; save(); render(); } });
+
+/* --- Monte-Carlo-Simulator --- */
+V3.sim = P2("Simulator","Monte Carlo mit geometrischer Brownscher Bewegung",'<div class="form">'+num3("sm-spot",S.smSpot||0,100,"Spot",100)+num3("sm-mu",S.smMu??0,1,"Drift % p.a.",70)+num3("sm-iv",S.smIv||0,1,"IV % p.a.",70)+num3("sm-days",S.smDays??30,1,"Tage",60)+num3("sm-n",S.smN??500,100,"Pfade",70)+'<button class="btn" id="sm-run">Neu würfeln</button></div><div class="cards" id="sm-cards"></div><div class="chart tall" id="c-simfan"></div>',"wide")+P2("Endverteilung","Häufigkeit der Endpreise",'<div class="chart" id="c-simhist"></div>',"wide");
+let simSeed=1; const rng=()=>{ simSeed=(simSeed*16807)%2147483647; return simSeed/2147483647; }; const gauss=()=>{ let u=0,v=0; while(!u) u=rng(); while(!v) v=rng(); return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); };
+document.addEventListener("click",e=>{ if(e.target.id==="sm-run"){ simSeed=Math.floor(Math.random()*1e9)+1; render(); } });
+document.addEventListener("change",e=>{ const M={"sm-spot":"smSpot","sm-mu":"smMu","sm-iv":"smIv","sm-days":"smDays","sm-n":"smN"}; if(M[e.target.id]){ S[M[e.target.id]]=+e.target.value; save(); render(); } });
+NB3.add("sim");
+R3.sim = () => { const S0=S.smSpot||spot||1, sig=(S.smIv||dvol||50)/100, mu=(S.smMu||0)/100, D=Math.max(1,Math.min(365,S.smDays||30)), N=Math.max(50,Math.min(3000,S.smN||500)), dt=1/365, seed0=simSeed;
+  if(!S.smSpot && $("sm-spot")) $("sm-spot").placeholder=Math.round(S0); if(!S.smIv && $("sm-iv")) $("sm-iv").placeholder=(sig*100).toFixed(1);
+  const P=[]; for(let n=0;n<N;n++){ let x=S0; const p=[x]; for(let d=0;d<D;d++){ x*=Math.exp((mu-sig*sig/2)*dt+sig*Math.sqrt(dt)*gauss()); p.push(x); } P.push(p); } simSeed=seed0;
+  const q=(arr,p)=>{ const s=[...arr].sort((a,b)=>a-b); return s[Math.floor(p*(s.length-1))]; }, days=Array.from({length:D+1},(_,i)=>i), band=p=>days.map(d=>q(P.map(x=>x[d]),p)), fin=P.map(x=>x[D]);
+  const up=fin.filter(x=>x>S0).length/N, exp=fin.reduce((a,b)=>a+b,0)/N;
+  $("sm-cards").innerHTML = cardH("P(Anstieg)",(up*100).toFixed(1)+" %","")+cardH("Erwartet","$"+fmtNum(exp),"")+cardH("10. Perzentil","$"+fmtNum(q(fin,.1)),"","neg")+cardH("90. Perzentil","$"+fmtNum(q(fin,.9)),"","pos")+cardH("Median","$"+fmtNum(q(fin,.5)),"");
+  const o=base(), c=ch("c-simfan"); if(c){ const b10=band(.1),b25=band(.25),b50=band(.5),b75=band(.75),b90=band(.9);
+    c.setOption({...o,legend:{...o.legend},grid:{...o.grid,top:40,right:20},tooltip:{...o.tooltip,valueFormatter:v=>typeof v==="number"?"$"+fmtNum(v):v},xAxis:ax(o,{type:"category",data:days,name:"Tage",nameLocation:"middle",nameGap:24}),yAxis:ax(o,{type:"value",scale:true,axisLabel:{...o._axis.axisLabel,formatter:v=>fmtNum(v)}}),
+      series:[...P.slice(0,40).map(p=>({type:"line",data:p.map(v=>Math.round(v)),showSymbol:false,silent:true,lineStyle:{width:.6,color:alpha(css("--muted"),.35)},tooltip:{show:false}})),
+        {name:"10./90.",type:"line",data:b10.map(Math.round),showSymbol:false,lineStyle:{color:css("--bear"),width:1.3,type:"dashed"},itemStyle:{color:css("--bear")}},{name:"10./90.",type:"line",data:b90.map(Math.round),showSymbol:false,lineStyle:{color:css("--bull"),width:1.3,type:"dashed"},itemStyle:{color:css("--bull")}},
+        {name:"25./75.",type:"line",data:b25.map(Math.round),showSymbol:false,lineStyle:{color:css("--warn"),width:1.1},itemStyle:{color:css("--warn")}},{name:"25./75.",type:"line",data:b75.map(Math.round),showSymbol:false,lineStyle:{color:css("--warn"),width:1.1},itemStyle:{color:css("--warn")}},
+        {name:"Median",type:"line",data:b50.map(Math.round),showSymbol:false,lineStyle:{color:css("--accent"),width:2.2},itemStyle:{color:css("--accent")},markLine:{symbol:"none",silent:true,data:[{yAxis:S0,label:{formatter:"Einstieg",color:css("--fg")},lineStyle:{color:css("--fg"),type:"dotted"}}]}}]},true); }
+  const lo=Math.min(...fin), hi=Math.max(...fin), nb=40, st=(hi-lo)/nb||1, h=new Array(nb).fill(0); fin.forEach(x=>h[Math.min(nb-1,Math.floor((x-lo)/st))]++);
+  const c2=ch("c-simhist"); if(c2) c2.setOption({...o,grid:{...o.grid,right:20},xAxis:ax(o,{type:"category",data:h.map((_,i)=>fmtNum(lo+st*(i+.5)))}),yAxis:ax(o,{type:"value"}),series:[{type:"bar",name:"Pfade",data:h.map((v,i)=>({value:v,itemStyle:{color:lo+st*(i+.5)>=S0?css("--bull"):css("--bear")}})),barWidth:"90%"}]},true); };
+
+/* --- Straddle-Builder --- */
+V3.straddle = P2("Straddle-Builder","Call + Put am gleichen Strike",'<div class="form"><label>Verfall <select id="sd-exp"></select></label><label>Strike <select id="sd-k"></select></label>'+seg3("k3","sdSide",[[1,"Long"],[-1,"Short"]])+'</div><div class="cards" id="sd-cards"></div><div class="chart tall" id="c-sd"></div>',"wide");
+R3.straddle = () => { const lb=dLb(), e=expSel("sd-exp",lb,"sdExp",7), L=lb.filter(b=>b.exp===e), ks=[...new Set(L.map(b=>b.strike))].sort((a,b)=>a-b); if(!ks.length) return; const F=L[0].F;
+  if(!S.sdK||!ks.includes(S.sdK)) S.sdK=near(ks,F); const el=$("sd-k"); const h=ks.join(); if(el.dataset.h!==h){ el.innerHTML=ks.map(k=>`<option value="${k}">${fmtNum(k)}</option>`).join(""); el.dataset.h=h; } el.value=S.sdK;
+  const k=S.sdK, c=L.find(b=>b.strike===k&&b.cp==="C"), p=L.find(b=>b.strike===k&&b.cp==="P"); if(!c||!p) return; const sd=S.sdSide||1, cc=c.mark_price*F, pp=p.mark_price*F, cost=cc+pp;
+  const g={d:c.g.delta+p.g.delta,v:c.g.vega+p.g.vega,t:c.g.theta+p.g.theta};
+  $("sd-cards").innerHTML = cardH("Call-Prämie","$"+fmtNum(cc),c.mark_iv.toFixed(1)+" % IV")+cardH("Put-Prämie","$"+fmtNum(pp),p.mark_iv.toFixed(1)+" % IV")+cardH(sd>0?"Gesamtkosten":"Einnahme","$"+fmtNum(cost),(cost/F*100).toFixed(2)+" % vom Forward",sd>0?"neg":"pos")+cardH("Break-even","$"+fmtNum(k-cost)+" – $"+fmtNum(k+cost),"±"+(cost/F*100).toFixed(2)+" %")+cardH("Delta / Vega / Theta",`${(sd*g.d).toFixed(2)} / $${fmtNum(sd*g.v,1)} / $${fmtNum(sd*g.t,1)}`,"");
+  const xs=gridX(F*0.8,F*1.2), legs=[{q:sd,K:k,cp:"C",T:c.T,sig:c.sig},{q:sd,K:k,cp:"P",T:p.T,sig:p.sig}], o=base(), ch1=ch("c-sd");
+  if(ch1) ch1.setOption({...o,legend:{...o.legend},grid:{...o.grid,top:40,right:20},tooltip:{...o.tooltip,trigger:"axis",valueFormatter:v=>typeof v==="number"?fmtUsd(v):v},xAxis:ax(o,{type:"value",min:xs[0],max:xs[xs.length-1],axisLabel:{...o._axis.axisLabel,formatter:v=>fmtNum(v)}}),yAxis:ax(o,{type:"value",axisLabel:{...o._axis.axisLabel,formatter:v=>fmtUsd(v)}}),
+    series:[{name:"Bei Verfall",type:"line",showSymbol:false,data:xs.map(x=>[x,legsValue(legs,x,1e9)-sd*cost]),lineStyle:{color:css("--accent"),width:2.2},itemStyle:{color:css("--accent")},areaStyle:{color:css("--accent"),opacity:.06},markLine:{symbol:"none",silent:true,data:[{xAxis:spot,label:{formatter:"Spot",color:css("--warn")},lineStyle:{color:css("--warn"),type:"dashed"}}]}},
+      {name:"Jetzt (näherungsweise)",type:"line",showSymbol:false,data:xs.map(x=>[x,legsValue(legs,x,0)-sd*cost]),lineStyle:{color:css("--warn"),width:1.3,type:"dashed"},itemStyle:{color:css("--warn")}}]},true); };
+document.addEventListener("change",e=>{ if(e.target.id==="sd-exp"){ S.sdExp=e.target.value; save(); render(); } if(e.target.id==="sd-k"){ S.sdK=+e.target.value; save(); render(); } });
+
+/* --- Combo-Greeks (frei eingegebene Legs) --- */
+V3.combog = P2("Combo-Greeks","eigene Legs mit Strike, IV und Laufzeit: Greeks und Payoff über den Spot",'<div id="cg-legs"></div><div class="form"><button class="btn ghost" id="cg-add">＋ Leg hinzufügen</button><button class="btn ghost" id="cg-reset">Zurücksetzen</button></div><div class="chart tall" id="c-cg"></div>',"wide");
+const cgLegs = () => { if(!Array.isArray(S.cgLegs)||!S.cgLegs.length) S.cgLegs=[{side:1,cp:"C",K:Math.round((spot||70000)*1.05/1000)*1000,iv:Math.round(dvol||50),dte:30,q:1},{side:-1,cp:"C",K:Math.round((spot||70000)*1.15/1000)*1000,iv:Math.round(dvol||50),dte:30,q:1}]; return S.cgLegs; };
+document.addEventListener("click",e=>{ if(e.target.id==="cg-add"){ cgLegs().push({side:1,cp:"P",K:Math.round(spot*0.95/1000)*1000,iv:Math.round(dvol||50),dte:30,q:1}); save(); render(); }
+  if(e.target.id==="cg-reset"){ S.cgLegs=null; save(); render(); } const d=e.target.closest("[data-cgdel]"); if(d){ cgLegs().splice(+d.dataset.cgdel,1); save(); render(); } });
+document.addEventListener("change",e=>{ const t=e.target; if(t.dataset.cg==null) return; const [i,f]=t.dataset.cg.split("."); const L=cgLegs()[+i]; L[f]= f==="cp"?t.value : +t.value; save(); render(); });
+NB3.add("combog");
+R3.combog = () => { const L=cgLegs(), s0=spot||70000, box=$("cg-legs");
+  const html=L.map((l,i)=>`<div class="form"><select data-cg="${i}.side"><option value="1"${l.side>0?" selected":""}>Long</option><option value="-1"${l.side<0?" selected":""}>Short</option></select><select data-cg="${i}.cp"><option${l.cp==="C"?" selected":""}>C</option><option${l.cp==="P"?" selected":""}>P</option></select>
+    <label>Strike <input type="number" step="500" value="${l.K}" data-cg="${i}.K" class="chip num" style="width:96px"></label><label>IV <input type="number" step="1" value="${l.iv}" data-cg="${i}.iv" class="chip num" style="width:64px"></label><label>DTE <input type="number" step="1" value="${l.dte}" data-cg="${i}.dte" class="chip num" style="width:64px"></label><label>Menge <input type="number" step="0.1" value="${l.q}" data-cg="${i}.q" class="chip num" style="width:64px"></label><button class="iconbtn" data-cgdel="${i}" aria-label="Leg entfernen">✕</button></div>`).join("");
+  if(box.dataset.h!==JSON.stringify(L)){ box.innerHTML=html; box.dataset.h=JSON.stringify(L); }
+  const xs=gridX(s0*0.7,s0*1.3,121), G=xs.map(x=>L.reduce((a,l)=>{ const T=Math.max(l.dte,0.01)/365, g=greeks(x,l.K,T,l.iv/100,l.cp), q=l.side*l.q; a.d+=q*g.delta; a.g+=q*g.gamma; a.t+=q*g.theta; a.v+=q*g.vega; return a; },{d:0,g:0,t:0,v:0}));
+  const o=base(), c=ch("c-cg"), mk=(gi,n,k,col)=>({name:n,type:"line",xAxisIndex:gi,yAxisIndex:gi,showSymbol:false,data:xs.map((x,i)=>[x,+G[i][k].toPrecision(4)]),lineStyle:{color:col,width:1.6},itemStyle:{color:col},markLine:{symbol:"none",silent:true,data:[{xAxis:s0,lineStyle:{color:css("--muted"),type:"dotted"},label:{show:false}}]}});
+  const grids=[0,1,2,3].map(i=>({left:i%2?"55%":56,right:i%2?18:"52%",top:i<2?36:"55%",height:"36%"}));
+  if(c) c.setOption({...o,legend:{...o.legend},grid:grids,tooltip:{...o.tooltip,trigger:"axis"},xAxis:grids.map((_,i)=>ax(o,{gridIndex:i,type:"value",min:xs[0],max:xs[xs.length-1],axisLabel:{...o._axis.axisLabel,formatter:v=>fmtNum(v/1000)+"K"}})),yAxis:grids.map((_,i)=>ax(o,{gridIndex:i,type:"value",scale:true})),
+    series:[mk(0,"Delta","d",css("--accent")),mk(1,"Gamma","g",css("--warn")),mk(2,"Theta $/T","t",css("--bear")),mk(3,"Vega $","v",css("--bull"))]},true); };
+
+/* --- Option-PnL (Mark-Verlauf) & Roll-PnL (IV vs. Spot) --- */
+V3.optpnl = P2("Option-PnL","Mark-Preis-Verlauf eines Kontrakts und P&L ab Einstieg",'<div class="form"><label>Kontrakt <select id="opn-i"></select></label>'+seg3("k3","opnRes",[["15","15m"],["60","1h"],["1D","1D"]])+seg3("k3","opnSide",[[1,"Long"],[-1,"Short"]])+'</div><div class="cards" id="opn-cards"></div><div class="chart tall" id="c-opn"></div><div class="note">Einstieg = erster Kurs im Fenster. Daten aus Deribit-Kerzen des Kontrakts.</div>',"wide")+
+  P2("Roll-PnL","IV-Reaktion auf den Spot: jeder Trade des Kontrakts als Punkt",'<div class="chart tall" id="c-roll"></div><div class="note">Zeigt, wie die IV dieses Kontrakts auf Spot-Bewegungen reagiert (Spot-Vol-Beta). Fallende IV bei steigendem Spot ist typisch für Puts/Absicherung.</div>',"wide");
+const OPN={k:"",d:null,tr:null};
+async function loadOpn(inst,res){ const k=inst+res; if(OPN.k===k && Date.now()-OPN.at<60000) return; OPN.k=k; OPN.at=Date.now(); const now=Date.now(), span={"15":3,"60":14,"1D":120}[res];
+  const [r,p,t]=await Promise.all([dRpc("public/get_tradingview_chart_data",{instrument_name:inst,start_timestamp:now-span*DAY,end_timestamp:now,resolution:res}),dRpc("public/get_tradingview_chart_data",{instrument_name:S.cur+"-PERPETUAL",start_timestamp:now-span*DAY,end_timestamp:now,resolution:res}),dRpc("public/get_last_trades_by_instrument_and_time",{instrument_name:inst,start_timestamp:now-30*DAY,end_timestamp:now,count:1000})]);
+  OPN.d=r; OPN.p=p; OPN.tr=t&&t.trades||[]; scheduleRender(); }
+R3.optpnl = () => { const lb=dLb(), inst=instSel("opn-i",lb,"opnI"), res=S.opnRes||"60"; loadOpn(inst,res); const d=OPN.d, o=base(), sd=S.opnSide||1; if(!d||!d.ticks||!d.ticks.length){ $("opn-cards").innerHTML='<div class="empty">Lade Kerzen …</div>'; return; }
+  const pm=new Map((OPN.p&&OPN.p.ticks||[]).map((t,i)=>[t,OPN.p.close[i]])), usd=d.ticks.map((t,i)=>d.close[i]*(pm.get(t)||spot)), e0=usd[0], pnl=usd.map(v=>sd*(v-e0)), last=usd[usd.length-1];
+  $("opn-cards").innerHTML = cardH("Einstieg","$"+fmtNum(e0,1),fmtDT(d.ticks[0]))+cardH("Aktuell","$"+fmtNum(last,1),"")+cardH("P&L je Kontrakt",sgn3(sd*(last-e0),v=>"$"+fmtNum(v,1)),pct3(sd*(last/e0-1)*100,1),cls3(sd*(last-e0)))+cardH("Hoch / Tief","$"+fmtNum(Math.max(...usd),0)+" / $"+fmtNum(Math.min(...usd),0),"");
+  const c=ch("c-opn"); if(c) c.setOption({...o,legend:{...o.legend},grid:{...o.grid,top:40},tooltip:{...o.tooltip,valueFormatter:v=>typeof v==="number"?"$"+fmtNum(v,1):v},xAxis:ax(o,{type:"time",splitLine:{show:false}}),yAxis:[ax(o,{type:"value",scale:true}),ax(o,{type:"value",position:"right",splitLine:{show:false}})],
+    series:[{name:"Mark $",type:"line",showSymbol:false,data:d.ticks.map((t,i)=>[t,+usd[i].toFixed(2)]),lineStyle:{color:css("--accent"),width:1.8},itemStyle:{color:css("--accent")}},{name:"P&L $",type:"line",yAxisIndex:1,showSymbol:false,data:d.ticks.map((t,i)=>[t,+pnl[i].toFixed(2)]),lineStyle:{color:css("--warn"),width:1.2,type:"dashed"},itemStyle:{color:css("--warn")},areaStyle:{color:css("--warn"),opacity:.05}}]},true);
+  const tr=(OPN.tr||[]).filter(t=>t.iv>0&&t.index_price>0), c2=ch("c-roll");
+  if(c2) c2.setOption({...o,grid:{...o.grid,right:20},tooltip:{...o.tooltip,trigger:"item",formatter:p=>`${fmtDT(p.data[2])}<br>Spot $${fmtNum(p.data[0])} · IV <b>${p.data[1].toFixed(1)} %</b>`},xAxis:ax(o,{type:"value",scale:true,name:"Spot",nameLocation:"middle",nameGap:24,axisLabel:{...o._axis.axisLabel,formatter:v=>fmtNum(v)}}),yAxis:ax(o,{type:"value",scale:true,name:"Trade-IV %",nameTextStyle:{color:o.textStyle.color,fontSize:10}}),
+    visualMap:{show:false,dimension:2,min:tr.length?tr[0].timestamp:0,max:Date.now(),inRange:{color:[alpha(css("--muted"),.4),css("--accent")]}},series:[{type:"scatter",symbolSize:6,data:tr.map(t=>[t.index_price,t.iv,t.timestamp])}],
+    title:!tr.length?{text:"Keine Trades in den letzten 30 Tagen",left:"center",top:"middle",textStyle:{color:css("--muted"),fontSize:12,fontWeight:400}}:undefined},true); };
+document.addEventListener("change",e=>{ if(e.target.id==="opn-i"){ S.opnI=e.target.value; save(); render(); } });
+
+/* --- Strategie-Engine --- */
+V3.strategy = P2("Strategie-Engine","Meinung eingeben, die Engine sucht die passende Struktur in der Live-Kette",'<div class="form">'+seg3("k3","stView",[["bull","Bullisch"],["bear","Bärisch"],["neutral","Neutral"],["longvol","Long Vol"],["shortvol","Short Vol"]])+'<label>Verfall <select id="stg-exp"></select></label>'+num3("stg-tgt",S.stTgt??5,0.5,"Ziel-Bewegung %",70)+num3("stg-bud",S.stBud??1000,100,"Max. Risiko $",90)+'</div><div id="stg-t"></div><div class="note">Bewertet wird mit Deribit-Mark-Preisen: Payoff am Ziel, Wahrscheinlichkeit für Gewinn aus der Mark-IV (lognormal) und Gewinn/Risiko-Verhältnis. Menge wird auf das maximale Risiko skaliert. Klick auf „In Rechner“ übernimmt die Legs.</div>',"wide");
+function buildCands(L,F){ const ks=[...new Set(L.map(b=>b.strike))].sort((a,b)=>a-b), at=m=>near(ks,F*m), G=(k,cp)=>L.find(b=>b.strike===k&&b.cp===cp), C=[];
+  const mk=(name,legs)=>{ if(legs.some(([b])=>!b)) return; const ls=legs.map(([b,q])=>({b,q})); C.push({name,ls}); };
+  [1,1.03,1.06,1.1].forEach(m=>mk("Long Call "+fmtNum(at(m)),[[G(at(m),"C"),1]])); [1,0.97,0.94,0.9].forEach(m=>mk("Long Put "+fmtNum(at(m)),[[G(at(m),"P"),1]]));
+  [[1,1.05],[1,1.1],[1.03,1.08],[1.05,1.15]].forEach(([a,b])=>mk(`Bull Call Spread ${fmtNum(at(a))}/${fmtNum(at(b))}`,[[G(at(a),"C"),1],[G(at(b),"C"),-1]]));
+  [[1,0.95],[1,0.9],[0.97,0.92],[0.95,0.85]].forEach(([a,b])=>mk(`Bear Put Spread ${fmtNum(at(a))}/${fmtNum(at(b))}`,[[G(at(a),"P"),1],[G(at(b),"P"),-1]]));
+  [[0.95,0.9],[0.92,0.85]].forEach(([a,b])=>mk(`Bull Put Spread ${fmtNum(at(a))}/${fmtNum(at(b))}`,[[G(at(a),"P"),-1],[G(at(b),"P"),1]])); [[1.05,1.1],[1.08,1.15]].forEach(([a,b])=>mk(`Bear Call Spread ${fmtNum(at(a))}/${fmtNum(at(b))}`,[[G(at(a),"C"),-1],[G(at(b),"C"),1]]));
+  mk("Long Straddle "+fmtNum(at(1)),[[G(at(1),"C"),1],[G(at(1),"P"),1]]); [[0.95,1.05],[0.9,1.1]].forEach(([a,b])=>mk(`Long Strangle ${fmtNum(at(a))}/${fmtNum(at(b))}`,[[G(at(a),"P"),1],[G(at(b),"C"),1]]));
+  [[0.9,0.95,1.05,1.1],[0.85,0.92,1.08,1.15]].forEach(([a,b,c,d])=>mk(`Iron Condor ${fmtNum(at(b))}/${fmtNum(at(c))}`,[[G(at(a),"P"),1],[G(at(b),"P"),-1],[G(at(c),"C"),-1],[G(at(d),"C"),1]]));
+  [[0.95,1,1.05],[0.9,1,1.1]].forEach(([a,b,c])=>mk(`Iron Butterfly ${fmtNum(at(b))}`,[[G(at(a),"P"),1],[G(at(b),"P"),-1],[G(at(b),"C"),-1],[G(at(c),"C"),1]]));
+  [[0.97,1.03],[1.02,1.08]].forEach(([a,b])=>mk(`Call Butterfly ${fmtNum(at((a+b)/2))}`,[[G(at(a),"C"),1],[G(at((a+b)/2),"C"),-2],[G(at(b),"C"),1]]));
+  mk(`Risk Reversal ${fmtNum(at(0.93))}/${fmtNum(at(1.07))}`,[[G(at(0.93),"P"),-1],[G(at(1.07),"C"),1]]); mk(`Reverse Risk Reversal ${fmtNum(at(0.93))}/${fmtNum(at(1.07))}`,[[G(at(0.93),"P"),1],[G(at(1.07),"C"),-1]]);
+  [[0.9,1.1]].forEach(([a,b])=>mk(`Short Strangle ${fmtNum(at(a))}/${fmtNum(at(b))}`,[[G(at(a),"P"),-1],[G(at(b),"C"),-1]])); mk("Short Straddle "+fmtNum(at(1)),[[G(at(1),"C"),-1],[G(at(1),"P"),-1]]);
+  return C; }
+function evalCand(c,F,view,tgt){ const legs=c.ls.map(({b,q})=>({q,K:b.strike,cp:b.cp,T:b.T,sig:b.sig})), cost=c.ls.reduce((a,{b,q})=>a+q*b.mark_price*b.F,0), T=Math.min(...legs.map(l=>l.T)), sig=legs.reduce((a,l)=>a+l.sig,0)/legs.length;
+  const xs=gridX(F*0.4,F*2,500), pl=xs.map(x=>legsValue(legs,x,1e9)-cost), mxP=Math.max(...pl), mnP=Math.min(...pl), unl=pl[pl.length-1]>pl[pl.length-2]+1&&pl[pl.length-1]>0;
+  const dir={bull:1,bear:-1,neutral:0,longvol:0,shortvol:0}[view], X=F*(1+dir*tgt/100), atT=legsValue(legs,X,1e9)-cost, sd=F*sig*Math.sqrt(T), up=legsValue(legs,F+sd,1e9)-cost, dn=legsValue(legs,F-sd,1e9)-cost, flat=legsValue(legs,F,1e9)-cost;
+  const pop=popOf(legs,cost,F,T,sig), risk=Math.max(-mnP,1), g=legs.reduce((a,l)=>{ const gg=greeks(F,l.K,l.T,l.sig,l.cp); a.d+=l.q*gg.delta; a.v+=l.q*gg.vega; return a; },{d:0,v:0});
+  let fit; switch(view){ case "bull": fit=atT/risk; if(g.d<=0) fit-=5; break; case "bear": fit=atT/risk; if(g.d>=0) fit-=5; break; case "neutral": fit=flat/risk + (pop||0)*0.5 - Math.abs(g.d); break; case "longvol": fit=(up+dn)/2/risk + (g.v>0?0.5:-5); break; case "shortvol": fit=flat/risk*0.5 + (pop||0) + (g.v<0?0.3:-5); break; }
+  const be=[]; for(let i=1;i<xs.length;i++){ if(Math.sign(pl[i-1])!==Math.sign(pl[i])) be.push(xs[i-1]+(xs[i]-xs[i-1])*(-pl[i-1])/(pl[i]-pl[i-1])); }
+  return {...c,cost,mxP:unl?Infinity:mxP,mnP,atT,pop,fit,be,delta:g.d,vega:g.v}; }
+R3.strategy = () => { const lb=dLb(), e=expSel("stg-exp",lb,"stExp",14), L=lb.filter(b=>b.exp===e), F=L[0]?L[0].F:spot, view=S.stView||"bull", tgt=S.stTgt??5, bud=S.stBud??1000; if(!L.length) return;
+  const R=buildCands(L,F).map(c=>evalCand(c,F,view,tgt)).filter(x=>isFinite(x.fit) && x.mnP<-1 && Math.abs(x.cost)<F*2).sort((a,b)=>b.fit-a.fit).slice(0,10);
+  window.__stg=R; $("stg-t").innerHTML = tbl3(["Struktur","Menge","Kosten","Max. Gewinn","Max. Verlust","Am Ziel","P(Gewinn)","Break-even","Δ / Vega",""], R.map((r,i)=>{ const n=Math.max(0.1,Math.floor(bud/Math.max(-r.mnP,1)*10)/10);
+    return `<tr><td class="l"><b>${r.name}</b><br><span class="mut" style="font-size:11px">${r.ls.map(({b,q})=>`${q>0?"+":"−"}${Math.abs(q)} ${b.strike}${b.cp}`).join(" / ")}</span></td><td>${n}</td><td class="${r.cost>0?"neg":"pos"}">${fmtUsd(n*r.cost)}</td><td class="pos">${r.mxP===Infinity?"unbegrenzt":fmtUsd(n*r.mxP)}</td><td class="neg">${fmtUsd(n*r.mnP)}</td><td class="${cls3(r.atT)}">${fmtUsd(n*r.atT)}</td><td>${r.pop!=null?(r.pop*100).toFixed(0)+" %":"–"}</td><td>${r.be.map(x=>fmtNum(x)).join(" / ")||"–"}</td><td>${(n*r.delta).toFixed(2)} / $${fmtNum(n*r.vega,0)}</td><td><button class="btn ghost" data-stuse="${i}" data-stq="${n}">In Rechner</button></td></tr>`; })); };
+document.addEventListener("change",e=>{ if(e.target.id==="stg-exp"){ S.stExp=e.target.value; save(); render(); } if(e.target.id==="stg-tgt"){ S.stTgt=+e.target.value; save(); render(); } if(e.target.id==="stg-bud"){ S.stBud=+e.target.value; save(); render(); } });
+document.addEventListener("click",e=>{ const b=e.target.closest("[data-stuse]"); if(!b||!window.__stg) return; const r=window.__stg[+b.dataset.stuse], n=+b.dataset.stq; S.legs=r.ls.map(({b:x,q})=>({inst:x.instrument_name,qty:Math.abs(q)*n,side:Math.sign(q)})); save(); go("calc"); });
+
+/* --- Backtest (modellbasiert) --- */
+V3.backtest = P2("Strategie-Backtest","einzelner Options-Trade auf echten Kursdaten, P&L nach Delta / Theta / Vega",'<div class="form">'+sel3("bt-st",[["lc","Long Call"],["lp","Long Put"],["sc","Short Call"],["sp","Short Put"],["lstr","Long Straddle"],["sstr","Short Straddle"],["bcs","Bull Call Spread"],["bps","Bear Put Spread"],["ic","Iron Condor"]],S.btSt||"lc","Strategie")+
+  num3("bt-dte",S.btDte??30,1,"Laufzeit (Tage)",70)+num3("bt-mny",S.btMny??5,1,"Strike-Abstand %",70)+num3("bt-risk",S.btRisk??1000,100,"Risiko $",80)+'<label>Einstieg <input type="date" id="bt-in" class="chip"></label>'+sel3("bt-exit",[["exp","bis Verfall"],["dte","DTE-Ziel"],["tp","% Gewinn"],["sl","Verlust-Stopp"]],S.btExit||"exp","Ausstieg")+num3("bt-x",S.btX??50,5,"Wert",60)+'<button class="btn" id="bt-run">Backtest starten</button></div><div class="cards" id="bt-cards"></div><div class="chart tall" id="c-bt"></div><div class="note">Bewertung mit Black-76: Kurs = Deribit-Perp (stündlich), IV = Deribit DVOL (stündlich, mit Skew-Näherung für OTM-Strikes). Kein echter Orderbuch-Fill, deshalb Modell-Backtest. Gebühren: 0,03 % je Leg und Seite.</div>',"wide");
+let BT=null;
+document.addEventListener("click",async e=>{ if(e.target.id!=="bt-run") return; const g=id=>$(id).value; S.btSt=g("bt-st"); S.btDte=+g("bt-dte"); S.btMny=+g("bt-mny"); S.btRisk=+g("bt-risk"); S.btExit=g("bt-exit"); S.btX=+g("bt-x"); S.btIn=g("bt-in"); save();
+  const t0=Date.parse(S.btIn+"T00:00:00Z"); if(!t0||t0>Date.now()-DAY){ toast("Bitte ein Einstiegsdatum in der Vergangenheit wählen."); return; }
+  $("bt-cards").innerHTML='<div class="empty">Lade Kurs- und Vola-Daten …</div>'; const end=Math.min(Date.now(),t0+(S.btDte+1)*DAY);
+  let [p,v]=await Promise.all([dRpc("public/get_tradingview_chart_data",{instrument_name:S.cur+"-PERPETUAL",start_timestamp:t0,end_timestamp:end,resolution:"60"}),dRpc("public/get_volatility_index_data",{currency:S.cur,start_timestamp:t0,end_timestamp:end,resolution:"3600"})]);
+  p=p&&normC(p); if(!p||!p.ticks||!p.ticks.length){ $("bt-cards").innerHTML='<div class="empty">Keine Daten für diesen Zeitraum.</div>'; return; } BT=runBT(p,v&&v.data||[]); render(); });
+function runBT(p,vd){ const vm=new Map(vd.map(d=>[Math.floor(d[0]/3600e3),d[4]])), F0=p.close[0], m=(S.btMny||5)/100, D=S.btDte||30, T0=D/365, st=S.btSt;
+  const K=(x)=>Math.round(F0*x/1000)*1000, L={lc:[[1,"C",K(1+m)]],lp:[[1,"P",K(1-m)]],sc:[[-1,"C",K(1+m)]],sp:[[-1,"P",K(1-m)]],lstr:[[1,"C",K(1)],[1,"P",K(1)]],sstr:[[-1,"C",K(1)],[-1,"P",K(1)]],bcs:[[1,"C",K(1)],[-1,"C",K(1+m)]],bps:[[1,"P",K(1)],[-1,"P",K(1-m)]],ic:[[1,"P",K(1-2*m)],[-1,"P",K(1-m)],[-1,"C",K(1+m)],[1,"C",K(1+2*m)]]}[st];
+  const ivAt=(i,k,F)=>{ let base=vm.get(Math.floor(p.ticks[i]/3600e3)); if(base==null){ for(let j=i;j>=0&&base==null;j--) base=vm.get(Math.floor(p.ticks[j]/3600e3)); } base=(base||50)/100; const mny=Math.log(k/F); return Math.max(0.05, base*(1+0.9*mny*mny/ (T0) * 0.02) + (mny<0? -mny*0.15 : mny*0.05)); };
+  const val=(i,F,T)=>L.reduce((a,[q,cp,k])=>a+q*(T>0?bsPrice(F,k,T,ivAt(i,k,F),cp):PAY(cp,k,F)),0);
+  const v0=val(0,F0,T0), maxLoss=(()=>{ const xs=gridX(F0*0.3,F0*2.5,300); return Math.max(1,-Math.min(...xs.map(x=>L.reduce((a,[q,cp,k])=>a+q*PAY(cp,k,x),0)-v0)), st[0]==="s"||st==="sstr"? F0*0.2 : 1); })();
+  const n=Math.max(0.01,(S.btRisk||1000)/maxLoss), fee=L.length*0.0003*F0*n; let path=[], att={d:0,t:0,v:0}, exitI=null, why="Verfall";
+  for(let i=0;i<p.ticks.length;i++){ const T=Math.max(T0-(p.ticks[i]-p.ticks[0])/YEAR,0), F=p.close[i], pv=val(i,F,T), pnl=n*(pv-v0)-fee;
+    if(i>0){ const Fp=p.close[i-1], Tp=Math.max(T0-(p.ticks[i-1]-p.ticks[0])/YEAR,0); let dd=0, tt=0, vv=0; L.forEach(([q,cp,k])=>{ if(Tp<=0) return; const s=ivAt(i-1,k,Fp), g=greeks(Fp,k,Tp,s,cp); dd+=q*g.delta*(F-Fp); tt+=q*g.theta*((p.ticks[i]-p.ticks[i-1])/DAY); vv+=q*g.vega*((ivAt(i,k,F)-s)*100); }); att.d+=n*dd; att.t+=n*tt; att.v+=n*vv; }
+    path.push([p.ticks[i],pnl,F,att.d,att.t,att.v]);
+    if(S.btExit==="dte" && T*365<=(S.btX||7)){ exitI=i; why="DTE-Ziel"; break; } if(S.btExit==="tp" && pnl>=Math.abs(n*v0)*(S.btX||50)/100 && i>0){ exitI=i; why="Gewinnziel"; break; } if(S.btExit==="sl" && pnl<=-Math.abs(n*v0)*(S.btX||50)/100 && i>0){ exitI=i; why="Stopp"; break; } if(T<=0){ exitI=i; break; } }
+  const last=path[path.length-1]; return {path,legs:L,n,v0,fee,pnl:last[1],why:exitI==null&&last[0]<Date.now()-3600e3?why:exitI==null?"läuft noch":why,F0,att,mdd:Math.min(...path.map(x=>x[1]))}; }
+R3.backtest = () => { const el=$("bt-in"); if(el&&!el.value){ el.value=S.btIn||new Date(Date.now()-45*DAY).toISOString().slice(0,10); el.max=new Date(Date.now()-DAY).toISOString().slice(0,10); }
+  if(!BT) return; const o=base(), r=BT;
+  $("bt-cards").innerHTML = cardH("Ergebnis",sgn3(r.pnl),r.why,cls3(r.pnl))+cardH("Einstieg",`${r.n.toFixed(2)} × ${r.legs.map(([q,cp,k])=>`${q>0?"+":"−"}${fmtNum(k)}${cp}`).join(" / ")}`,"Prämie "+fmtUsd(r.n*r.v0)+" · Spot $"+fmtNum(r.F0))+cardH("Delta-P&L",sgn3(r.att.d),"",cls3(r.att.d))+cardH("Theta-P&L",sgn3(r.att.t),"",cls3(r.att.t))+cardH("Vega-P&L",sgn3(r.att.v),"",cls3(r.att.v))+cardH("Max. Drawdown",fmtUsd(r.mdd),"Gebühren "+fmtUsd(r.fee),"neg");
+  const c=ch("c-bt"); if(c) c.setOption({...o,legend:{...o.legend},grid:{...o.grid,top:40},tooltip:{...o.tooltip,valueFormatter:v=>typeof v==="number"?(Math.abs(v)>5000&&v>10000?"$"+fmtNum(v):fmtUsd(v)):v},xAxis:ax(o,{type:"time",splitLine:{show:false}}),yAxis:[ax(o,{type:"value",axisLabel:{...o._axis.axisLabel,formatter:v=>fmtUsd(v)}}),ax(o,{type:"value",scale:true,position:"right",splitLine:{show:false},axisLabel:{...o._axis.axisLabel,formatter:v=>fmtNum(v)}})],
+    series:[{name:"P&L",type:"line",showSymbol:false,data:r.path.map(x=>[x[0],+x[1].toFixed(2)]),lineStyle:{color:css("--accent"),width:2},itemStyle:{color:css("--accent")},areaStyle:{color:css("--accent"),opacity:.07}},...[["Delta",3,css("--bull")],["Theta",4,css("--bear")],["Vega",5,css("--warn")]].map(([n,i,col])=>({name:n,type:"line",showSymbol:false,data:r.path.map(x=>[x[0],+x[i].toFixed(2)]),lineStyle:{color:col,width:1,type:"dashed"},itemStyle:{color:col}})),
+      {name:"Spot",type:"line",yAxisIndex:1,showSymbol:false,data:r.path.map(x=>[x[0],x[2]]),lineStyle:{color:css("--muted"),width:1},itemStyle:{color:css("--muted")}}]},true); };
+
+/* --- Delta-Hedge-Simulator --- */
+V3.dhedge = P2("Delta-Hedge-Simulator","Option verkaufen oder kaufen und mit dem Perp delta-neutral halten",'<div class="form">'+sel3("dh-side",[["-1","Short Option"],["1","Long Option"]],S.dhSide||"-1","Position")+sel3("dh-cp",[["C","Call"],["P","Put"]],S.dhCp||"C","Typ")+num3("dh-mny",S.dhMny??0,1,"Strike-Abstand %",70)+num3("dh-dte",S.dhDte??14,1,"Laufzeit (Tage)",70)+sel3("dh-freq",[["1","stündlich"],["4","alle 4 h"],["24","täglich"],["0","nie (ungehedgt)"]],S.dhFreq||"4","Rebalancing")+'<label>Start <input type="date" id="dh-in" class="chip"></label><button class="btn" id="dh-run">Simulieren</button></div><div class="cards" id="dh-cards"></div><div class="chart tall" id="c-dh"></div><div class="note">Option zum Start mit der damaligen DVOL bewertet und gehalten; Hedge mit dem Deribit-Perp zum Stundenkurs. Ergebnis = Options-P&L + Hedge-P&L. Long Gamma verdient, wenn die realisierte Vola über der impliziten liegt.</div>',"wide");
+let DH=null;
+document.addEventListener("click",async e=>{ if(e.target.id!=="dh-run") return; const g=id=>$(id).value; S.dhSide=g("dh-side"); S.dhCp=g("dh-cp"); S.dhMny=+g("dh-mny"); S.dhDte=+g("dh-dte"); S.dhFreq=g("dh-freq"); S.dhIn=g("dh-in"); save();
+  const t0=Date.parse(S.dhIn+"T00:00:00Z"); if(!t0||t0>Date.now()-DAY){ toast("Bitte einen Start in der Vergangenheit wählen."); return; } const end=Math.min(Date.now(),t0+S.dhDte*DAY);
+  const [p,v]=await Promise.all([dRpc("public/get_tradingview_chart_data",{instrument_name:S.cur+"-PERPETUAL",start_timestamp:t0,end_timestamp:end,resolution:"60"}),dRpc("public/get_volatility_index_data",{currency:S.cur,start_timestamp:t0-3*3600e3,end_timestamp:t0+3*3600e3,resolution:"3600"})]);
+  if(!p||!p.ticks||p.ticks.length<3){ toast("Keine Kursdaten für diesen Zeitraum."); return; } const iv=((v&&v.data&&v.data.length)?v.data[v.data.length-1][4]:dvol||50)/100, F0=p.close[0], K=Math.round(F0*(1+(S.dhCp==="C"?1:-1)*(S.dhMny||0)/100)/500)*500, sd=+S.dhSide, T0=S.dhDte/365, fr=+S.dhFreq;
+  let hedge=0, cash=0, trades=0, out=[], rv=[]; const prem0=bsPrice(F0,K,T0,iv,S.dhCp);
+  for(let i=0;i<p.ticks.length;i++){ const F=p.close[i], T=Math.max(T0-(p.ticks[i]-p.ticks[0])/YEAR,0), opt=T>0?bsPrice(F,K,T,iv,S.dhCp):PAY(S.dhCp,K,F);
+    if(fr>0 && i%fr===0 && T>0){ const tgt=-sd*greeks(F,K,T,iv,S.dhCp).delta; const dq=tgt-hedge; if(Math.abs(dq)>1e-6){ cash-=dq*F; cash-=Math.abs(dq)*F*0.0005; hedge=tgt; trades++; } }
+    const pnlOpt=sd*(opt-prem0), pnlH=hedge*F+cash; out.push([p.ticks[i],pnlOpt,pnlH,pnlOpt+pnlH,F]); if(i) rv.push(Math.log(F/p.close[i-1])); }
+  const rvA=Math.sqrt(rv.reduce((a,x)=>a+x*x,0)/Math.max(1,rv.length)*24*365)*100; DH={out,K,iv,prem0,trades,rvA,F0}; render(); });
+R3.dhedge = () => { const el=$("dh-in"); if(el&&!el.value){ el.value=S.dhIn||new Date(Date.now()-20*DAY).toISOString().slice(0,10); el.max=new Date(Date.now()-DAY).toISOString().slice(0,10); } if(!DH) return; const L=DH.out[DH.out.length-1], o=base();
+  $("dh-cards").innerHTML = cardH("Gesamt-P&L",sgn3(L[3]),"je 1 "+S.cur+" Nominal",cls3(L[3]))+cardH("Options-P&L",sgn3(L[1]),"Strike $"+fmtNum(DH.K)+" · Prämie $"+fmtNum(DH.prem0),cls3(L[1]))+cardH("Hedge-P&L",sgn3(L[2]),DH.trades+" Rebalancings",cls3(L[2]))+cardH("IV beim Start",(DH.iv*100).toFixed(1)+" %","DVOL")+cardH("Realisierte Vola",DH.rvA.toFixed(1)+" %","stündlich, annualisiert",DH.rvA>DH.iv*100?"pos":"neg");
+  const c=ch("c-dh"); if(c) c.setOption({...o,legend:{...o.legend},grid:{...o.grid,top:40},tooltip:{...o.tooltip,valueFormatter:v=>typeof v==="number"?(v>10000?"$"+fmtNum(v):fmtUsd(v)):v},xAxis:ax(o,{type:"time",splitLine:{show:false}}),yAxis:[ax(o,{type:"value",axisLabel:{...o._axis.axisLabel,formatter:v=>fmtUsd(v)}}),ax(o,{type:"value",scale:true,position:"right",splitLine:{show:false},axisLabel:{...o._axis.axisLabel,formatter:v=>fmtNum(v)}})],
+    series:[{name:"Gesamt",type:"line",showSymbol:false,data:DH.out.map(x=>[x[0],+x[3].toFixed(2)]),lineStyle:{color:css("--accent"),width:2.2},itemStyle:{color:css("--accent")},areaStyle:{color:css("--accent"),opacity:.06}},{name:"Option",type:"line",showSymbol:false,data:DH.out.map(x=>[x[0],+x[1].toFixed(2)]),lineStyle:{color:css("--warn"),width:1.1,type:"dashed"},itemStyle:{color:css("--warn")}},{name:"Hedge",type:"line",showSymbol:false,data:DH.out.map(x=>[x[0],+x[2].toFixed(2)]),lineStyle:{color:css("--bull"),width:1.1,type:"dashed"},itemStyle:{color:css("--bull")}},{name:"Spot",type:"line",yAxisIndex:1,showSymbol:false,data:DH.out.map(x=>[x[0],x[4]]),lineStyle:{color:css("--muted"),width:1},itemStyle:{color:css("--muted")}}]},true); };
+
+/* --- Quant / ML --- */
+V3.quant = P2("Richtungsmodell","Logistische Regression: Wahrscheinlichkeit, dass der Kurs in der nächsten Stunde steigt",'<div class="cards" id="q-cards"></div><div class="chart" id="c-qprob"></div><div class="note" id="q-note"></div>',"wide")+
+  P2("Kalibrierung","vorhergesagte Wahrscheinlichkeit vs. tatsächliche Trefferquote (Testdaten)",'<div class="chart" id="c-qcal"></div>')+P2("Feature Importance","Gewicht × Streuung je Merkmal",'<div class="chart" id="c-qfi"></div>')+
+  P2("Regime-Wahrscheinlichkeiten","Softmax über die vier Vol-Regime",'<div class="chart" id="c-qreg"></div>')+P2("Anomalie-Erkennung","Isolation Forest über die Trades im Zeitfenster",'<div id="q-anom"></div>',"wide");
+const QM={at:0,res:null};
+async function trainQ(){ if(Date.now()-QM.at<15*60000) return; QM.at=Date.now(); const now=Date.now(), st=now-60*DAY;
+  let [p,v]=await Promise.all([dRpc("public/get_tradingview_chart_data",{instrument_name:S.cur+"-PERPETUAL",start_timestamp:st,end_timestamp:now,resolution:"60"}),dRpc("public/get_volatility_index_data",{currency:S.cur,start_timestamp:st,end_timestamp:now,resolution:"3600"})]); if(!p||!p.ticks) return; p=normC(p);
+  const vm=new Map((v&&v.data||[]).map(d=>[Math.floor(d[0]/3600e3),d[4]])), c=p.close, vol=p.volume, n=c.length, X=[], Y=[], T=[], names=["Rendite 1h","Rendite 4h","Rendite 24h","DVOL-Änderung 4h","DVOL-Niveau","Volumen-z","Spanne 1h","Abstand MA24"];
+  const dv=i=>{ let x=vm.get(Math.floor(p.ticks[i]/3600e3)); for(let j=i;x==null&&j>i-6&&j>=0;j--) x=vm.get(Math.floor(p.ticks[j]/3600e3)); return x; };
+  for(let i=25;i<n;i++){ const d0=dv(i), d4=dv(i-4); if(d0==null||d4==null) continue; const vw=vol.slice(i-24,i), vm_=vw.reduce((a,b)=>a+b,0)/24, vs=Math.sqrt(vw.reduce((a,b)=>a+(b-vm_)*(b-vm_),0)/24)||1, ma=c.slice(i-24,i).reduce((a,b)=>a+b,0)/24;
+    X.push([Math.log(c[i]/c[i-1]),Math.log(c[i]/c[i-4]),Math.log(c[i]/c[i-24]),d0-d4,d0,(vol[i]-vm_)/vs,Math.log(p.high[i]/p.low[i]),c[i]/ma-1]); Y.push(i+1<n?(c[i+1]>c[i]?1:0):null); T.push(p.ticks[i]); }
+  const m=X[0].map((_,j)=>X.reduce((a,x)=>a+x[j],0)/X.length), s=X[0].map((_,j)=>Math.sqrt(X.reduce((a,x)=>a+Math.pow(x[j]-m[j],2),0)/X.length)||1), Z=X.map(x=>x.map((v,j)=>(v-m[j])/s[j]));
+  const lab=Y.map((y,i)=>[Z[i],y,T[i]]).filter(r=>r[1]!=null), cut=Math.floor(lab.length*0.7), tr=lab.slice(0,cut), te=lab.slice(cut); let w=new Array(Z[0].length).fill(0), b=0; const sig=z=>1/(1+Math.exp(-z)), lr=0.05, l2=0.01;
+  for(let ep=0;ep<300;ep++){ const gw=new Array(w.length).fill(0); let gb=0; for(const [x,y] of tr){ const pr=sig(x.reduce((a,v,j)=>a+v*w[j],b)), e=pr-y; x.forEach((v,j)=>gw[j]+=e*v); gb+=e; } w=w.map((v,j)=>v-lr*(gw[j]/tr.length+l2*v)); b-=lr*gb/tr.length; }
+  const pt=te.map(([x,y,t])=>[sig(x.reduce((a,v,j)=>a+v*w[j],b)),y,t]), acc=pt.filter(([p_,y])=>(p_>0.5?1:0)===y).length/(pt.length||1), base_=pt.filter(r=>r[1]===1).length/(pt.length||1);
+  const bins=Array.from({length:10},()=>[0,0,0]); pt.forEach(([p_,y])=>{ const k=Math.min(9,Math.floor(p_*10)); bins[k][0]+=p_; bins[k][1]+=y; bins[k][2]++; });
+  const brier=pt.reduce((a,[p_,y])=>a+Math.pow(p_-y,2),0)/(pt.length||1), last=Z[Z.length-1], pNow=sig(last.reduce((a,v,j)=>a+v*w[j],b)), hist=Z.slice(-168).map((x,i)=>[T[T.length-168+i]||T[i],sig(x.reduce((a,v,j)=>a+v*w[j],b))]);
+  QM.res={acc,base:base_,brier,bins,w,names,pNow,hist,n:lab.length,nt:pt.length}; scheduleRender(); }
+function isoForest(rows,trees=60,sub=128){ const n=rows.length; if(n<20) return rows.map(()=>0); const d=rows[0].length, c=s=>s<=1?0:2*(Math.log(s-1)+0.5772)-2*(s-1)/s;
+  const build=(idx,h)=>{ if(h>=10||idx.length<=1) return {s:idx.length}; const j=Math.floor(Math.random()*d), vs=idx.map(i=>rows[i][j]), lo=Math.min(...vs), hi=Math.max(...vs); if(lo===hi) return {s:idx.length}; const sp=lo+Math.random()*(hi-lo); return {j,sp,l:build(idx.filter(i=>rows[i][j]<sp),h+1),r:build(idx.filter(i=>rows[i][j]>=sp),h+1)}; };
+  const F=[]; for(let t=0;t<trees;t++){ const idx=[]; for(let k=0;k<Math.min(sub,n);k++) idx.push(Math.floor(Math.random()*n)); F.push(build(idx,0)); }
+  const path=(x,nd,h)=> nd.s!=null? h+c(nd.s) : path(x, x[nd.j]<nd.sp?nd.l:nd.r, h+1); const cn=c(Math.min(sub,n));
+  return rows.map(x=>Math.pow(2,-F.reduce((a,t)=>a+path(x,t,0),0)/F.length/cn)); }
+let anomCache={k:"",out:[]};
+R3.quant = (lb,lv,list) => { trainQ(); const o=base(), R=QM.res;
+  if(R){ $("q-cards").innerHTML = cardH("P(Anstieg, nächste 1 h)",(R.pNow*100).toFixed(1)+" %",R.pNow>0.55?"bullische Tendenz":R.pNow<0.45?"bärische Tendenz":"kein klarer Edge",R.pNow>0.55?"pos":R.pNow<0.45?"neg":"")+cardH("Trefferquote (Test)",(R.acc*100).toFixed(1)+" %","Basis "+(R.base*100).toFixed(1)+" % · "+R.nt+" Stunden")+cardH("Brier-Score",R.brier.toFixed(4),"0,25 = Zufall, kleiner ist besser")+cardH("Trainingsdaten",R.n+" Stunden","60 Tage, 70/30 Split");
+    $("q-note").textContent="Merkmale: kurzfristige Renditen, DVOL-Niveau und -Änderung, Volumen-Z-Score, Stundenspanne, Abstand zum 24h-Mittel. Neu trainiert alle 15 Minuten. Ein Wert um 50 % bedeutet keinen Edge. Erst der Kalibrierungs-Chart zeigt, wie ehrlich die Wahrscheinlichkeiten sind.";
+    const c=ch("c-qprob"); if(c) c.setOption({...o,grid:{...o.grid,right:20},tooltip:{...o.tooltip,valueFormatter:v=>typeof v==="number"?(v*100).toFixed(1)+" %":v},xAxis:ax(o,{type:"time",splitLine:{show:false}}),yAxis:ax(o,{type:"value",min:0,max:1,axisLabel:{...o._axis.axisLabel,formatter:v=>(v*100)+"%"}}),series:[{type:"line",name:"P(Anstieg)",showSymbol:false,data:R.hist,lineStyle:{color:css("--accent"),width:1.5},itemStyle:{color:css("--accent")},markLine:{symbol:"none",silent:true,data:[{yAxis:0.5,lineStyle:{color:css("--muted"),type:"dashed"}}]}}]},true);
+    const c2=ch("c-qcal"); if(c2) c2.setOption({...o,legend:{...o.legend},grid:{...o.grid,right:20,top:40},xAxis:ax(o,{type:"value",min:0,max:1,name:"vorhergesagt",nameLocation:"middle",nameGap:24}),yAxis:ax(o,{type:"value",min:0,max:1}),series:[{name:"Ideal",type:"line",data:[[0,0],[1,1]],showSymbol:false,lineStyle:{color:css("--muted"),type:"dashed"}},{name:"Modell",type:"line",data:R.bins.filter(b=>b[2]).map(b=>[+(b[0]/b[2]).toFixed(3),+(b[1]/b[2]).toFixed(3)]),symbolSize:7,lineStyle:{color:css("--accent")},itemStyle:{color:css("--accent")}}]},true);
+    const fi=R.names.map((n,j)=>[n,R.w[j]]).sort((a,b)=>Math.abs(b[1])-Math.abs(a[1])), c3=ch("c-qfi");
+    if(c3) c3.setOption({...o,grid:{left:130,right:20,top:10,bottom:30},xAxis:ax(o,{type:"value"}),yAxis:ax(o,{type:"category",data:fi.map(x=>x[0]).reverse()}),series:[{type:"bar",data:fi.map(x=>({value:+x[1].toFixed(3),itemStyle:{color:x[1]>=0?css("--bull"):css("--bear")}})).reverse(),barMaxWidth:16}]},true); }
+  else $("q-cards").innerHTML='<div class="empty">Trainiere Modell mit 60 Tagen Stundendaten …</div>';
+  const p=ivPct(), cen=[12.5,42.5,72.5,92.5], ex=p==null?[0.25,0.25,0.25,0.25]:(()=>{ const z=cen.map(c=>Math.exp(-Math.pow((p-c)/12,2))), s=z.reduce((a,b)=>a+b,0); return z.map(v=>v/s); })(), c4=ch("c-qreg");
+  if(c4) c4.setOption({...o,grid:{...o.grid,right:20},tooltip:{...o.tooltip,valueFormatter:v=>typeof v==="number"?v.toFixed(1)+" %":v},xAxis:ax(o,{type:"category",data:REG.map(r=>r[0])}),yAxis:ax(o,{type:"value",max:100,axisLabel:{...o._axis.axisLabel,formatter:"{value}%"}}),series:[{type:"bar",data:ex.map((v,i)=>({value:+(v*100).toFixed(1),itemStyle:{color:[css("--bull"),css("--accent"),css("--warn"),css("--bear")][i]}})),barMaxWidth:46,label:{show:true,position:"top",color:css("--fg"),formatter:p=>p.value+" %"}}]},true);
+  const key=list.length+"|"+(list.length?list[list.length-1].id:""); if(anomCache.k!==key && list.length>=20){ const dm=new Map(lb.map(b=>[b.instrument_name,b])), L=list.slice(-3000);
+    const rows=L.map(t=>{ const b=dm.get(t.inst); return [Math.log(Math.max(t.prem,1)),b?Math.abs(b.g.delta):0.5,Math.log(Math.max((t.expTs-t.ts)/DAY,0.05)),Math.log(t.strike/(t.idx||spot)),t.iv&&b?t.iv-b.mark_iv:0]; });
+    const sc=isoForest(rows); anomCache={k:key,out:L.map((t,i)=>[t,sc[i]]).sort((a,b)=>b[1]-a[1]).slice(0,25)}; }
+  $("q-anom").innerHTML = tbl3(["Zeit","Kontrakt","Börse","Seite","Größe","Premium","IV","Anomalie-Score"], anomCache.out.map(([t,s])=>`<tr class="click" data-inst="${t.inst}"><td class="l">${fmtDT(t.ts)}</td><td>${t.inst}</td><td>${VEN[t.venue].short}</td><td class="${t.side==="buy"?"pos":"neg"}">${t.side==="buy"?"Kauf":"Verkauf"}</td><td>${fmtNum(t.amt,1)}</td><td>${fmtUsd(t.prem)}</td><td>${t.iv?t.iv.toFixed(1):"–"}</td><td><b>${s.toFixed(3)}</b></td></tr>`)); };
+
+/* --- Erklärungen --- */
+const DOCS=[["Implizite Volatilität (IV)","Die Erwartung des Marktes, wie stark sich der Kurs bewegt, als Prozent pro Jahr. 60 % IV ≈ ±3,5 % pro Woche. Hohe IV = teure Optionen."],["ATM IV, DVOL, TQI Vol-Index","ATM IV ist die IV am Geld. DVOL ist Deribits 30-Tage-Index (wie der VIX). Der TQI Vol-Index berechnet dasselbe modellfrei aus der ganzen Kette."],
+  ["IV Rank / Perzentil","Wo die IV im Vergleich zum letzten Jahr steht. 0 % = historisch günstig, 100 % = historisch teuer."],["VRP","Volatility Risk Premium = IV minus realisierte Vola. Positiv = Optionen teuer, Verkäufer im Vorteil."],
+  ["Gamma Exposure (GEX)","Wie stark Dealer beim Hedgen kaufen oder verkaufen müssen. Positiver GEX: Dealer long Gamma, sie kaufen Dips und verkaufen Rallys (bremst). Negativer GEX: sie verstärken Bewegungen."],
+  ["Call Wall / Put Wall / Flip","Call Wall = größter positiver GEX (Widerstand). Put Wall = größter negativer GEX (Unterstützung). Flip = wo Netto-GEX null kreuzt; darunter wird es meist volatiler."],
+  ["Vanna, Charm, Vomma, Speed, Zomma, Color","Vanna: Delta-Änderung bei IV-Bewegung. Charm: täglicher Delta-Verfall. Vomma: Vega-Änderung bei IV-Bewegung. Speed: Gamma-Änderung bei Spot-Bewegung. Zomma: Gamma-Änderung bei IV-Bewegung. Color: täglicher Gamma-Verfall."],
+  ["Skew / Risk Reversal","25Δ RR = Call-IV minus Put-IV bei 25 Delta. Negativ = Puts teurer (Absicherung, Angst), positiv = Calls teurer (FOMO)."],["Term Structure","ATM IV über die Laufzeiten. Contango (steigend) ist normal, Backwardation (fallend) zeigt akuten kurzfristigen Stress."],
+  ["Max Pain","Strike, an dem Optionskäufer beim Verfall am meisten verlieren. Wirkt nahe am Verfall oft wie ein Magnet."],["Open Interest","Anzahl offener Kontrakte. Steigendes OI = neues Geld, fallendes OI = Positionen werden geschlossen."],
+  ["Net Premium / Market Tide","Bezahlte Premium für Calls und Puts, Käufe minus Verkäufe. Call-Käufe und Put-Verkäufe gelten als bullisch."],["Hedge-Impact","Geschätzter Kauf- oder Verkaufsdruck, den Dealer beim Absichern der gehandelten Optionen erzeugen (Delta × Menge)."],
+  ["NOPE","Netto-Options-Delta im Verhältnis zum Perp-Volumen. Zeigt, wie stark Options-Hedging den Spot-Flow beeinflusst."],["Sweep / Golden Sweep","Mehrere Fills auf demselben Kontrakt in einer Sekunde, oft eine dringende Order. Golden Sweep = Kauf-Sweep ab $1 Mio."],
+  ["Block-RFQ","Große, außerbörslich verhandelte Trades, oft mehrbeinige Strukturen von Institutionen. Laufen dem sichtbaren Flow oft voraus."],["Lead-Lag","Welche Börse sich zuerst bewegt. Gemessen über die Korrelation der Sekunden-Renditen mit Zeitversatz."],
+  ["Basis / Funding","Basis = Aufschlag des Futures auf den Spot, annualisiert. Funding = Zahlung zwischen Long und Short beim Perp. Hoch positiv = Longs überhebelt."],["Liquidationen / Long-Short","Zwangsschließungen gehebelter Positionen. Cluster markieren oft lokale Hochs und Tiefs. Long/Short-Ratio zeigt die Positionierung der Konten."],
+  ["Strategie-Engine, Backtest, Delta-Hedge","Die Engine sucht zur Meinung die beste Struktur. Der Backtest bewertet einen Trade mit Black-76 auf historischen Kursen und DVOL. Der Delta-Hedge-Simulator zeigt, ob Gamma-Scalping im Zeitraum verdient hätte."],
+  ["Quant / ML","Richtungsmodell (logistische Regression, 1 h), Kalibrierung, Regime-Wahrscheinlichkeiten und Anomalie-Erkennung (Isolation Forest). Signale sind Hinweise, keine Garantie."]];
+V3.docs = P2("Erklärungen","alle Kennzahlen kurz erklärt",'<div class="docs">'+DOCS.map(([h,t])=>`<details><summary>${h}</summary><p>${t}</p></details>`).join("")+'</div><div class="note">Keine Finanzberatung. Alle Daten aus öffentlichen Börsen-Schnittstellen.</div>',"wide");
+NB3.add("docs"); R3.docs=()=>{};
+
+/* ====================== Navigation & Start ====================== */
+nav3("Dashboard",[["stats","Stats"],["spot","Spot je Börse"],["news","News"],["sources","Datenquellen"]]);
+nav3("Flow",[["tide","Market Tide & NOPE"],["premium","Premium-Matrix"],["screener","Options-Screener"]]);
+nav3("Greeks",[["gexprof","GEX-Profil"],["keylv","Key Levels"]],"exposure"); nav3("Greeks",[["higher","Höhere Greeks"]],"gexp");
+nav3("Volatilität",[["tqivix","TQI Vol-Index"]],"dvolv");
+(()=>{ const g=NAV2.find(x=>x.g==="Multi-Exchange"); g.items=g.items.filter(([k])=>k!=="venues-ll"&&k!=="futures-basis"); g.items.push(["leadlag","Lead-Lag"],["basisx","Basis-Spread"],["arb","Arb-Scanner"]); SOON.delete("venues-ll"); })();
+nav3("Futures",[["fterm","Term Structure"],["funding","Funding-Raten"],["bhist","Basis-Historie"],["oiprof","OI-Profil"],["liq","Liquidationen"],["lsr","Long/Short & Taker"],["perpoi","Perp-OI & CVD"]]);
+(()=>{ const g=NAV2.find(x=>x.g==="Werkzeuge"); g.items=[["calc","Rechner"],["strategy","Strategie-Engine"],["backtest","Backtest"],["dhedge","Delta-Hedge"],["breakeven","Break-even"],["sim","Simulator"],["straddle","Straddle-Builder"],["combog","Combo-Greeks"],["optpnl","Option-PnL"],["quant","Quant / ML"],["alerts","Alerts"],["docs","Erklärungen"]]; })();
+mount3();
+const _restart3=restart; restart=function(){ _restart3(); setTimeout(start3,1500); BH.k=""; XA.at=0; QM.at=0; OPN.k=""; gpCand.k=""; klCand.k=""; spCand.k=""; try{ TVX=JSON.parse(localStorage.getItem("tqivix-"+S.cur)||"[]"); }catch(e){ TVX=[]; } };
+setTimeout(()=>{ loadNews(true); },4000);
+
+/* S3-END */
 applyOrder(); applyLook();
 const hv=location.hash.slice(1); go(hv && $("v-"+keyView(hv))? hv : (S.navKey||S.view));
 restart();
