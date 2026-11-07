@@ -17,7 +17,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.5.0/echarts.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/echarts-gl@2.0.9/dist/echarts-gl.min.js" onload="window.__gl=1" onerror="window.__gl=0"></script>
-<script>/* I18N-BEGIN */window.TQI_I18N_V="20261107-225457";
+<script>/* I18N-BEGIN */window.TQI_I18N_V="20261107-230920";
 /* TQI Sprach-Engine: Deutsch ist Standard. Andere Sprachen übersetzen Texte, Attribute und Chart-Beschriftungen zur Laufzeit. */
 (function(){
   var LANGS=[["de","Deutsch"],["en","English"],["es","Español"],["fr","Français"]];
@@ -2787,7 +2787,7 @@ window.addEventListener("beforeunload", saveX);
     const hgt=Math.min(4,Math.abs(v)*4), w=100/N; out+=`<rect x="${i*w+w*0.18}" y="${v>=0?4-hgt:4}" width="${w*0.64}" height="${hgt}" fill="var(${v>=0?"--bull":"--bear"})"/>`; }
   el.innerHTML=out; })();
 /* S3-BEGIN */
-const TQI_BUILD="20261107-225457";
+const TQI_BUILD="20261107-230920";
 /* ====================== Session 3: Infrastruktur ====================== */
 const V3 = {}, R3 = {}, NB3 = new Set();   // Seiten-HTML, Renderer, Seiten ohne Optionskette
 // Legenden- und Tooltip-Marker in der Linienfarbe zeichnen (sonst Palettenfarbe)
@@ -3698,7 +3698,7 @@ V3.tape2 = P2("Time & Sales","Trades aller Börsen in Echtzeit (Futures und Spot
 V3.dom = P2("DOM","Orderbuch Binance Perp mit gehandeltem Volumen je Preis",'<div class="form">'+seg3("k3","domMul",[[1,"Stufe 1×"],[2,"2×"],[5,"5×"],[10,"10×"],[20,"20×"]])+'<button class="btn ghost" id="dom-center">Zentrieren</button><button class="btn ghost" id="dom-reset">Volumen zurücksetzen</button><span class="mut" id="dom-info"></span></div>'+ofWrap("dom-cv")+'<div class="note">Mausrad = Leiter verschieben, Doppelklick = wieder auf den aktuellen Preis zentrieren. Gekauft/Verkauft = aggressive Market-Orders seit dem Öffnen der Seite bzw. dem letzten Zurücksetzen.</div>',"wide");
 V3.heatmap = P2("Orderbuch-Heatmap","Liquidität im Orderbuch über die Zeit, Binance Perp, Trades als Blasen, Farbe nach Template",'<div class="form">'+seg3("k3","hmSpan",[[300,"5 min"],[900,"15 min"],[1800,"30 min"]])+seg3("k3","hmCon",[[1,"Kontrast niedrig"],[2,"mittel"],[3,"hoch"]])+num3("hm-bub",S.hmBub??50000,10000,"Blasen ab $",110)+'<button class="btn ghost" id="hm-follow">Preis folgen</button></div>'+ofWrap("hm-cv")+'<div class="note" id="hm-note">Die Aufzeichnung startet mit dem Öffnen dieser Seite (eine Spalte pro Sekunde, bis 30 Minuten). Mausrad = Preis-Zoom, Umschalt + Mausrad = Zeit-Zoom, Ziehen = Verschieben, Doppelklick = zurücksetzen.</div>',"wide");
 V3.footprint = P2("Footprint","Cluster-Chart: Verkäufe × Käufe je Preis, Binance Perp",'<div class="form">'+seg3("k3","fpTf",[[1,"1m"],[5,"5m"],[15,"15m"],[30,"30m"],[60,"1h"]])+seg3("k3","fpMul",[[1,"Cluster 1×"],[2,"2×"],[5,"5×"],[10,"10×"],[20,"20×"]])+seg3("k3","fpMode",[["ba","Bid × Ask"],["delta","Delta"],["vol","Volumen"]])+seg3("k3","fpImb",[[0,"Imbalance aus"],[3,"Imbalance 300 %"],[4,"400 %"]])+'</div>'+ofWrap("fp-cv")+'<div class="note" id="fp-note">Der Footprint wird live aus allen Trades aufgebaut und lokal gespeichert (8 Stunden). Beim Öffnen werden die letzten Minuten nachgeladen. Mausrad = Zoom, Umschalt + Mausrad = Preis-Zoom, Ziehen = Verschieben, Doppelklick = zurücksetzen.</div>',"wide");
-V3.tpo = P2("Market Profile (TPO)","30-Minuten-Perioden je Tag (UTC), Binance Perp",'<div class="form">'+seg3("k3","tpoDays",[[3,"3 Tage"],[5,"5 Tage"],[10,"10 Tage"]])+seg3("k3","tpoMul",[[5,"TPO 5×"],[10,"10×"],[20,"20×"],[50,"50×"]])+seg3("k3","tpoStyle",[["l","Buchstaben"],["b","Blöcke"]])+tog3("tpoComp","Composite")+tog3("tpoNaked","nPOC (Volumen)")+num3("tpo-va",S.tpoVA??68,1,"Value Area %",60)+'</div><div class="cards" id="tpo-cards"></div>'+ofWrap("tpo-cv","min(76vh,760px)")+'<div class="note">POC = Preis mit den meisten TPOs, Value Area = 68 % der TPOs um den POC (innerhalb Akzentfarbe, außerhalb zweite Template-Farbe), IB = Initial Balance (erste Stunde). Composite = Volumenprofil über alle angezeigten Tage mit cVAH, cPOC und cVAL. nPOC = Volumen-POC eines Tages, der seitdem nicht mehr gehandelt wurde. Mausrad/Ziehen verschiebt die Ansicht, Doppelklick setzt zurück.</div>',"wide");
+V3.tpo = P2("Market Profile (TPO)","30-Minuten-Perioden je Tag (UTC), Binance Perp",'<div class="form">'+seg3("k3","tpoDays",[[3,"3 Tage"],[5,"5 Tage"],[10,"10 Tage"]])+seg3("k3","tpoMul",[[5,"TPO 5×"],[10,"10×"],[20,"20×"],[50,"50×"]])+seg3("k3","tpoStyle",[["l","Buchstaben"],["b","Blöcke"]])+tog3("tpoComp","Composite")+tog3("tpoNaked","nPOC (Volumen)")+num3("tpo-va",S.tpoVA??68,1,"Value Area %",60)+'</div><div class="cards" id="tpo-cards"></div>'+ofWrap("tpo-cv","min(76vh,760px)")+'<div class="note">POC = Preis mit den meisten TPOs, Value Area = 68 % der TPOs um den POC (innerhalb Akzentfarbe, außerhalb zweite Template-Farbe), IB = Initial Balance (erste Stunde). Composite = Volumenprofil über alle angezeigten Tage mit cVAH, cPOC und cVAL. nPOC = Volumen-POC eines Tages, der seitdem nicht mehr gehandelt wurde. Mausrad = Preis-Zoom, Ziehen oder Umschalt + Mausrad = Verschieben, Doppelklick = zurücksetzen.</div>',"wide");
 for(const v of OF_VIEWS) NB3.add(v);
 S.tsAgg??=1; S.tsPause??=0; S.domMul??=2; S.hmSpan??=900; S.hmCon??=2; S.fpTf??=1; S.fpMul??=2; S.fpMode??="ba"; S.fpImb??=3; S.tpoDays??=5; S.tpoMul??=10; S.tpoStyle??="l"; S.tpoNaked??=1; S.tpoComp??=1; S.tpoVA??=68;
 S.tsVen=Object.assign({bnp:1,byp:1,okp:1,drp:1,bns:1,cbs:1},S.tsVen||{});
@@ -3763,8 +3763,8 @@ const HV = {follow:true,center:0,range:0.004,off:0,hy:null,hx:null};
 let HMLUT={k:"",L:null};
 function themeLut(){ const c=ofc(), heat=css("--heat")||c.acc, k=heat+"|"+c.light; if(HMLUT.k===k) return HMLUT.L;
   const h=hex3(heat), r=parseInt(h.slice(1,3),16), g=parseInt(h.slice(3,5),16), b=parseInt(h.slice(5,7),16), mix=(t,R,G,B)=>[r+(R-r)*t,g+(G-g)*t,b+(B-b)*t];
-  const st=c.light? [[0,[r,g,b,0]],[0.08,[...mix(.82,255,255,255),110]],[0.3,[...mix(.45,255,255,255),205]],[0.6,[r,g,b,240]],[0.85,[...mix(.32,0,0,0),250]],[1,[...mix(.55,0,0,0),255]]]
-                   : [[0,[r,g,b,0]],[0.08,[...mix(.6,0,0,0),105]],[0.3,[...mix(.15,0,0,0),190]],[0.6,[r,g,b,235]],[0.85,[...mix(.55,255,255,255),245]],[1,[255,255,255,255]]];
+  const st=c.light? [[0,[...mix(.9,255,255,255),0]],[0.1,[...mix(.85,255,255,255),80]],[0.35,[...mix(.5,255,255,255),170]],[0.62,[r,g,b,235]],[0.85,[...mix(.32,0,0,0),250]],[1,[...mix(.55,0,0,0),255]]]
+                   : [[0,[...mix(.7,0,0,0),0]],[0.1,[...mix(.7,0,0,0),90]],[0.35,[...mix(.3,0,0,0),180]],[0.62,[r,g,b,235]],[0.85,[...mix(.55,255,255,255),245]],[1,[255,255,255,255]]];
   const L=new Uint8ClampedArray(1024); for(let i=0;i<256;i++){ const t=i/255; let j=0; while(j<st.length-2&&t>st[j+1][0]) j++; const [t0,c0]=st[j],[t1,c1]=st[j+1], f=(t-t0)/((t1-t0)||1); for(let q=0;q<4;q++) L[i*4+q]=c0[q]+(c1[q]-c0[q])*f; }
   HMLUT={k,L}; return L; }
 R3.heatmap = () => { obStart(); const cv=$("hm-cv"); ofInteract(cv,{
@@ -3778,10 +3778,10 @@ OF_DRAW.heatmap = () => {
   const mid=HV.follow?(L.bb+L.ba)/2:HV.center, hb=OBH.hb, pLo=mid*(1-HV.range), pHi=mid*(1+HV.range), b0=Math.floor(pLo/hb), nb=Math.ceil(pHi/hb)-b0+1, merge=Math.max(1,Math.ceil(nb*3/ph)), rows=Math.ceil(nb/merge), top=(b0+rows*merge)*hb, yOf=p=>(top-p)/(rows*merge*hb)*ph, rh=ph/rows;
   const V=new Float32Array(span*rows), smp=[];
   for(let x=0;x<span;x++){ const col=cols[s0+x], q=col.q, lo=col.lo; for(let r=0;r<rows;r++){ let v=0; const bs=b0+r*merge-lo; for(let k=0;k<merge;k++){ const i=bs+k; if(i>=0&&i<q.length) v+=q[i]; } V[x*rows+r]=v; if(v>0&&(x%4===0)) smp.push(v); } }
-  smp.sort((a,b)=>a-b); const pc={1:0.997,2:0.985,3:0.95}[+S.hmCon||2], vmax=smp.length?smp[Math.min(smp.length-1,Math.floor(smp.length*pc))]:1, thr=vmax*0.035, LUT=themeLut();
+  smp.sort((a,b)=>a-b); const pc={1:0.997,2:0.985,3:0.95}[+S.hmCon||2], vmax=smp.length?smp[Math.min(smp.length-1,Math.floor(smp.length*pc))]:1, thr=vmax*0.05, gam={1:0.7,2:1,3:1.35}[+S.hmCon||2], fill=rh>=7?3:4, LUT=themeLut();
   const IH=rows*4; if(!HV.off2||HV.off2.width!==span||HV.off2.height!==IH){ HV.off2=document.createElement("canvas"); HV.off2.width=span; HV.off2.height=IH; }
   const og=HV.off2.getContext("2d"), img=og.createImageData(span,IH), D=img.data;
-  for(let x=0;x<span;x++) for(let r=0;r<rows;r++){ const v=V[x*rows+r]; if(v<=thr) continue; const t=Math.min(1,Math.pow((v-thr)/(vmax-thr||1),0.55)), li=Math.round(t*255)*4, y0=(rows-1-r)*4; for(let yy=0;yy<3;yy++){ const o=((y0+yy)*span+x)*4; D[o]=LUT[li]; D[o+1]=LUT[li+1]; D[o+2]=LUT[li+2]; D[o+3]=LUT[li+3]; } }
+  for(let x=0;x<span;x++) for(let r=0;r<rows;r++){ const v=V[x*rows+r]; if(v<=thr) continue; const t=Math.min(1,Math.pow((v-thr)/(vmax-thr||1),gam)), li=Math.round(t*255)*4, y0=(rows-1-r)*4; for(let yy=0;yy<fill;yy++){ const o=((y0+yy)*span+x)*4; D[o]=LUT[li]; D[o+1]=LUT[li+1]; D[o+2]=LUT[li+2]; D[o+3]=LUT[li+3]; } }
   og.putImageData(img,0,0); g.imageSmoothingEnabled=false; g.drawImage(HV.off2,0,0,span,IH,0,0,pw,ph);
   const xs=pw/span;
   // Preislinie (letzter Trade)
@@ -3847,7 +3847,7 @@ OF_DRAW.footprint = () => {
 };
 
 /* --- Market Profile (TPO) mit Composite-Volumenprofil und nPOCs aus dem Volumenprofil --- */
-const TPO = {k:"",at:0,kl:[]}; const TPV={dy:0,hy:null,hx:null};
+const TPO = {k:"",at:0,kl:[]}; const TPV={dy:0,z:1,rh:8,hy:null,hx:null};
 async function tpoLoad(){ const days=+S.tpoDays||5, k=S.cur+days; if(TPO.k===k && Date.now()-TPO.at<60000) return; TPO.at=Date.now();
   const r=await getJ3(`https://fapi.binance.com/fapi/v1/klines?symbol=${S.cur}USDT&interval=30m&limit=${Math.min(1500,days*48+48+96)}`); if(Array.isArray(r)){ TPO.kl=r.map(x=>[+x[0],+x[1],+x[2],+x[3],+x[4],+x[5]]); TPO.k=k; ofNow(); } }
 const TPO_L="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuv";
@@ -3865,13 +3865,13 @@ function tpoProfiles(){ const days=+S.tpoDays||5, st=ofBase()*(+S.tpoMul||10), p
   // nPOC nur aus dem Volumenprofil: VPOC eines Tages, den der Preis seitdem nicht mehr gehandelt hat
   const naked=[]; for(const p of P.slice(0,-1)){ const lo=p.vpoc*st, hi=lo+st, end=p.d+864e5; if(!TPO.kl.some(k=>k[0]>=end&&k[3]<=hi&&k[2]>=lo)) naked.push({d:p.d,b:p.vpoc}); }
   return {P,st,comp,C,cLo,cHi,naked}; }
-R3.tpo = () => { tpoLoad(); const cv=$("tpo-cv"); ofInteract(cv,{wheel:e=>{ TPV.dy+=e.deltaY>0?-3:3; },drag:(dx,dy)=>{ TPV.dy+=dy/12; },hover:(x,y)=>{ TPV.hx=x; TPV.hy=y; },reset:()=>{ TPV.dy=0; }}); ofKick(); };
+R3.tpo = () => { tpoLoad(); const cv=$("tpo-cv"); ofInteract(cv,{wheel:e=>{ if(e.shiftKey) TPV.dy+=e.deltaY>0?-3:3; else TPV.z=Math.max(0.6,Math.min(8,TPV.z*(e.deltaY>0?1/1.12:1.12))); },drag:(dx,dy)=>{ TPV.dy+=dy/(TPV.rh||8); },hover:(x,y)=>{ TPV.hx=x; TPV.hy=y; },reset:()=>{ TPV.dy=0; TPV.z=1; }}); ofKick(); };
 OF_DRAW.tpo = () => {
   tpoLoad(); const Cv=cvSetup("tpo-cv"); if(!Cv) return; const {g,W,H}=Cv, c=ofc(); g.clearRect(0,0,W,H);
   if(!TPO.kl.length){ cvMsg(g,W,H,"Lade 30-Minuten-Kerzen von Binance …"); return; }
   const R=tpoProfiles(), P=R.P, st=R.st, dec=ofDec(st), axR=78, cpW=+S.tpoComp?110:0, top=24, bot=40, pw=W-axR-cpW, ph=H-top-bot, last=TPO.kl[TPO.kl.length-1][4];
   const inC=css("--accent"), outC=css("--big-buy"), fg=c.fg, warn=c.warn;
-  const hiB=R.cHi, loB=R.cLo, nRows=hiB-loB+1, rh=Math.max(5,Math.min(15,ph/nRows)), rowsVis=Math.floor(ph/rh);
+  const hiB=R.cHi, loB=R.cLo, nRows=hiB-loB+1, rh=Math.max(2,Math.min(40,Math.max(3,Math.min(15,ph/nRows))*TPV.z)), rowsVis=Math.floor(ph/rh); TPV.rh=rh;
   let topB=nRows<=rowsVis? hiB+Math.floor((rowsVis-nRows)/2) : Math.min(hiB, Math.floor(last/st)+Math.floor(rowsVis/2)); topB+=Math.round(TPV.dy);
   const yB=b=>top+(topB-b)*rh, gap=22, sumN=P.reduce((a,p)=>a+p.maxN,0), cw=Math.max(2.5,Math.min(10,(pw-gap*(P.length+1)-P.length*44)/sumN)), letters=S.tpoStyle!=="b"&&cw>=6.5&&rh>=9.5;
   let x=gap; const fs=Math.min(11,rh-2);
@@ -4344,7 +4344,7 @@ R3.blocks = () => { const L=allBlocks().slice().sort((a,b)=>a.ts-b.ts), o=base()
 };
 
 /* --- Marktbericht (für Discord) --- */
-S.brLang??="de";
+S.brLang??=(window.I18N&&I18N.lang!=="de"?"en":"de");
 V3.briefing = P2("Marktbericht","automatisch aus den Live-Daten, zum Kopieren für Discord",'<div class="form">'+seg3("k3","brLang",[["de","Deutsch"],["en","English"]])+'<button class="btn" id="br-copy">Für Discord kopieren</button><span class="mut" id="br-st"></span></div><div class="brief" id="br-out"></div>',"wide");
 function briefText(lb,lv){ const en=S.brLang==="en", T=(de,e)=>en?e:de, K=keyLevels(lb,lv), e0=frontExp(lb), mp=e0?maxPain(lb,e0):null, e30=nearestExpTo(lb,30), iv30=e30?atmIv(lb,e30):null, ivf=e0?atmIv(lb,e0):null, w=e30?wings(lb,e30):null;
   const x=CND[S.cur+"60"], p24=x&&x.c.length>25?x.c[x.c.length-25]:null, ch24=p24?(spot/p24-1)*100:null, rk=ivRank(), vrp=dvol!=null&&rv30!=null?dvol-rv30:null;
