@@ -17,7 +17,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.5.0/echarts.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/echarts-gl@2.0.9/dist/echarts-gl.min.js" onload="window.__gl=1" onerror="window.__gl=0"></script>
-<script>/* I18N-BEGIN */window.TQI_I18N_V="20261107-175202";
+<script>/* I18N-BEGIN */window.TQI_I18N_V="20261107-183224";
 /* TQI Sprach-Engine: Deutsch ist Standard. Andere Sprachen übersetzen Texte, Attribute und Chart-Beschriftungen zur Laufzeit. */
 (function(){
   var LANGS=[["de","Deutsch"],["en","English"],["es","Español"],["fr","Français"]];
@@ -1044,8 +1044,8 @@ function ch(id){ const el = REMAP? (REMAP[id]? document.getElementById(REMAP[id]
 window.addEventListener("resize",()=>$$(".chart").forEach(el=>{ const c=echarts.getInstanceByDom(el); if(c) c.resize(); }));
 function base(){
   const muted=css("--muted"), line=css("--line");
-  const pp=document.documentElement.dataset.skin==="paper";
-  return { backgroundColor:"transparent", animation:false, ...(pp?{color:["#7c3aed","#9b9b9b","#111111","#b794f6","#5c5c5c","#bdbdbd"]}:{}), textStyle:{fontFamily:"IBM Plex Sans, sans-serif",color:muted},
+  const sk=document.documentElement.dataset.skin, pal=sk==="paper"?["#7c3aed","#9b9b9b","#111111","#b794f6","#5c5c5c","#bdbdbd"]:((window.SKIN_PAL||{})[sk]||null);
+  return { backgroundColor:"transparent", animation:false, ...(pal?{color:pal}:{}), textStyle:{fontFamily:"IBM Plex Sans, sans-serif",color:muted},
     grid:{left:64,right:62,top:34,bottom:30},
     tooltip:{trigger:"axis",backgroundColor:css("--panel-2"),borderColor:css("--edge")||line,textStyle:{color:css("--fg"),fontFamily:"IBM Plex Mono, monospace",fontSize:11.5}},
     legend:{top:4,textStyle:{color:muted,fontSize:11},itemWidth:12,itemHeight:8},
@@ -2647,7 +2647,7 @@ $("div-min").value=S.divMin; $("div-min").addEventListener("change",e=>{ S.divMi
 /* ---------- Design & Einstellungen ---------- */
 const ACCENTS=["#00e5ff","#7c9cff","#f0a93b","#b36bff","#7c3aed","#ff5fa2","#e8e8e8"];
 function applyLook(){
-  if(!["neon","glass","graphite","paper"].includes(S.skin)) S.skin="neon"; const r=document.documentElement; r.dataset.skin=S.skin;
+  if(!(window.SKIN_IDS||["neon","glass","graphite","paper"]).includes(S.skin)) S.skin="neon"; const r=document.documentElement; r.dataset.skin=S.skin; r.toggleAttribute("data-light",(window.SKIN_LIGHT||["paper"]).includes(S.skin));
   r.classList.toggle("d3",!!S.d3); r.classList.toggle("glass",!!S.glass); r.classList.toggle("compact",!!S.compact); r.classList.toggle("drag",!!S.drag);
   ["accent","bull","bear"].forEach(k=>{ if(S[k]) r.style.setProperty("--"+k,S[k]); else r.style.removeProperty("--"+k); });
   if(S.accent) r.style.setProperty("--edge",S.accent+"55"), r.style.setProperty("--glow",S.accent+"28"); else { r.style.removeProperty("--edge"); r.style.removeProperty("--glow"); }
@@ -2787,9 +2787,15 @@ window.addEventListener("beforeunload", saveX);
     const hgt=Math.min(4,Math.abs(v)*4), w=100/N; out+=`<rect x="${i*w+w*0.18}" y="${v>=0?4-hgt:4}" width="${w*0.64}" height="${hgt}" fill="var(${v>=0?"--bull":"--bear"})"/>`; }
   el.innerHTML=out; })();
 /* S3-BEGIN */
-const TQI_BUILD="20261107-175202";
+const TQI_BUILD="20261107-183224";
 /* ====================== Session 3: Infrastruktur ====================== */
 const V3 = {}, R3 = {}, NB3 = new Set();   // Seiten-HTML, Renderer, Seiten ohne Optionskette
+// Legenden- und Tooltip-Marker in der Linienfarbe zeichnen (sonst Palettenfarbe)
+(function(){ if(!window.echarts||echarts.__colfix) return; echarts.__colfix=1; const oi=echarts.init;
+  const fix=o=>{ if(!o||!o.series) return; for(const s of (Array.isArray(o.series)?o.series:[o.series])){ if(!s||typeof s!=="object"||s.color) continue; const lc=s.lineStyle&&typeof s.lineStyle.color==="string"?s.lineStyle.color:null; if(lc && !(s.itemStyle&&s.itemStyle.color)) s.itemStyle=Object.assign({},s.itemStyle,{color:lc}); } };
+  echarts.init=function(){ const c=oi.apply(this,arguments), os=c.setOption; c.setOption=function(opt){ try{ fix(opt); }catch(e){} return os.apply(this,arguments); }; return c; };
+  $$(".chart").forEach(el=>{ const c=echarts.getInstanceByDom(el); if(c) c.dispose(); });
+})();
 function nav3(group, items, afterKey){
   const g=NAV2.find(x=>x.g===group); if(!g) return;
   let at = afterKey? g.items.findIndex(([k])=>k===afterKey)+1 : g.items.length; if(at<=0) at=g.items.length;
@@ -2852,7 +2858,7 @@ function start3(){
   // Binance USDⓈ-M: Mark/Index/Funding 1 s, Trades (CVD), Liquidationen
   ws3("binance3",`wss://fstream.binance.com/stream?streams=${c}usdt@markPrice@1s/${c}usdt@aggTrade/${c}usdt@forceOrder`, ()=>{},
     m=>{ const d=m.data||{}; if(d.e==="markPriceUpdate"){ setSpot("binance",d.p,d.E); PERP.binance={...PERP.binance,mark:+d.p,index:+d.i,fund:+d.r,next:+d.T,ts:Date.now()}; }
-      else if(d.e==="aggTrade"){ const q=+d.q, px=+d.p; if(d.m){ CVD.sell+=q; CVD.cum-=q; } else { CVD.buy+=q; CVD.cum+=q; } const mn=Math.floor(d.T/60000)*60000; if(mn!==CVD.lastMin){ CVD.lastMin=mn; CVD.t.push(mn); CVD.v.push(CVD.cum); if(CVD.t.length>1440){ CVD.t.shift(); CVD.v.shift(); } } else CVD.v[CVD.v.length-1]=CVD.cum; PERP.binance.last=px; }
+      else if(d.e==="aggTrade"){ const q=+d.q, px=+d.p; if(d.m){ CVD.sell+=q; CVD.cum-=q; } else { CVD.buy+=q; CVD.cum+=q; } const mn=Math.floor(d.T/60000)*60000; if(mn!==CVD.lastMin){ CVD.lastMin=mn; CVD.t.push(mn); CVD.v.push(CVD.cum); if(CVD.t.length>1440){ CVD.t.shift(); CVD.v.shift(); } } else CVD.v[CVD.v.length-1]=CVD.cum; PERP.binance.last=px; if(window.ofTrade) try{ ofTrade("bnp",+d.T,px,q,d.m?"sell":"buy"); }catch(e){} }
       else if(d.e==="forceOrder"){ const o=d.o||{}; const q=+o.q, px=+(o.ap||o.p); LIQ.push({ts:+o.T,venue:"binance",side:o.S==="SELL"?"long":"short",qty:q,px,usd:q*px}); } });
   // Bybit linear: Ticker + Liquidationen
   ws3("bybit3","wss://stream.bybit.com/v5/public/linear", w=>w.send(JSON.stringify({op:"subscribe",args:[`tickers.${usdt}`,`allLiquidation.${usdt}`]})),
@@ -2977,13 +2983,7 @@ R3.spot = () => {
     rows.map(([v,o])=>{ const b=bps(o.px,m), age=(Date.now()-o.ts)/1000; return cardH(SPV[v]?SPV[v].n:v,"$"+fmtNum(o.px,2),`${b==null?"–":(b>0?"+":"")+b.toFixed(1)} bps · ${age<1?"live":age.toFixed(0)+" s"}`,b>5?"pos":b<-5?"neg":""); }).join("") || '<div class="empty">Verbinde mit den Börsen …</div>';
   const o=base(), c=ch("c-sphist"); if(c){ const series=Object.entries(SPH).filter(([,h])=>h.t.length>1).map(([v,h])=>({name:SPV[v]?SPV[v].n:v,type:"line",showSymbol:false,sampling:"lttb",lineStyle:{width:1.3,color:(SPV[v]||{}).c},itemStyle:{color:(SPV[v]||{}).c},data:h.t.map((t,i)=>[t*1000,h.p[i]])}));
     c.setOption({...o,legend:{...o.legend,type:"scroll"},grid:{...o.grid,top:44},xAxis:ax(o,{type:"time",splitLine:{show:false}}),yAxis:ax(o,{type:"value",scale:true,axisLabel:{...o._axis.axisLabel,formatter:v=>fmtNum(v)}}),series},true); }
-  loadSpCand(); const c2=ch("c-spcandle"); if(c2 && spCand.t.length){ const cl=spCand.c, lo=Math.min(...spCand.l), hi=Math.max(...spCand.h), nb=40, st=(hi-lo)/nb||1, vp=new Array(nb).fill(0);
-    spCand.c.forEach((x,i)=>{ const b=Math.min(nb-1,Math.floor((x-lo)/st)); vp[b]+=spCand.v[i]||0; });
-    c2.setOption({...o,grid:[{left:64,right:150,top:20,bottom:30},{right:20,width:120,top:20,bottom:30}],tooltip:{...o.tooltip,trigger:"axis"},
-      xAxis:[ax(o,{type:"category",data:spCand.t.map(t=>fmtDT(t)),splitLine:{show:false}}),ax(o,{gridIndex:1,type:"value",show:false})],
-      yAxis:[ax(o,{type:"value",scale:true,min:lo,max:hi,axisLabel:{...o._axis.axisLabel,formatter:v=>fmtNum(v)}}),ax(o,{gridIndex:1,type:"category",data:vp.map((_,i)=>fmtNum(lo+st*(i+.5))),show:false})],
-      series:[{type:"candlestick",data:spCand.t.map((_,i)=>[spCand.o[i],cl[i],spCand.l[i],spCand.h[i]]),itemStyle:{color:css("--bull"),color0:css("--bear"),borderColor:css("--bull"),borderColor0:css("--bear")}},
-        {type:"bar",xAxisIndex:1,yAxisIndex:1,data:vp.map(v=>+v.toFixed(0)),barWidth:"80%",itemStyle:{color:alpha(css("--accent"),.45)}}]},true); }
+  spCandle3();
 };
 
 /* --- Basis-Spread (Quellen + je Strike) --- */
@@ -3389,6 +3389,533 @@ R3.tqivix = (lb) => { const v=tqiVix(lb), last=TVX[TVX.length-1], ch1=TVX.find(x
     series:[{name:"TQI Vol-Index",type:"line",showSymbol:false,data:TVX.map(x=>[x[0],x[1]]),lineStyle:{color:css("--accent"),width:2},itemStyle:{color:css("--accent")},areaStyle:{color:css("--accent"),opacity:.07}},{name:"DVOL",type:"line",showSymbol:false,data:dvolMin.length?dvolMin.map(d=>[d[0],d[4]]):TVX.map(x=>[x[0],x[2]]),lineStyle:{color:css("--warn"),width:1.2,type:"dashed"},itemStyle:{color:css("--warn")}}],
     title:TVX.length<2?{text:"Der Index wird ab jetzt jede Minute aufgezeichnet …",left:"center",top:"middle",textStyle:{color:css("--muted"),fontSize:12,fontWeight:400}}:undefined},true); };
 
+/* ====================== Kerzen-Charts: Timeframe, freier Zoom, GEX-Overlays ====================== */
+const TF3=[["1","1m"],["5","5m"],["15","15m"],["30","30m"],["60","1h"],["240","4h"],["1D","1D"]];
+const TFMS3={"1":60e3,"5":3e5,"15":9e5,"30":18e5,"60":36e5,"240":144e5,"1D":864e5};
+const CND={}, ZS={}, CKX={};
+const rgba3=(c,a)=>{ c=String(c||"").trim(); let m=/^#([0-9a-f]{3})$/i.exec(c); if(m) c="#"+m[1].split("").map(x=>x+x).join(""); m=/^#([0-9a-f]{6})$/i.exec(c); if(!m) return c; const n=parseInt(m[1],16); return `rgba(${n>>16&255},${n>>8&255},${n&255},${a})`; };
+const tfOf=(key,def)=>{ const v=String(S["tf_"+key]??def); return TFMS3[v]?v:def; };
+const tfBar3=(key)=>seg3("k3","tf_"+key,TF3);
+const tog3=(key,label)=>`<span class="lbl3">${label}</span>`+seg3("k3",key,[[1,"An"],[0,"Aus"]]);
+const resetBtn3=key=>`<button class="btn ghost ckreset" data-ckreset="${key}" title="Doppelklick in den Chart setzt die Ansicht ebenfalls zurück">Ansicht zurücksetzen</button>`;
+document.addEventListener("click",e=>{ const b=e.target.closest("[data-ckreset]"); if(!b) return; delete ZS[b.dataset.ckreset]; render(); });
+function aggC(d,ms){ const o={ticks:[],open:[],high:[],low:[],close:[],volume:[]}; let cur=-1;
+  for(let i=0;i<d.ticks.length;i++){ const b=Math.floor(d.ticks[i]/ms)*ms; if(b!==cur){ cur=b; o.ticks.push(b); o.open.push(d.open[i]); o.high.push(d.high[i]); o.low.push(d.low[i]); o.close.push(d.close[i]); o.volume.push(d.volume[i]||0); }
+    else { const j=o.ticks.length-1; o.high[j]=Math.max(o.high[j],d.high[i]); o.low[j]=Math.min(o.low[j],d.low[i]); o.close[j]=d.close[i]; o.volume[j]+=d.volume[i]||0; } }
+  return o; }
+async function loadTF(tf){
+  tf=String(tf); const k=S.cur+tf, x=CND[k]||(CND[k]={t:[],o:[],h:[],l:[],c:[],v:[],at:0}); const ttl=Math.max(15000,Math.min(120000,TFMS3[tf]/3));
+  if(x.busy || Date.now()-x.at<ttl) return x; x.busy=true;
+  const res=tf==="240"?"60":tf, n=tf==="240"?2000:(tf==="1D"?1500:1000), now=Date.now();
+  const r=await dRpc("public/get_tradingview_chart_data",{instrument_name:S.cur+"-PERPETUAL",start_timestamp:now-n*TFMS3[res],end_timestamp:now,resolution:res});
+  if(r&&r.ticks&&r.ticks.length){ let d=normC(r); if(tf==="240") d=aggC(d,TFMS3["240"]); Object.assign(x,{t:d.ticks.slice(),o:d.open.slice(),h:d.high.slice(),l:d.low.slice(),c:d.close.slice(),v:d.volume.slice()}); }
+  x.at=Date.now(); x.busy=false; scheduleRender(); return x;
+}
+function liveTF(x,tf){ const p=(SPOTS.get("deribitp")||{}).px||spot; if(!p||!x.t.length) return; const ms=TFMS3[tf], b=Math.floor(Date.now()/ms)*ms, j=x.t.length-1;
+  if(b>x.t[j]){ x.t.push(b); x.o.push(x.c[j]); x.h.push(Math.max(x.c[j],p)); x.l.push(Math.min(x.c[j],p)); x.c.push(p); x.v.push(0); }
+  else if(b===x.t[j]){ x.c[j]=p; x.h[j]=Math.max(x.h[j],p); x.l[j]=Math.min(x.l[j],p); } }
+function ckFit(x,s,e,ms){ let lo=Infinity, hi=-Infinity, vm=0;
+  for(let i=0;i<x.t.length;i++){ const t=x.t[i]; if(t+ms<s||t>e) continue; if(x.l[i]<lo) lo=x.l[i]; if(x.h[i]>hi) hi=x.h[i]; if((x.v[i]||0)>vm) vm=x.v[i]||0; }
+  if(!isFinite(lo)){ lo=Math.min(...x.l); hi=Math.max(...x.h); }
+  const pad=Math.max((hi-lo)*0.08, hi*0.0008); return {lo:lo-pad, hi:hi+pad, vm:vm||1};
+}
+// Volumenprofil der sichtbaren Kerzen (Volumen gleichmäßig über Hoch–Tief verteilt)
+function vpOf(x,s,e,ms,nb=48){ const f=ckFit(x,s,e,ms), lo=f.lo, st=(f.hi-f.lo)/nb||1, vp=new Array(nb).fill(0);
+  for(let i=0;i<x.t.length;i++){ const t=x.t[i]; if(t+ms<s||t>e) continue; const v=x.v[i]||0; if(!v) continue; const a=Math.max(0,Math.floor((x.l[i]-lo)/st)), b=Math.min(nb-1,Math.floor((x.h[i]-lo)/st)); const n=b-a+1; for(let j=a;j<=b;j++) vp[j]+=v/n; }
+  return vp.map((v,i)=>[lo+st*(i+.5),v]).filter(r=>r[1]>0); }
+/* Zeichnet einen Kerzen-Chart mit freiem Zoom (Mausrad / Pinch), Verschieben (Ziehen), Auto-Skalierung der Preisachse.
+   o2: {levels:[[name,wert,farbe,gestrichelt]], prof:[[preis,wert]], profFn:(s,e)=>prof, profMode:"gex"|"vol", heat:{data,dk,mx,rel}, vol:bool, show:anzahl} */
+function ckDraw(elId,key,x,tf,o2={}){
+  const c=ch(elId); if(!c||!x||!x.t.length) return null; const o=base(), ms=TFMS3[tf], n=x.t.length, lastT=x.t[n-1];
+  let z=ZS[key]; if(!z||z.tf!==tf||z.cur!==S.cur){ z=ZS[key]={tf,cur:S.cur,s:x.t[Math.max(0,n-(o2.show||110))],e:lastT+ms*6,lastT}; }
+  else if(lastT>z.lastT){ if(z.e>=z.lastT-ms*0.5){ const d=lastT-z.lastT; z.s+=d; z.e+=d; } z.lastT=lastT; }
+  const f=ckFit(x,z.s,z.e,ms), up=css("--bull"), dn=css("--bear"), acc=css("--accent"), fg=css("--fg"), mut=css("--muted"), line=css("--line"), last=x.c[n-1];
+  const series=[]; let heatIdx=-1;
+  if(o2.heat && o2.heat.data.length){ const H=o2.heat; heatIdx=series.length;
+    series.push({id:"heat",type:"custom",name:"GEX",clip:true,z:1,silent:true,encode:{x:0,y:1},data:H.data,
+      renderItem:(p,api)=>{ const t=api.value(0), k=api.value(1), w=api.value(3); const a=api.coord([t,k+H.dk/2]), b=api.coord([t+w,k-H.dk/2]); return {type:"rect",shape:{x:a[0],y:a[1],width:Math.max(1,b[0]-a[0]),height:Math.max(1,b[1]-a[1])},style:{fill:api.visual("color")}}; }}); }
+  const lvm=new Map(); for(const l of (o2.levels||[])){ if(!l[1]) continue; const k=Math.round(l[1]*100); if(lvm.has(k)) lvm.get(k)[0]+=" · "+l[0]; else lvm.set(k,[l[0],l[1],l[2],l[3]]); }
+  const lv=[...lvm.values()].map(([nm,v,col,dash])=>({yAxis:v,lineStyle:{color:col,type:dash?"dashed":"solid",width:1.1,opacity:.95},label:{formatter:nm+"  "+fmtNum(v),position:"insideStartTop",color:col,fontSize:10,fontFamily:"IBM Plex Mono"}}));
+  lv.push({yAxis:last,lineStyle:{color:acc,type:"dotted",width:1},label:{formatter:fmtNum(last,last<100?2:0),position:"end",color:css("--on-accent"),backgroundColor:acc,padding:[2,4],borderRadius:2,fontSize:10.5,fontFamily:"IBM Plex Mono"}});
+  series.push({id:"cdl",type:"candlestick",name:S.cur+"-PERP",z:3,clip:true,barMaxWidth:16,data:x.t.map((t,i)=>[t,x.o[i],x.c[i],x.l[i],x.h[i]]),
+    itemStyle:{color:up,color0:dn,borderColor:up,borderColor0:dn},markLine:{symbol:"none",silent:true,animation:false,data:lv}});
+  if(o2.vol) series.push({id:"vol",type:"bar",name:"Volumen",yAxisIndex:1,z:2,barMaxWidth:16,silent:true,data:x.t.map((t,i)=>({value:[t,x.v[i]||0],itemStyle:{color:rgba3(x.c[i]>=x.o[i]?up:dn,.32)}}))});
+  const prof=o2.profFn? o2.profFn(z.s,z.e) : o2.prof;
+  if(prof && prof.length){ const ks=prof.map(p=>p[0]).sort((a,b)=>a-b); let dk=Infinity; for(let i=1;i<ks.length;i++) dk=Math.min(dk,ks[i]-ks[i-1]); if(!isFinite(dk)) dk=last*0.005; const pm=Math.max(...prof.map(p=>Math.abs(p[1])),1e-9), vol=o2.profMode==="vol";
+    CKX[key]={dk,vol};
+    series.push({id:"prof",type:"custom",name:vol?"Volumenprofil":"GEX-Profil",clip:true,z:4,silent:true,encode:{y:1},data:prof.map(([k,v])=>[lastT,k,v]),
+      renderItem:(p,api)=>{ const cs=p.coordSys, k=api.value(1), v=api.value(2), P=CKX[key]||{dk}, ya=api.coord([lastT,k+P.dk*0.45])[1], yb=api.coord([lastT,k-P.dk*0.45])[1], m=(P.pm||pm), len=Math.abs(v)/m*cs.width*(vol?0.22:0.18);
+        return {type:"rect",shape:{x:cs.x+cs.width-len,y:Math.min(ya,yb),width:len,height:Math.max(1,Math.abs(yb-ya))},style:{fill:vol?rgba3(acc,.35):rgba3(v>=0?up:dn,.5)}}; }}); CKX[key].pm=pm; }
+  const opt={backgroundColor:"transparent",animation:false,textStyle:o.textStyle,
+    grid:{left:10,right:74,top:o2.heat?34:14,bottom:26},
+    tooltip:{...o.tooltip,trigger:"axis",axisPointer:{type:"cross",label:{backgroundColor:css("--panel-2"),color:fg,fontFamily:"IBM Plex Mono",fontSize:10.5,formatter:p=>p.axisDimension==="y"?fmtNum(p.value,p.value<100?2:0):fmtDT(p.value)}},
+      formatter:ps=>{ const p=(ps||[]).find(q=>q.seriesId==="cdl"); if(!p) return ""; const v=p.value||p.data, a=v.slice(-4), t=typeof p.axisValue==="number"?p.axisValue:v[0], op=a[0], cl=a[1], lo=a[2], hi=a[3], i=x.t.indexOf(t), ch2=op?(cl/op-1)*100:0;
+        return `<b>${fmtDT(t)}</b><br>O ${fmtNum(op)} &nbsp;H ${fmtNum(hi)}<br>L ${fmtNum(lo)} &nbsp;C <b style="color:${cl>=op?up:dn}">${fmtNum(cl)}</b> (${ch2>=0?"+":""}${ch2.toFixed(2)} %)`+(i>=0&&x.v[i]?`<br>Volumen ${fmtNum(x.v[i],1)}`:""); }},
+    xAxis:{type:"time",axisLine:{lineStyle:{color:line}},axisTick:{show:false},axisLabel:{color:mut,fontSize:10.5,hideOverlap:true},splitLine:{show:true,lineStyle:{color:line,opacity:.45}}},
+    yAxis:[{type:"value",position:"right",min:f.lo,max:f.hi,axisLine:{show:false},axisTick:{show:false},axisLabel:{color:mut,fontSize:10.5,formatter:v=>fmtNum(v,v<100?2:0)},splitLine:{lineStyle:{color:line,opacity:.45}}},
+      {type:"value",show:false,min:0,max:f.vm*5,axisPointer:{show:false}}],
+    dataZoom:[{type:"inside",xAxisIndex:0,filterMode:"none",startValue:z.s,endValue:z.e,zoomOnMouseWheel:true,moveOnMouseMove:true,moveOnMouseWheel:false,preventDefaultMouseMove:true,minValueSpan:ms*8}],
+    series};
+  if(heatIdx>=0){ const H=o2.heat; opt.visualMap={show:true,orient:"horizontal",left:12,top:4,itemHeight:120,itemWidth:9,min:-H.mx||-1,max:H.mx||1,dimension:2,seriesIndex:heatIdx,calculable:false,text:[H.rel?"+max":fmtUsd(H.mx),H.rel?"−max":fmtUsd(-H.mx)],textStyle:{color:mut,fontSize:10},
+    inRange:{color:[rgba3(dn,.6),rgba3(dn,.16),rgba3(css("--panel-2")||"#000",0),rgba3(up,.16),rgba3(up,.6)]}}; }
+  c.setOption(opt,true); CKX[key]=Object.assign(CKX[key]||{},{x,ms,tf,o2});
+  if(!c.__ck){ c.__ck=key;
+    c.on("datazoom",()=>{ const k2=c.__ck, zz=ZS[k2], X=CKX[k2]; if(!zz||!X) return; const dz=(c.getOption().dataZoom||[])[0]; if(!dz) return; zz.s=dz.startValue; zz.e=dz.endValue; const ff=ckFit(X.x,zz.s,zz.e,X.ms);
+      const upd={yAxis:[{min:ff.lo,max:ff.hi},{max:ff.vm*5}]}; if(X.o2.profFn){ const pr=X.o2.profFn(zz.s,zz.e); const pm=Math.max(...pr.map(p=>Math.abs(p[1])),1e-9); X.pm=pm; upd.series=[{id:"prof",data:pr.map(([k,v])=>[X.x.t[X.x.t.length-1],k,v])}]; }
+      c.setOption(upd); });
+    c.getZr().on("dblclick",()=>{ delete ZS[c.__ck]; render(); }); }
+  return c;
+}
+
+/* --- GEX-Profil: Kerzen + Gamma-Oberfläche im Zeitverlauf + GEX je Strike am rechten Rand --- */
+V3.gexprof = P2("GEX-Profil","Kerzen mit Gamma-Oberfläche im Zeitverlauf, GEX je Strike am rechten Rand",'<div class="form">'+tfBar3("gp")+seg3("k3","gpScale",[["abs","Absolut"],["rel","Relativ"]])+tog3("gpProf","GEX-Profil")+tog3("gpVol","Volumen")+resetBtn3("gp")+'</div><div class="cards" id="gp-cards"></div><div class="chart" id="c-gpheat" style="height:min(74vh,680px)"></div><div class="note" id="gp-note"></div>',"wide")+
+  P2("GEX je Strike","aktueller Snapshot mit Call Wall, Put Wall, Spot und Flip",'<div class="form"><label>Verfall <select id="gp-exp"></select></label></div><div class="chart tall" id="c-gpbar"></div>',"wide");
+R3.gexprof = (lb,lv) => {
+  const tf=tfOf("gp","15"), rel=S.gpScale==="rel", x=CND[S.cur+tf]; loadTF(tf); if(x) liveTF(x,tf);
+  const K=keyLevels(lb,lv); $("gp-cards").innerHTML = cardH("Netto-GEX",sgn3(K.net),K.regime,cls3(K.net))+cardH("Call Wall",K.calls[0]?"$"+fmtNum(K.calls[0][0]):"–",K.calls[0]?pct3((K.calls[0][0]/spot-1)*100,1)+" vom Spot":"","pos")+cardH("Put Wall",K.puts[0]?"$"+fmtNum(K.puts[0][0]):"–",K.puts[0]?pct3((K.puts[0][0]/spot-1)*100,1)+" vom Spot":"","neg")+cardH("GEX Flip",K.flip?"$"+fmtNum(K.flip):"–",K.flip?pct3((K.flip/spot-1)*100,1)+" vom Spot":"","warn")+cardH("Spot","$"+fmtNum(spot),"");
+  const now=Date.now(), lo=spot*0.7, hi=spot*1.3, data=[]; let mx=0;
+  snaps.forEach((s,j)=>{ const w=(snaps[j+1]?snaps[j+1].t:now)-s.t; if(w>3*3600e3) return; s.ks.forEach((k,i)=>{ if(k<lo||k>hi) return; const v=s.st.gex[i]; if(!v) return; data.push([s.t,k,v,w]); mx=Math.max(mx,Math.abs(v)); }); });
+  if(rel){ const byT=new Map(); data.forEach(d=>byT.set(d[0],Math.max(byT.get(d[0])||0,Math.abs(d[2])))); data.forEach(d=>d[2]=d[2]/(byT.get(d[0])||1)); mx=1; }
+  const ks=[...new Set(lb.map(b=>b.strike))].filter(k=>k>=lo&&k<=hi).sort((a,b)=>a-b), dk=ks.length>1? Math.max(100,Math.min(...ks.slice(1).map((k,i)=>k-ks[i]))) : spot*0.01;
+  const levels=[["Call Wall",K.calls[0]&&K.calls[0][0],css("--bull")],["Put Wall",K.puts[0]&&K.puts[0][0],css("--bear")],["Flip",K.flip,css("--warn"),1]];
+  if(x&&x.t.length) ckDraw("c-gpheat","gp",x,tf,{heat:{data,dk,mx,rel},prof:+(S.gpProf??1)?K.g:null,levels,vol:!!+(S.gpVol??0)});
+  $("gp-note").textContent = (snaps.length? `${snaps.length} Gamma-Snapshots gespeichert (alle 5 Minuten, solange das Terminal offen ist). Grün = Dealer long Gamma (bremst), rot = short Gamma (beschleunigt). `:"Die Gamma-Oberfläche entsteht aus Snapshots alle 5 Minuten; lass das Terminal offen, dann füllt sie sich. ")+"Mausrad = Zoom, Ziehen = Verschieben, Doppelklick = Ansicht zurücksetzen.";
+  const exps=expiries(lb); if(S.gpExp!=="all" && !exps.includes(S.gpExp)) S.gpExp="all"; fillOne("gp-exp",["all"].concat(exps),S.gpExp||"all"); const se=$("gp-exp"); if(se&&se.options[0]) se.options[0].text="Alle Verfälle";
+  const g=gexByStrike(S.gpExp==="all"?lb:lb.filter(b=>b.exp===S.gpExp),0.15), o=base(), c2=ch("c-gpbar");
+  if(c2) c2.setOption({...o,grid:{...o.grid,right:24,bottom:50},tooltip:{...o.tooltip,valueFormatter:v=>typeof v==="number"?fmtUsd(v):v},xAxis:ax(o,{type:"category",data:g.map(x=>String(x[0])),axisLabel:{...o._axis.axisLabel,rotate:45,formatter:v=>fmtNum(+v)}}),yAxis:ax(o,{type:"value",axisLabel:{...o._axis.axisLabel,formatter:v=>fmtUsd(v)}}),
+    series:[{type:"bar",name:"Netto-GEX",data:g.map(x=>({value:Math.round(x[1]),itemStyle:barStyle(x[1]>=0?css("--bull"):css("--bear"))})),markLine:{symbol:"none",silent:true,data:levelMarks(g.map(x=>x[0]),lv)}}]},true);
+};
+
+/* --- Key Levels: Kerzen mit allen GEX-Levels und GEX-Profil --- */
+V3.keylv = P2("Key Levels","GEX-gewichtet, alle Verfälle",'<div class="cards" id="kl-cards"></div><div class="form">'+tfBar3("kl")+tog3("klProf","GEX-Profil")+tog3("klVol","Volumen")+resetBtn3("kl")+'</div><div class="chart" id="c-kl" style="height:min(70vh,620px)"></div><div class="note">Mausrad = Zoom, Ziehen = Verschieben, Doppelklick = Ansicht zurücksetzen. Die Preisachse passt sich dem sichtbaren Bereich an.</div>',"wide")+
+  P2("Level-Tabelle","mit Abstand zum Spot und GEX-Stärke",'<div id="kl-t"></div><div class="note">Call Wall = größte positive GEX (Widerstand), Put Wall = größte negative GEX (Unterstützung), Flip = Netto-GEX kreuzt null. Absolute Gamma = Strike mit dem größten Betrag. Hedge Wall = stärkste negative GEX unter dem Spot. Vol Trigger ≈ Flip: darunter steigt die Volatilität tendenziell.</div>',"wide");
+R3.keylv = (lb,lv) => {
+  const tf=tfOf("kl","60"), x=CND[S.cur+tf]; loadTF(tf); if(x) liveTF(x,tf);
+  const K=keyLevels(lb,lv), mx=Math.max(...K.g.map(x=>Math.abs(x[1])),1);
+  $("kl-cards").innerHTML = cardH("Regime",K.regime,"Netto-GEX "+sgn3(K.net),cls3(K.net))+cardH("GEX Flip",K.flip?"$"+fmtNum(K.flip):"–",K.flip?pct3((K.flip/spot-1)*100,1):"","warn")+cardH("Absolute Gamma",K.abs?"$"+fmtNum(K.abs[0]):"–",K.abs?fmtUsd(K.abs[1]):"")+cardH("Hedge Wall",K.hedge?"$"+fmtNum(K.hedge[0]):"–",K.hedge?fmtUsd(K.hedge[1]):"","neg");
+  const rows=[...K.calls.map((x,i)=>["Call Wall "+(i+1),x,"pos"]),["GEX Flip",K.flip?[K.flip,null]:null,"warn"],["Vol Trigger",K.flip?[K.flip,null]:null,"warn"],...(K.abs?[["Absolute Gamma",K.abs,""]]:[]),...(K.hedge?[["Hedge Wall",K.hedge,"neg"]]:[]),...K.puts.map((x,i)=>["Put Wall "+(i+1),x,"neg"])].filter(r=>r[1]);
+  $("kl-t").innerHTML = tbl3(["Level","Strike","vs. Spot","GEX","Stärke"], rows.map(([n,x,c])=>`<tr><td class="l ${c}">${n}</td><td>$${fmtNum(x[0])}</td><td>${pct3((x[0]/spot-1)*100,1)}</td><td>${x[1]==null?"–":fmtUsd(x[1])}</td><td class="l"><span class="bar ${c}" style="display:inline-block;height:8px;border-radius:3px;width:${x[1]==null?0:Math.round(Math.abs(x[1])/mx*120)}px;background:var(--${c==="pos"?"bull":c==="neg"?"bear":"warn"})"></span></td></tr>`),"free");
+  const col={pos:css("--bull"),neg:css("--bear"),warn:css("--warn"),"":css("--accent")};
+  if(x&&x.t.length) ckDraw("c-kl","kl",x,tf,{levels:rows.filter(r=>r[0]!=="Vol Trigger").map(([n,v,cc])=>[n,v[0],col[cc],n.indexOf("Flip")>=0]),prof:+(S.klProf??1)?K.g:null,vol:!!+(S.klVol??1)});
+};
+
+/* --- Dashboard-Kurs-Chart (Panel „Kurs mit Levels“) --- */
+rSpot = function(lb,lv){
+  const el=document.getElementById(REMAP&&REMAP["n-spot"]?REMAP["n-spot"]:"n-spot"); if(!el) return;
+  if(!el.previousElementSibling || !el.previousElementSibling.classList.contains("ckbar")){ el.insertAdjacentHTML("beforebegin",'<div class="form ckbar">'+tfBar3("ds")+resetBtn3("ds")+'</div>'); sync3(); }
+  const tf=tfOf("ds","15"), x=CND[S.cur+tf]; loadTF(tf); if(!x||!x.t.length) return; liveTF(x,tf);
+  const e0=frontExp(lb), mp=e0?maxPain(lb,e0):null;
+  ckDraw("n-spot","ds",x,tf,{levels:[["Flip",lv.flip,css("--warn"),1],["Call Wall",lv.call,css("--bull")],["Put Wall",lv.put,css("--bear")],["Max Pain",mp,css("--muted"),1]],vol:true});
+};
+
+/* --- Spot-Seite: Kerzen mit Volumenprofil des sichtbaren Bereichs --- */
+V3.spot = V3.spot.replace(seg3("k3","spRes",[["15","15m"],["60","1h"],["240","4h"],["1D","1D"]]), tfBar3("sp")+tog3("spVol","Volumen")+resetBtn3("sp"));
+function spCandle3(){ const tf=tfOf("sp","60"), x=CND[S.cur+tf]; loadTF(tf); if(!x||!x.t.length) return; liveTF(x,tf); const ms=TFMS3[tf];
+  ckDraw("c-spcandle","sp",x,tf,{profFn:(s,e)=>vpOf(x,s,e,ms),profMode:"vol",vol:!!+(S.spVol??1)}); }
+S.gpProf??=1; S.gpVol??=0; S.klProf??=1; S.klVol??=1; S.spVol??=1; S.tf_gp??="15"; S.tf_kl??="60"; S.tf_ds??="15"; S.tf_sp??="60";
+document.head.insertAdjacentHTML("beforeend",`<style>
+.lbl3{font-size:11px;color:var(--muted);margin:0 2px 0 8px;align-self:center}
+.ckbar{margin:0 0 6px}
+.ckreset{font-size:11.5px;padding:4px 10px}
+</style>`);
+
+/* ====================== Orderflow: Time & Sales, DOM, Orderbuch-Heatmap, Footprint, Market Profile ====================== */
+const OF_VIEWS = new Set(["tape2","dom","heatmap","footprint","tpo"]);
+const ofBase = () => { const p=spot||PERP.binance.last||75000; return p>=10000?5:p>=1000?0.5:p>=100?0.05:0.005; };
+const ofDec = b => b>=1?0:b>=0.1?1:b>=0.01?2:3;
+const fq = q => { q=Math.abs(q); return q>=1e4?(q/1e3).toFixed(0)+"k":q>=1e3?(q/1e3).toFixed(1)+"k":q>=100?q.toFixed(0):q>=10?q.toFixed(1):q>=0.995?q.toFixed(2):q>=0.005?q.toFixed(2).replace(/^0/,""):q>0?"·":""; };
+const fUsd0 = v => { const a=Math.abs(v); return (v<0?"-":"")+"$"+(a>=1e9?(a/1e9).toFixed(2)+"B":a>=1e6?(a/1e6).toFixed(2)+"M":a>=1e3?(a/1e3).toFixed(1)+"K":a.toFixed(0)); };
+let OFC={t:0};
+function ofc(){ const n=Date.now(); if(n-OFC.t<1000) return OFC; OFC={t:n,bg:css("--panel"),bg2:css("--panel-2"),fg:css("--fg"),mut:css("--muted"),line:css("--line"),acc:css("--accent"),up:css("--bull"),dn:css("--bear"),warn:css("--warn"),onacc:css("--on-accent"),light:document.documentElement.hasAttribute("data-light")}; return OFC; }
+function cvSetup(id){ const cv=document.getElementById(id); if(!cv) return null; const box=cv.parentElement; const W=Math.max(240,Math.floor(box.clientWidth)), H=Math.max(220,Math.floor(box.clientHeight)); if(!box.clientWidth) return null;
+  const dpr=Math.min(2,window.devicePixelRatio||1); if(cv.width!==Math.round(W*dpr)||cv.height!==Math.round(H*dpr)){ cv.width=Math.round(W*dpr); cv.height=Math.round(H*dpr); cv.style.width=W+"px"; cv.style.height=H+"px"; }
+  const g=cv.getContext("2d"); g.setTransform(dpr,0,0,dpr,0,0); g.textBaseline="middle"; return {cv,g,W,H}; }
+function cvMsg(g,W,H,t){ const c=ofc(); g.fillStyle=c.mut; g.font="500 13px IBM Plex Sans, sans-serif"; g.textAlign="center"; g.fillText(t,W/2,H/2); g.textAlign="left"; }
+let ofRAF=0; const ofLast={}; const OF_DRAW={};
+function ofLoop(){ ofRAF=0; const v=S.view; if(!OF_VIEWS.has(v)||document.hidden) return; const now=performance.now(), iv={dom:120,heatmap:250,footprint:450,tape2:300,tpo:1500}[v]||500;
+  if(!ofLast[v]||now-ofLast[v]>=iv){ ofLast[v]=now; try{ OF_DRAW[v]&&OF_DRAW[v](); }catch(e){ console.error("OF",v,e); } } ofRAF=requestAnimationFrame(ofLoop); }
+function ofKick(){ if(!ofRAF) ofRAF=requestAnimationFrame(ofLoop); }
+function ofNow(){ ofLast[S.view]=0; ofKick(); }
+document.addEventListener("visibilitychange",()=>{ if(!document.hidden) ofKick(); });
+function ofInteract(cv,h){ if(!cv||cv.__of) return; cv.__of=1; let drag=null, pinch=null; const pts=new Map();
+  cv.addEventListener("wheel",e=>{ e.preventDefault(); h.wheel&&h.wheel(e); ofNow(); },{passive:false});
+  cv.addEventListener("pointerdown",e=>{ pts.set(e.pointerId,{x:e.clientX,y:e.clientY}); if(pts.size===2){ const [a,b]=[...pts.values()]; pinch={d:Math.hypot(a.x-b.x,a.y-b.y)}; drag=null; } else drag={x:e.clientX,y:e.clientY}; try{ cv.setPointerCapture(e.pointerId); }catch(err){} });
+  cv.addEventListener("pointermove",e=>{ if(pts.has(e.pointerId)) pts.set(e.pointerId,{x:e.clientX,y:e.clientY});
+    if(pinch && pts.size===2){ const [a,b]=[...pts.values()], d=Math.hypot(a.x-b.x,a.y-b.y); if(h.wheel) h.wheel({deltaY:(pinch.d-d)*2,shiftKey:false,offsetX:(a.x+b.x)/2-cv.getBoundingClientRect().left,offsetY:(a.y+b.y)/2-cv.getBoundingClientRect().top}); pinch.d=d; ofNow(); return; }
+    if(drag){ const dx=e.clientX-drag.x, dy=e.clientY-drag.y; drag={x:e.clientX,y:e.clientY}; h.drag&&h.drag(dx,dy,e); ofNow(); } else if(h.hover){ const r=cv.getBoundingClientRect(); h.hover(e.clientX-r.left,e.clientY-r.top); ofNow(); } });
+  const up=e=>{ pts.delete(e.pointerId); if(pts.size<2) pinch=null; if(!pts.size) drag=null; };
+  cv.addEventListener("pointerup",up); cv.addEventListener("pointercancel",up);
+  cv.addEventListener("pointerleave",()=>{ if(h.hover){ h.hover(null,null); ofNow(); } });
+  cv.addEventListener("dblclick",()=>{ h.reset&&h.reset(); ofNow(); }); }
+
+/* ---------- Trades aller Quellen ---------- */
+const TSV = {bnp:"Binance Perp",byp:"Bybit Perp",okp:"OKX Perp",drp:"Deribit Perp",bns:"Binance Spot",cbs:"Coinbase Spot"};
+const TSB = [];   // {ts,v,px,q,usd,side}
+const DOMT = {cur:"",since:Date.now(),m:new Map()};   // gehandelt je Basis-Stufe [Verkauf, Kauf]
+const HMACC = {buy:0,sell:0,last:0};
+window.ofTrade = function(v,ts,px,q,side){
+  if(!(px>0&&q>0)) return; const usd=px*q; TSB.push({ts,v,px,q,usd,side}); if(TSB.length>6000) TSB.splice(0,1000);
+  if(v!=="bnp") return;
+  if(!FP.liveStart) FP.liveStart=ts; fpAdd(ts,px,q,side);
+  if(DOMT.cur!==S.cur){ DOMT.cur=S.cur; DOMT.m.clear(); DOMT.since=Date.now(); }
+  const b=Math.floor(px/ofBase()), a=DOMT.m.get(b)||[0,0]; a[side==="buy"?1:0]+=q; DOMT.m.set(b,a); DOMF.set(b,{t:Date.now(),side,q:(DOMF.get(b)&&Date.now()-DOMF.get(b).t<1500?DOMF.get(b).q:0)+q});
+  if(side==="buy") HMACC.buy+=usd; else HMACC.sell+=usd; HMACC.last=px;
+};
+const DOMF = new Map();   // Trade-Blitz je Preisstufe
+// Zusätzliche Trade-Feeds (nur solange Time & Sales genutzt wird)
+const TSW = {}; let tsGen=0, tsUse=0;
+function tsStart(){ tsUse=Date.now(); if(TSW.cur===S.cur && Object.keys(TSW).length>1) return; tsStop(); TSW.cur=S.cur; const my=++tsGen, C=S.cur, c=C.toLowerCase();
+  const open=(k,url,onopen,onmsg,ping)=>{ let w; try{ w=new WebSocket(url); }catch(e){ return; } TSW[k]=w; let pi=null;
+    w.onopen=()=>{ if(my!==tsGen){ w.close(); return; } try{ onopen(w); }catch(e){} if(ping) pi=setInterval(()=>{ try{ w.send(ping); }catch(e){} },20000); };
+    w.onmessage=e=>{ if(e.data==="pong") return; let m; try{ m=JSON.parse(e.data); }catch(x){ return; } try{ onmsg(m); }catch(x){} };
+    w.onclose=()=>{ clearInterval(pi); if(my===tsGen) setTimeout(()=>{ if(my===tsGen) open(k,url,onopen,onmsg,ping); },5000); }; w.onerror=()=>{}; };
+  open("byp","wss://stream.bybit.com/v5/public/linear",w=>w.send(JSON.stringify({op:"subscribe",args:[`publicTrade.${C}USDT`]})),
+    m=>{ if(!m.topic||m.topic.indexOf("publicTrade")!==0) return; for(const x of m.data||[]) ofTrade("byp",+x.T,+x.p,+x.v,x.S==="Buy"?"buy":"sell"); },JSON.stringify({op:"ping"}));
+  const ct=C==="BTC"?0.01:C==="ETH"?0.1:1;
+  open("okp","wss://ws.okx.com:8443/ws/v5/public",w=>w.send(JSON.stringify({op:"subscribe",args:[{channel:"trades",instId:`${C}-USDT-SWAP`}]})),
+    m=>{ if(!m.arg||m.arg.channel!=="trades"||!m.data) return; for(const x of m.data) ofTrade("okp",+x.ts,+x.px,+x.sz*ct,x.side==="buy"?"buy":"sell"); },"ping");
+  open("drp","wss://www.deribit.com/ws/api/v2",w=>w.send(JSON.stringify({jsonrpc:"2.0",id:1,method:"public/subscribe",params:{channels:[`trades.${C}-PERPETUAL.100ms`]}})),
+    m=>{ const p=m.params; if(!p||!p.data) return; for(const x of p.data) ofTrade("drp",+x.timestamp,+x.price,+x.amount/(+x.price||1),x.direction==="buy"?"buy":"sell"); },JSON.stringify({jsonrpc:"2.0",id:9,method:"public/test",params:{}}));
+  open("bns",`wss://stream.binance.com:9443/ws/${c}usdt@aggTrade`,()=>{},m=>{ if(m.e==="aggTrade") ofTrade("bns",+m.T,+m.p,+m.q,m.m?"sell":"buy"); });
+  open("cbs","wss://ws-feed.exchange.coinbase.com",w=>w.send(JSON.stringify({type:"subscribe",product_ids:[`${C}-USD`],channels:["matches"]})),
+    m=>{ if(m.type!=="match") return; ofTrade("cbs",Date.parse(m.time),+m.price,+m.size,m.side==="buy"?"sell":"buy"); });
+}
+function tsStop(){ tsGen++; for(const k in TSW){ if(k==="cur") continue; try{ TSW[k].close(); }catch(e){} delete TSW[k]; } delete TSW.cur; }
+
+/* ---------- Orderbuch (Binance Perp, Diff-Stream + Snapshot) ---------- */
+const OB = {ws:null,bids:new Map(),asks:new Map(),ready:false,buf:[],sym:"",pu:null,on:false,use:0,t:0};
+function obStart(){ OB.use=Date.now(); if(OB.on && OB.sym===S.cur) return; obStop(); OB.on=true; OB.sym=S.cur; OB.ready=false; OB.buf=[]; OB.bids.clear(); OB.asks.clear(); OB.pu=null;
+  let w; try{ w=new WebSocket(`wss://fstream.binance.com/ws/${S.cur.toLowerCase()}usdt@depth@100ms`); }catch(e){ OB.on=false; return; } OB.ws=w;
+  w.onmessage=e=>{ let m; try{ m=JSON.parse(e.data); }catch(x){ return; } if(m.e!=="depthUpdate") return; if(!OB.ready){ OB.buf.push(m); if(OB.buf.length>600) OB.buf.shift(); return; } obApply(m); };
+  w.onclose=()=>{ if(OB.ws===w && OB.on){ OB.on=false; setTimeout(()=>{ if(OF_VIEWS.has(S.view)||Date.now()-OB.use<180e3) obStart(); },3000); } };
+  w.onerror=()=>{}; setTimeout(obSnap,700); }
+function obStop(){ OB.on=false; OB.ready=false; if(OB.ws){ const w=OB.ws; OB.ws=null; try{ w.close(); }catch(e){} } }
+async function obSnap(){ if(!OB.on) return; const r=await getJ3(`https://fapi.binance.com/fapi/v1/depth?symbol=${OB.sym}USDT&limit=1000`); if(!OB.on) return; if(!r||!r.lastUpdateId){ setTimeout(obSnap,3000); return; }
+  OB.bids.clear(); OB.asks.clear(); for(const [p,q] of r.bids) OB.bids.set(+p,+q); for(const [p,q] of r.asks) OB.asks.set(+p,+q);
+  const L=r.lastUpdateId, buf=OB.buf.filter(m=>m.u>=L); OB.buf=[]; OB.pu=null; OB.ready=true; for(const m of buf) obApply(m); OB.t=Date.now(); }
+function obApply(m){ if(OB.pu!=null && m.pu!==OB.pu){ OB.ready=false; OB.buf=[m]; setTimeout(obSnap,250); return; } OB.pu=m.u;
+  for(const [p,q] of m.b){ const P=+p, Q=+q; if(Q===0) OB.bids.delete(P); else OB.bids.set(P,Q); }
+  for(const [p,q] of m.a){ const P=+p, Q=+q; if(Q===0) OB.asks.delete(P); else OB.asks.set(P,Q); } OB.t=Date.now(); }
+function obBest(){ let bb=-Infinity, ba=Infinity; for(const p of OB.bids.keys()) if(p>bb) bb=p; for(const p of OB.asks.keys()) if(p<ba) ba=p;
+  if(bb>=ba && isFinite(bb) && isFinite(ba)){ for(const p of [...OB.bids.keys()]) if(p>=ba) OB.bids.delete(p); bb=-Infinity; for(const p of OB.bids.keys()) if(p>bb) bb=p; } return [bb,ba]; }
+setInterval(()=>{ if(OB.on && !OF_VIEWS.has(S.view) && Date.now()-OB.use>180e3) obStop(); if(TSW.cur && S.view!=="tape2" && Date.now()-tsUse>180e3) tsStop();
+  if(OB.ready){ const [bb,ba]=obBest(), mid=(bb+ba)/2; if(mid>0){ for(const p of [...OB.bids.keys()]) if(p<mid*0.94) OB.bids.delete(p); for(const p of [...OB.asks.keys()]) if(p>mid*1.06) OB.asks.delete(p); } } },10000);
+
+/* ---------- Heatmap-Aufzeichnung (1 Spalte pro Sekunde) ---------- */
+const OBH = {cols:[],max:1800,hb:0,cur:""};
+setInterval(()=>{ if(!OB.ready||OB.sym!==S.cur) return; const [bb,ba]=obBest(); if(!(bb>0&&ba>0)) return; const mid=(bb+ba)/2;
+  if(OBH.cur!==S.cur||!OBH.hb){ OBH.cols=[]; OBH.cur=S.cur; OBH.hb=ofBase(); }
+  const hb=OBH.hb, lo=Math.floor(mid*0.985/hb), hi=Math.ceil(mid*1.015/hb), n=hi-lo+1, q=new Float32Array(n);
+  for(const [p,v] of OB.bids){ const i=Math.floor(p/hb)-lo; if(i>=0&&i<n) q[i]+=v; } for(const [p,v] of OB.asks){ const i=Math.floor(p/hb)-lo; if(i>=0&&i<n) q[i]+=v; }
+  OBH.cols.push({t:Date.now(),lo,q,bb,ba,last:HMACC.last||PERP.binance.last||mid,buy:HMACC.buy,sell:HMACC.sell}); HMACC.buy=0; HMACC.sell=0; if(OBH.cols.length>OBH.max) OBH.cols.shift(); },1000);
+const OBH_LUT=(()=>{ const st=[[0,[0,0,0,0]],[0.06,[10,30,95,70]],[0.22,[25,90,200,170]],[0.42,[0,190,215,215]],[0.62,[250,230,60,235]],[0.8,[255,150,0,245]],[1,[255,40,70,255]]], L=new Uint8ClampedArray(256*4);
+  for(let i=0;i<256;i++){ const t=i/255; let j=0; while(j<st.length-2 && t>st[j+1][0]) j++; const [t0,c0]=st[j], [t1,c1]=st[j+1], f=(t-t0)/((t1-t0)||1); for(let k=0;k<4;k++) L[i*4+k]=c0[k]+(c1[k]-c0[k])*f; } return L; })();
+
+/* ---------- Footprint-Daten (1-Minuten-Basis, lokal gespeichert) ---------- */
+const FP = {cur:"",base:0,c:new Map(),liveStart:0,lastStored:0,bf:0};
+function fpInit(){ if(FP.cur===S.cur && FP.base) return; FP.cur=S.cur; FP.base=ofBase(); FP.c=new Map(); FP.liveStart=0; FP.lastStored=0; FP.bf=0;
+  try{ const a=JSON.parse(localStorage.getItem("ft-fp-"+S.cur)||"null"); if(a && a.base===FP.base){ for(const r of a.c){ const lv=new Map(); for(let i=0;i<r[7].length;i+=3) lv.set(r[7][i],[r[7][i+1],r[7][i+2]]); FP.c.set(r[0],{o:r[1],h:r[2],l:r[3],c:r[4],ft:r[5],lt:r[6],lv}); FP.lastStored=Math.max(FP.lastStored,r[6]); } } }catch(e){} }
+function fpAdd(ts,px,q,side){ if(FP.cur!==S.cur||!FP.base) fpInit(); const t=Math.floor(ts/6e4)*6e4; let c=FP.c.get(t); if(!c){ c={o:px,h:px,l:px,c:px,ft:ts,lt:ts,lv:new Map()}; FP.c.set(t,c); }
+  if(px>c.h) c.h=px; if(px<c.l) c.l=px; if(ts<c.ft){ c.ft=ts; c.o=px; } if(ts>=c.lt){ c.lt=ts; c.c=px; }
+  const b=Math.floor(px/FP.base), a=c.lv.get(b); if(a) a[side==="buy"?1:0]+=q; else c.lv.set(b,side==="buy"?[0,q]:[q,0]); }
+function fpSave(){ if(!FP.cur||!FP.c.size) return; const cut=Date.now()-8*3600e3, rows=[];
+  for(const [t,c] of FP.c){ if(t<cut){ FP.c.delete(t); continue; } const lv=[]; for(const [b,v] of c.lv) lv.push(b,+v[0].toFixed(4),+v[1].toFixed(4)); rows.push([t,c.o,c.h,c.l,c.c,c.ft,c.lt,lv]); }
+  for(let k=rows.length;k>0;k=Math.floor(k*0.6)){ try{ localStorage.setItem("ft-fp-"+FP.cur,JSON.stringify({base:FP.base,c:rows.slice(rows.length-k)})); break; }catch(e){} } }
+setInterval(fpSave,60000); window.addEventListener("pagehide",fpSave);
+async function fpBackfill(){ if(FP.bf) return; FP.bf=1; const sym=S.cur+"USDT", U="https://fapi.binance.com/fapi/v1/aggTrades?symbol="+sym;
+  let r=await getJ3(U+"&limit=1000"); if(!Array.isArray(r)||!r.length){ FP.bf=0; return; } let all=r.slice(), first=r[0].a, pages=0; const stop=Math.max(FP.lastStored,Date.now()-3*3600e3);
+  while(pages<14 && all[0].T>stop){ pages++; r=await getJ3(U+"&fromId="+Math.max(0,first-1000)+"&limit=1000"); if(!Array.isArray(r)||!r.length) break; const rr=r.filter(x=>x.a<first); if(!rr.length) break; all=rr.concat(all); first=rr[0].a; await new Promise(res=>setTimeout(res,120)); }
+  const live=FP.liveStart||Infinity; for(const x of all){ const T=+x.T; if(T<=FP.lastStored||T>=live) continue; fpAdd(T,+x.p,+x.q,x.m?"sell":"buy"); } FP.bf=2; ofNow(); }
+function fpAgg(tfMs,mul){ const out=new Map();
+  for(const [t,c] of FP.c){ const T=Math.floor(t/tfMs)*tfMs; let a=out.get(T); if(!a){ a={t:T,o:c.o,h:c.h,l:c.l,c:c.c,ft:c.ft,lt:c.lt,lv:new Map()}; out.set(T,a); }
+    else { if(c.ft<a.ft){ a.ft=c.ft; a.o=c.o; } if(c.lt>a.lt){ a.lt=c.lt; a.c=c.c; } if(c.h>a.h) a.h=c.h; if(c.l<a.l) a.l=c.l; }
+    for(const [b,v] of c.lv){ const B=Math.floor(b/mul), x=a.lv.get(B); if(x){ x[0]+=v[0]; x[1]+=v[1]; } else a.lv.set(B,[v[0],v[1]]); } }
+  return [...out.values()].sort((a,b)=>a.t-b.t); }
+
+/* ====================== Seiten ====================== */
+const ofWrap=(id,h="min(74vh,700px)")=>`<div class="ofwrap" style="height:${h}"><canvas id="${id}"></canvas></div>`;
+V3.tape2 = P2("Time & Sales","Trades aller Börsen in Echtzeit (Futures und Spot)",'<div class="form" id="ts-ven"></div><div class="form">'+num3("ts-min",S.tsMin??10000,1000,"Min. Größe $",110)+num3("ts-big",S.tsBig??250000,10000,"Großer Trade ab $",120)+seg3("k3","tsAgg",[[1,"Zusammengefasst"],[0,"Einzeln"]])+seg3("k3","tsPause",[[0,"Live"],[1,"Pause"]])+'</div><div class="cards" id="ts-cards"></div><div class="tw tsw"><table class="ts"><thead><tr><th class="l">Zeit</th><th class="l">Börse</th><th>Preis</th><th>Größe</th><th>Wert</th><th class="l">Seite</th></tr></thead><tbody id="ts-t"></tbody></table></div><div class="note">Zusammengefasst: Teil-Ausführungen derselben Börse und Seite innerhalb von 100 ms werden wie in einem Smart Tape zu einer Order gebündelt.</div>',"wide");
+V3.dom = P2("DOM","Orderbuch Binance Perp mit gehandeltem Volumen je Preis",'<div class="form">'+seg3("k3","domMul",[[1,"Stufe 1×"],[2,"2×"],[5,"5×"],[10,"10×"],[20,"20×"]])+'<button class="btn ghost" id="dom-center">Zentrieren</button><button class="btn ghost" id="dom-reset">Volumen zurücksetzen</button><span class="mut" id="dom-info"></span></div>'+ofWrap("dom-cv")+'<div class="note">Mausrad = Leiter verschieben, Doppelklick = wieder auf den aktuellen Preis zentrieren. Gekauft/Verkauft = aggressive Market-Orders seit dem Öffnen der Seite bzw. dem letzten Zurücksetzen.</div>',"wide");
+V3.heatmap = P2("Orderbuch-Heatmap","Liquidität im Orderbuch über die Zeit, Binance Perp, mit Trades als Blasen",'<div class="form">'+seg3("k3","hmSpan",[[300,"5 min"],[900,"15 min"],[1800,"30 min"]])+seg3("k3","hmCon",[[1,"Kontrast niedrig"],[2,"mittel"],[3,"hoch"]])+num3("hm-bub",S.hmBub??50000,10000,"Blasen ab $",110)+'<button class="btn ghost" id="hm-follow">Preis folgen</button></div>'+ofWrap("hm-cv")+'<div class="note" id="hm-note">Die Aufzeichnung startet mit dem Öffnen dieser Seite (eine Spalte pro Sekunde, bis 30 Minuten). Mausrad = Preis-Zoom, Umschalt + Mausrad = Zeit-Zoom, Ziehen = Verschieben, Doppelklick = zurücksetzen.</div>',"wide");
+V3.footprint = P2("Footprint","Cluster-Chart: Verkäufe × Käufe je Preis, Binance Perp",'<div class="form">'+seg3("k3","fpTf",[[1,"1m"],[5,"5m"],[15,"15m"],[30,"30m"],[60,"1h"]])+seg3("k3","fpMul",[[1,"Cluster 1×"],[2,"2×"],[5,"5×"],[10,"10×"],[20,"20×"]])+seg3("k3","fpMode",[["ba","Bid × Ask"],["delta","Delta"],["vol","Volumen"]])+seg3("k3","fpImb",[[0,"Imbalance aus"],[3,"Imbalance 300 %"],[4,"400 %"]])+'</div>'+ofWrap("fp-cv")+'<div class="note" id="fp-note">Der Footprint wird live aus allen Trades aufgebaut und lokal gespeichert (8 Stunden). Beim Öffnen werden die letzten Minuten nachgeladen. Mausrad = Zoom, Umschalt + Mausrad = Preis-Zoom, Ziehen = Verschieben, Doppelklick = zurücksetzen.</div>',"wide");
+V3.tpo = P2("Market Profile (TPO)","30-Minuten-Perioden je Tag (UTC), Binance Perp",'<div class="form">'+seg3("k3","tpoDays",[[3,"3 Tage"],[5,"5 Tage"],[10,"10 Tage"]])+seg3("k3","tpoMul",[[5,"TPO 5×"],[10,"10×"],[20,"20×"],[50,"50×"]])+seg3("k3","tpoStyle",[["l","Buchstaben"],["b","Blöcke"]])+tog3("tpoNaked","Naked POCs")+'</div><div class="cards" id="tpo-cards"></div>'+ofWrap("tpo-cv","min(76vh,760px)")+'<div class="note">POC = Preis mit den meisten TPOs, Value Area = 70 % der TPOs um den POC, IB = Initial Balance (erste Stunde), Single Prints = nur eine Periode. Naked POCs = POCs früherer Tage, die seitdem nicht mehr gehandelt wurden. Mausrad/Ziehen verschiebt die Ansicht, Doppelklick setzt zurück.</div>',"wide");
+for(const v of OF_VIEWS) NB3.add(v);
+S.tsAgg??=1; S.tsPause??=0; S.domMul??=2; S.hmSpan??=900; S.hmCon??=2; S.fpTf??=1; S.fpMul??=2; S.fpMode??="ba"; S.fpImb??=3; S.tpoDays??=5; S.tpoMul??=10; S.tpoStyle??="l"; S.tpoNaked??=1;
+S.tsVen=Object.assign({bnp:1,byp:1,okp:1,drp:1,bns:1,cbs:1},S.tsVen||{});
+
+/* --- Time & Sales --- */
+R3.tape2 = () => { tsStart(); const box=$("ts-ven"); if(box && !box.dataset.ok){ box.dataset.ok=1; box.innerHTML='<span class="lbl3">Börsen</span>'+Object.entries(TSV).map(([k,n])=>`<button class="chip tsv" data-tsv="${k}" aria-pressed="${!!S.tsVen[k]}">${n}</button>`).join(""); } ofKick(); };
+document.addEventListener("click",e=>{ const b=e.target.closest("[data-tsv]"); if(!b) return; const k=b.dataset.tsv; S.tsVen[k]=S.tsVen[k]?0:1; b.setAttribute("aria-pressed",String(!!S.tsVen[k])); save(); ofNow(); });
+document.addEventListener("change",e=>{ const id=e.target.id; if(id==="ts-min"){ S.tsMin=Math.max(0,+e.target.value||0); save(); ofNow(); } else if(id==="ts-big"){ S.tsBig=Math.max(0,+e.target.value||0); save(); ofNow(); } else if(id==="hm-bub"){ S.hmBub=Math.max(0,+e.target.value||0); save(); ofNow(); } });
+let tsLastHtml="";
+OF_DRAW.tape2 = () => {
+  const now=Date.now(), en=S.tsVen, mn=S.tsMin??10000, big=S.tsBig??250000;
+  const win=(ms)=>{ let b=0,s=0,n=0,mx=null; for(let i=TSB.length-1;i>=0;i--){ const x=TSB[i]; if(now-x.ts>ms) break; if(!en[x.v]) continue; n++; if(x.side==="buy") b+=x.usd; else s+=x.usd; if(!mx||x.usd>mx.usd) mx=x; } return {b,s,n,mx}; };
+  const w1=win(60e3), w5=win(300e3);
+  $("ts-cards").innerHTML = cardH("Käufe 1 min",fUsd0(w1.b),w1.n+" Trades","pos")+cardH("Verkäufe 1 min",fUsd0(w1.s),"","neg")+cardH("Delta 1 min",(w1.b-w1.s>=0?"+":"")+fUsd0(w1.b-w1.s),"",cls3(w1.b-w1.s))+cardH("Delta 5 min",(w5.b-w5.s>=0?"+":"")+fUsd0(w5.b-w5.s),(w5.n/300).toFixed(1)+" Trades/s",cls3(w5.b-w5.s))+cardH("Größter Trade 5 min",w5.mx?fUsd0(w5.mx.usd):"–",w5.mx?TSV[w5.mx.v]+" · "+(w5.mx.side==="buy"?"Kauf":"Verkauf"):"",w5.mx?(w5.mx.side==="buy"?"pos":"neg"):"");
+  if(+S.tsPause) return;
+  const rows=[]; let agg=null; const dec=ofDec(ofBase());
+  const flush=()=>{ if(agg && agg.usd>=mn) rows.push(agg); agg=null; };
+  for(let i=TSB.length-1;i>=0 && rows.length<220;i--){ const x=TSB[i]; if(!en[x.v]) continue;
+    if(+S.tsAgg){ if(agg && agg.v===x.v && agg.side===x.side && agg.ts-x.ts<=100){ agg.q+=x.q; agg.usd+=x.usd; agg.n++; continue; } flush(); agg={...x,n:1}; }
+    else if(x.usd>=mn) rows.push(x); }
+  flush();
+  const html=rows.map(x=>{ const B=x.usd>=big; return `<tr class="${x.side==="buy"?"tsb":"tss"}${B?" tsbig":""}"><td class="l">${new Date(x.ts).toLocaleTimeString(LOC,{hour:"2-digit",minute:"2-digit",second:"2-digit"})}.${String(x.ts%1000).padStart(3,"0").slice(0,2)}</td><td class="l">${TSV[x.v]}</td><td>${fmtNum(x.px,dec)}</td><td>${fq(x.q)}${x.n>1?` <span class="mut">(${x.n})</span>`:""}</td><td>${fUsd0(x.usd)}</td><td class="l">${x.side==="buy"?"Kauf":"Verkauf"}</td></tr>`; }).join("") || '<tr><td colspan="6" class="empty">Warte auf Trades über der Mindestgröße …</td></tr>';
+  if(html!==tsLastHtml){ tsLastHtml=html; $("ts-t").innerHTML=html; }
+};
+
+/* --- DOM --- */
+const DV = {follow:true,center:0,rowH:20};
+R3.dom = () => { obStart(); const cv=$("dom-cv"); ofInteract(cv,{wheel:e=>{ const st=ofBase()*(+S.domMul||2); if(DV.follow){ DV.center=PERP.binance.last||spot; DV.follow=false; } DV.center+=Math.sign(e.deltaY)*-st*3; },reset:()=>{ DV.follow=true; }}); ofKick(); };
+document.addEventListener("click",e=>{ if(e.target.id==="dom-center"){ DV.follow=true; ofNow(); } else if(e.target.id==="dom-reset"){ DOMT.m.clear(); DOMT.since=Date.now(); ofNow(); } else if(e.target.id==="hm-follow"){ HV.follow=true; HV.off=0; ofNow(); } });
+OF_DRAW.dom = () => {
+  const C=cvSetup("dom-cv"); if(!C) return; const {g,W,H}=C, c=ofc(); g.clearRect(0,0,W,H);
+  if(!OB.ready){ cvMsg(g,W,H,"Verbinde mit dem Binance-Orderbuch …"); return; }
+  const base=ofBase(), mul=+S.domMul||2, st=base*mul, dec=ofDec(st), [bb,ba]=obBest(), last=PERP.binance.last||(bb+ba)/2;
+  if(DV.follow) DV.center=last; const hdr=26, rh=DV.rowH, rows=Math.floor((H-hdr)/rh), top=Math.floor(DV.center/st)+Math.floor(rows/2);
+  const bid=new Map(), ask=new Map(), tr=new Map();
+  for(const [p,q] of OB.bids){ const b=Math.floor(p/st); if(b<=top&&b>top-rows) bid.set(b,(bid.get(b)||0)+q); }
+  for(const [p,q] of OB.asks){ const b=Math.floor(p/st); if(b<=top&&b>top-rows) ask.set(b,(ask.get(b)||0)+q); }
+  for(const [b0,v] of DOMT.m){ const b=Math.floor(b0*base/st+1e-9); if(b<=top&&b>top-rows){ const a=tr.get(b)||[0,0]; a[0]+=v[0]; a[1]+=v[1]; tr.set(b,a); } }
+  const mxB=Math.max(1e-9,...bid.values(),...ask.values()), mxT=Math.max(1e-9,...[...tr.values()].map(a=>Math.max(a[0],a[1])));
+  const cols=[["Verkauft",0.17],["Bid",0.19],["Preis",0.18],["Ask",0.19],["Gekauft",0.17],["Delta",0.10]], X=[]; let xx=0; for(const [,w] of cols){ X.push([xx,w*W]); xx+=w*W; }
+  g.font="600 11px IBM Plex Sans, sans-serif"; g.fillStyle=c.bg2; g.fillRect(0,0,W,hdr); g.fillStyle=c.mut; g.textAlign="center"; cols.forEach(([n],i)=>g.fillText(n,X[i][0]+X[i][1]/2,hdr/2)); g.textAlign="left";
+  g.font="500 11.5px IBM Plex Mono, monospace"; const lastB=Math.floor(last/st), bbB=Math.floor(bb/st), baB=Math.floor(ba/st), now=Date.now();
+  let sb=0, sa=0;
+  for(let r=0;r<rows;r++){ const b=top-r, y=hdr+r*rh, cy=y+rh/2, p=b*st;
+    if(r%2===0){ g.fillStyle=rgba3(c.fg,.025); g.fillRect(0,y,W,rh); }
+    const qb=bid.get(b)||0, qa=ask.get(b)||0, t=tr.get(b)||[0,0]; sb+=qb; sa+=qa;
+    if(qb){ const w=qb/mxB*(X[1][1]-6); g.fillStyle=rgba3(c.up,b===bbB?.55:.28); g.fillRect(X[1][0]+X[1][1]-3-w,y+2,w,rh-4); g.fillStyle=c.fg; g.textAlign="right"; g.fillText(fq(qb),X[1][0]+X[1][1]-6,cy); }
+    if(qa){ const w=qa/mxB*(X[3][1]-6); g.fillStyle=rgba3(c.dn,b===baB?.55:.28); g.fillRect(X[3][0]+3,y+2,w,rh-4); g.fillStyle=c.fg; g.textAlign="left"; g.fillText(fq(qa),X[3][0]+6,cy); }
+    if(t[0]){ const w=t[0]/mxT*(X[0][1]-6); g.fillStyle=rgba3(c.dn,.22); g.fillRect(X[0][0]+X[0][1]-3-w,y+3,w,rh-6); g.fillStyle=c.mut; g.textAlign="right"; g.fillText(fq(t[0]),X[0][0]+X[0][1]-6,cy); }
+    if(t[1]){ const w=t[1]/mxT*(X[4][1]-6); g.fillStyle=rgba3(c.up,.22); g.fillRect(X[4][0]+3,y+3,w,rh-6); g.fillStyle=c.mut; g.textAlign="left"; g.fillText(fq(t[1]),X[4][0]+6,cy); }
+    const d=t[1]-t[0]; if(t[0]||t[1]){ g.fillStyle=d>=0?c.up:c.dn; g.textAlign="right"; g.fillText((d>=0?"+":"-")+fq(d),X[5][0]+X[5][1]-6,cy); }
+    let fl=null; for(let k=0;k<mul;k++){ const f=DOMF.get(Math.floor(p/base)+k); if(f && now-f.t<1500 && (!fl||f.q>fl.q)) fl=f; }
+    if(fl){ g.fillStyle=rgba3(fl.side==="buy"?c.up:c.dn,.55*(1-(now-fl.t)/1500)+.1); g.fillRect(X[2][0]+2,y+1,X[2][1]-4,rh-2); }
+    g.textAlign="center"; g.fillStyle=b===lastB?c.acc:c.fg; g.font=(b===lastB?"700 ":"500 ")+"11.5px IBM Plex Mono, monospace"; g.fillText(fmtNum(p,dec),X[2][0]+X[2][1]/2,cy); g.font="500 11.5px IBM Plex Mono, monospace";
+    if(b===lastB){ g.strokeStyle=c.acc; g.lineWidth=1.2; g.strokeRect(X[2][0]+1.5,y+1.5,X[2][1]-3,rh-3); } }
+  g.textAlign="left"; g.strokeStyle=c.line; g.lineWidth=1; for(const [x0] of X.slice(1)){ g.beginPath(); g.moveTo(x0+.5,hdr); g.lineTo(x0+.5,H); g.stroke(); }
+  const imb=sb+sa?((sb-sa)/(sb+sa)*100):0; const info=$("dom-info"); if(info) info.innerHTML=`Bid ${fq(sb)} · Ask ${fq(sa)} · Ungleichgewicht <b class="${cls3(imb)}">${imb>=0?"+":""}${imb.toFixed(1)} %</b> · Spread ${fmtNum(ba-bb,ofDec(base)+1)} · Stufe $${fmtNum(st,dec)}`;
+};
+
+/* --- Orderbuch-Heatmap --- */
+const HV = {follow:true,center:0,range:0.006,off:0,hy:null,hx:null};
+R3.heatmap = () => { obStart(); const cv=$("hm-cv"); ofInteract(cv,{
+  wheel:e=>{ if(e.shiftKey){ const v=[300,900,1800]; let i=v.indexOf(+S.hmSpan||900); i=Math.max(0,Math.min(2,i+(e.deltaY>0?1:-1))); S.hmSpan=v[i]; sync3(); } else HV.range=Math.max(0.0008,Math.min(0.015,HV.range*(e.deltaY>0?1.15:1/1.15))); },
+  drag:(dx,dy)=>{ const C=$("hm-cv"); if(!C) return; const H=C.clientHeight-20; if(HV.follow){ const l=OBH.cols[OBH.cols.length-1]; HV.center=l?(l.bb+l.ba)/2:spot; HV.follow=false; } HV.center+=dy/H*2*HV.range*HV.center; const span=+S.hmSpan||900, W=C.clientWidth-160; HV.off=Math.max(0,Math.min(OBH.cols.length-10,HV.off+Math.round(dx/W*span))); },
+  hover:(x,y)=>{ HV.hx=x; HV.hy=y; }, reset:()=>{ HV.follow=true; HV.off=0; HV.range=0.006; } }); ofKick(); };
+OF_DRAW.heatmap = () => {
+  const C=cvSetup("hm-cv"); if(!C) return; const {g,W,H}=C, c=ofc(); g.clearRect(0,0,W,H);
+  const cols=OBH.cols; if(!OB.ready||cols.length<2){ cvMsg(g,W,H,OB.ready?"Aufzeichnung läuft, die ersten Sekunden sammeln sich …":"Verbinde mit dem Binance-Orderbuch …"); return; }
+  const axR=74, prW=86, axB=20, pw=W-axR-prW, ph=H-axB; const span=Math.min(+S.hmSpan||900,cols.length), off=Math.min(HV.off,Math.max(0,cols.length-span)), s0=cols.length-span-off, L=cols[cols.length-1-off];
+  const mid=HV.follow?(L.bb+L.ba)/2:HV.center, hb=OBH.hb, pLo=mid*(1-HV.range), pHi=mid*(1+HV.range), b0=Math.floor(pLo/hb), nb=Math.ceil(pHi/hb)-b0+1, merge=Math.max(1,Math.ceil(nb/ph)), rows=Math.ceil(nb/merge), top=(b0+rows*merge)*hb;
+  const yOf=p=>(top-p)/(rows*merge*hb)*ph;
+  // Kontrast: Perzentil der sichtbaren Werte
+  const smp=[]; for(let x=0;x<span;x+=Math.max(1,Math.floor(span/120))){ const col=cols[s0+x]; for(let r=0;r<rows;r+=2){ let v=0; for(let k=0;k<merge;k++){ const i=b0+r*merge+k-col.lo; if(i>=0&&i<col.q.length) v+=col.q[i]; } if(v>0) smp.push(v); } }
+  smp.sort((a,b)=>a-b); const pc={1:0.995,2:0.975,3:0.93}[+S.hmCon||2], vmax=smp.length?smp[Math.min(smp.length-1,Math.floor(smp.length*pc))]:1;
+  if(!HV.off2||HV.off2.width!==span||HV.off2.height!==rows){ HV.off2=document.createElement("canvas"); HV.off2.width=span; HV.off2.height=rows; }
+  const og=HV.off2.getContext("2d"), img=og.createImageData(span,rows), D=img.data;
+  for(let x=0;x<span;x++){ const col=cols[s0+x], q=col.q, lo=col.lo; for(let r=0;r<rows;r++){ let v=0; const bs=b0+r*merge-lo; for(let k=0;k<merge;k++){ const i=bs+k; if(i>=0&&i<q.length) v+=q[i]; } if(v<=0) continue;
+      const t=Math.min(1,Math.pow(v/vmax,0.6)), li=Math.round(t*255)*4, o=((rows-1-r)*span+x)*4; D[o]=OBH_LUT[li]; D[o+1]=OBH_LUT[li+1]; D[o+2]=OBH_LUT[li+2]; D[o+3]=OBH_LUT[li+3]; } }
+  og.putImageData(img,0,0); g.imageSmoothingEnabled=false; g.drawImage(HV.off2,0,0,span,rows,0,0,pw,ph);
+  const xs=pw/span; g.lineWidth=1.4;
+  // Best Bid/Ask + letzter Preis
+  const line=(key,col,w)=>{ g.strokeStyle=col; g.lineWidth=w; g.beginPath(); for(let x=0;x<span;x++){ const v=cols[s0+x][key], X=x*xs, Y=yOf(v); if(x===0) g.moveTo(X,Y); else { g.lineTo(X,Y); } g.lineTo(X+xs,Y); } g.stroke(); };
+  line("bb",rgba3(c.up,.7),1); line("ba",rgba3(c.dn,.7),1); line("last",c.light?"#111":"#ffffff",1.6);
+  // Trade-Blasen
+  const bub=S.hmBub??50000; for(let x=0;x<span;x++){ const col=cols[s0+x], v=col.buy+col.sell; if(v<bub||!v) continue; const r=Math.max(3,Math.min(24,Math.sqrt(v/bub)*4)), sh=col.buy/v;
+    g.beginPath(); g.arc(x*xs+xs/2,yOf(col.last),r,0,Math.PI*2); g.fillStyle=rgba3(sh>0.6?c.up:sh<0.4?c.dn:c.warn,.55); g.fill(); g.strokeStyle=rgba3(c.fg,.7); g.lineWidth=0.8; g.stroke(); }
+  // aktuelles Orderbuch rechts
+  const qb=new Float64Array(rows), qa=new Float64Array(rows); let mq=1e-9; for(let r=0;r<rows;r++){ for(let k=0;k<merge;k++){ const i=b0+r*merge+k-L.lo; if(i>=0&&i<L.q.length){ const p=(b0+r*merge+k)*hb; if(p<=L.bb) qb[r]+=L.q[i]; else qa[r]+=L.q[i]; } } mq=Math.max(mq,qb[r],qa[r]); }
+  const rh=ph/rows; for(let r=0;r<rows;r++){ const y=ph-(r+1)*rh; if(qb[r]){ g.fillStyle=rgba3(c.up,.5); g.fillRect(pw+2,y,qb[r]/mq*(prW-6),Math.max(1,rh-0.5)); } if(qa[r]){ g.fillStyle=rgba3(c.dn,.5); g.fillRect(pw+2,y,qa[r]/mq*(prW-6),Math.max(1,rh-0.5)); } }
+  // Achsen
+  g.fillStyle=c.bg; g.fillRect(pw+prW,0,axR,H); g.fillRect(0,ph,W,axB); g.strokeStyle=c.line; g.lineWidth=1; g.beginPath(); g.moveTo(pw+.5,0); g.lineTo(pw+.5,ph); g.moveTo(pw+prW+.5,0); g.lineTo(pw+prW+.5,ph); g.moveTo(0,ph+.5); g.lineTo(W,ph+.5); g.stroke();
+  g.font="500 10.5px IBM Plex Mono, monospace"; g.fillStyle=c.mut; const dec=ofDec(hb); const stp=Math.pow(10,Math.floor(Math.log10((pHi-pLo)/6))), nice=[1,2,2.5,5,10].map(m=>m*stp).find(s=>(pHi-pLo)/s<=8)||stp*10;
+  for(let p=Math.ceil(pLo/nice)*nice;p<=pHi;p+=nice){ const y=yOf(p); if(y<6||y>ph-6) continue; g.fillText(fmtNum(p,nice<1?dec:0),pw+prW+6,y); g.strokeStyle=rgba3(c.fg,.06); g.beginPath(); g.moveTo(0,y); g.lineTo(pw,y); g.stroke(); }
+  const lp=L.last, ly=yOf(lp); g.fillStyle=c.acc; g.fillRect(pw+prW+1,ly-8,axR-2,16); g.fillStyle=c.onacc; g.font="700 10.5px IBM Plex Mono, monospace"; g.fillText(fmtNum(lp,dec),pw+prW+5,ly);
+  g.fillStyle=c.mut; g.font="500 10px IBM Plex Mono, monospace"; const tstep=Math.max(1,Math.round(span/6)); for(let x=0;x<span;x+=tstep){ const t=cols[s0+x].t; g.fillText(new Date(t).toLocaleTimeString(LOC,{hour:"2-digit",minute:"2-digit",second:"2-digit"}),x*xs+2,ph+axB/2); }
+  if(HV.hy!=null && HV.hx<pw && HV.hy<ph){ const p=top-HV.hy/ph*(rows*merge*hb), xi=Math.min(span-1,Math.max(0,Math.floor(HV.hx/xs))), col=cols[s0+xi]; let v=0; const bi=Math.floor(p/hb)-col.lo; for(let k=-Math.floor(merge/2);k<=Math.floor(merge/2);k++){ const i=bi+k; if(i>=0&&i<col.q.length) v+=col.q[i]; }
+    g.strokeStyle=rgba3(c.fg,.4); g.setLineDash([4,4]); g.beginPath(); g.moveTo(0,HV.hy); g.lineTo(pw,HV.hy); g.moveTo(HV.hx,0); g.lineTo(HV.hx,ph); g.stroke(); g.setLineDash([]);
+    const tx=`${fmtNum(p,dec)} · ${fq(v)} ${S.cur} · ${new Date(col.t).toLocaleTimeString(LOC)}`; g.font="600 11px IBM Plex Mono, monospace"; const tw=g.measureText(tx).width+12, bx=Math.min(HV.hx+10,pw-tw-4), by=Math.max(4,HV.hy-26); g.fillStyle=c.bg2; g.fillRect(bx,by,tw,20); g.fillStyle=c.fg; g.fillText(tx,bx+6,by+10); }
+  const n=$("hm-note"); if(n && !n.dataset.s){ n.dataset.s=1; }
+};
+
+/* --- Footprint --- */
+const FV = {colW:118,rowH:17,off:0,follow:true,pc:0,hx:null,hy:null};
+R3.footprint = () => { fpInit(); fpBackfill(); const cv=$("fp-cv"); ofInteract(cv,{
+  wheel:e=>{ if(e.shiftKey) FV.rowH=Math.max(7,Math.min(30,FV.rowH*(e.deltaY>0?1/1.1:1.1))); else FV.colW=Math.max(14,Math.min(260,FV.colW*(e.deltaY>0?1/1.12:1.12))); },
+  drag:(dx,dy)=>{ const st=ofBase()*(+S.fpMul||2); if(FV.follow){ FV.pc=PERP.binance.last||spot; FV.follow=false; } FV.pc+=dy/FV.rowH*st; FV.off=Math.max(0,FV.off+dx/FV.colW); },
+  hover:(x,y)=>{ FV.hx=x; FV.hy=y; }, reset:()=>{ FV.follow=true; FV.off=0; FV.colW=118; FV.rowH=17; } }); ofKick(); };
+OF_DRAW.footprint = () => {
+  const C=cvSetup("fp-cv"); if(!C) return; const {g,W,H}=C, c=ofc(); g.clearRect(0,0,W,H); fpInit();
+  const tf=(+S.fpTf||1)*6e4, mul=+S.fpMul||2, st=FP.base*mul, dec=ofDec(st), mode=S.fpMode||"ba", imb=+S.fpImb||0, all=fpAgg(tf,mul);
+  if(!all.length){ cvMsg(g,W,H,FP.bf===1?"Lade die letzten Trades von Binance …":"Warte auf Trades …"); return; }
+  const axR=72, sumH=3*15, axB=18, pw=W-axR, ph=H-sumH-axB, cw=FV.colW, n=Math.max(1,Math.floor(pw/cw)), endF=all.length-Math.floor(FV.off), vis=all.slice(Math.max(0,endF-n),Math.max(1,endF));
+  const lastPx=all[all.length-1].c; if(FV.follow) FV.pc=lastPx; const rh=FV.rowH, rows=Math.floor(ph/rh), topB=Math.floor(FV.pc/st)+Math.floor(rows/2);
+  const yB=b=>(topB-b)*rh, yP=p=>(topB+1-p/st)*rh; let mx=1e-9, mxD=1e-9; for(const k of vis) for(const [b,v] of k.lv){ if(b>topB||b<=topB-rows) continue; mx=Math.max(mx,v[0]+v[1]); mxD=Math.max(mxD,Math.abs(v[1]-v[0])); }
+  const txt=cw>=58&&rh>=11, fs=Math.max(8.5,Math.min(11.5,rh-5)); g.font=`500 ${fs}px IBM Plex Mono, monospace`; let cum=0;
+  vis.forEach((k,i)=>{ const x0=pw-(vis.length-i)*cw, bodyX=x0+3, cx0=x0+9, cww=cw-12; let poc=null, pv=-1, tv=0, td=0;
+    for(const [b,v] of k.lv){ const s=v[0]+v[1]; tv+=s; td+=v[1]-v[0]; if(s>pv){ pv=s; poc=b; } }
+    cum+=td;
+    for(const [b,v] of k.lv){ if(b>topB||b<=topB-rows) continue; const y=yB(b), s=v[0]+v[1], d=v[1]-v[0];
+      let fill; if(mode==="delta") fill=rgba3(d>=0?c.up:c.dn,.08+.62*Math.abs(d)/mxD); else if(mode==="vol") fill=rgba3(c.acc,.06+.6*s/mx); else fill=rgba3(d>=0?c.up:c.dn,.06+.5*s/mx);
+      g.fillStyle=fill; g.fillRect(cx0,y+.5,cww,rh-1);
+      if(b===poc){ g.strokeStyle=c.warn; g.lineWidth=1.2; g.strokeRect(cx0+.5,y+1,cww-1,rh-2); }
+      if(txt){ const cy=y+rh/2; if(mode==="ba"){ const lo=k.lv.get(b-1), hi=k.lv.get(b+1), bi=imb&&lo&&v[1]>=imb*Math.max(lo[0],1e-9)&&v[1]>0, si=imb&&hi&&v[0]>=imb*Math.max(hi[1],1e-9)&&v[0]>0;
+          g.textAlign="right"; g.fillStyle=si?c.dn:c.fg; g.font=`${si?700:500} ${fs}px IBM Plex Mono, monospace`; g.fillText(fq(v[0]),cx0+cww/2-6,cy);
+          g.textAlign="center"; g.fillStyle=c.mut; g.font=`500 ${fs}px IBM Plex Mono, monospace`; g.fillText("×",cx0+cww/2,cy);
+          g.textAlign="left"; g.fillStyle=bi?c.up:c.fg; g.font=`${bi?700:500} ${fs}px IBM Plex Mono, monospace`; g.fillText(fq(v[1]),cx0+cww/2+6,cy); g.font=`500 ${fs}px IBM Plex Mono, monospace`; }
+        else { g.textAlign="center"; g.fillStyle=mode==="delta"?(d>=0?c.up:c.dn):c.fg; g.fillText(mode==="delta"?(d>=0?"+":"-")+fq(d):fq(s),cx0+cww/2,cy); } } }
+    const up=k.c>=k.o; g.strokeStyle=up?c.up:c.dn; g.lineWidth=1; g.beginPath(); g.moveTo(bodyX+1.5,yP(k.h)); g.lineTo(bodyX+1.5,yP(k.l)); g.stroke(); g.fillStyle=up?c.up:c.dn; const yo=yP(k.o), yc=yP(k.c); g.fillRect(bodyX,Math.min(yo,yc),3.5,Math.max(1,Math.abs(yc-yo)));
+    g.strokeStyle=rgba3(c.fg,.07); g.beginPath(); g.moveTo(x0+.5,0); g.lineTo(x0+.5,ph+sumH); g.stroke();
+    // Summenzeilen
+    g.textAlign="center"; g.font="500 10px IBM Plex Mono, monospace"; const sy=ph+2;
+    g.fillStyle=c.fg; g.fillText(fq(tv),x0+cw/2,sy+7); g.fillStyle=td>=0?c.up:c.dn; g.fillText((td>=0?"+":"-")+fq(td),x0+cw/2,sy+22); g.fillStyle=cum>=0?c.up:c.dn; g.fillText((cum>=0?"+":"-")+fq(cum),x0+cw/2,sy+37);
+    g.fillStyle=c.mut; if(cw>=40||i%Math.ceil(40/cw)===0) g.fillText(new Date(k.t).toLocaleTimeString(LOC,{hour:"2-digit",minute:"2-digit"}),x0+cw/2,ph+sumH+axB/2); });
+  g.textAlign="left"; g.fillStyle=c.bg; g.fillRect(pw,0,axR,H); g.strokeStyle=c.line; g.beginPath(); g.moveTo(pw+.5,0); g.lineTo(pw+.5,H); g.moveTo(0,ph+.5); g.lineTo(pw,ph+.5); g.stroke();
+  g.fillStyle=c.mut; g.font="600 10px IBM Plex Sans, sans-serif"; g.fillText("Volumen",pw+6,ph+9); g.fillText("Delta",pw+6,ph+24); g.fillText("Δ kumuliert",pw+6,ph+39);
+  g.font="500 10.5px IBM Plex Mono, monospace"; const ev=Math.max(1,Math.ceil(14/rh)); for(let r=0;r<rows;r++){ const b=topB-r; if(b%ev) continue; g.fillStyle=c.mut; g.fillText(fmtNum(b*st,dec),pw+6,yB(b)+rh/2); }
+  const ly=yP(lastPx); if(ly>0&&ly<ph){ g.strokeStyle=rgba3(c.acc,.6); g.setLineDash([3,3]); g.beginPath(); g.moveTo(0,ly); g.lineTo(pw,ly); g.stroke(); g.setLineDash([]); g.fillStyle=c.acc; g.fillRect(pw+1,ly-8,axR-2,16); g.fillStyle=c.onacc; g.font="700 10.5px IBM Plex Mono, monospace"; g.fillText(fmtNum(lastPx,ofDec(FP.base)),pw+5,ly); }
+  if(FV.hy!=null && FV.hx<pw && FV.hy<ph){ g.strokeStyle=rgba3(c.fg,.35); g.setLineDash([4,4]); g.beginPath(); g.moveTo(0,FV.hy); g.lineTo(pw,FV.hy); g.stroke(); g.setLineDash([]); const p=(topB+1-FV.hy/rh)*st; g.fillStyle=c.bg2; g.fillRect(pw+1,FV.hy-8,axR-2,16); g.fillStyle=c.fg; g.font="600 10.5px IBM Plex Mono, monospace"; g.fillText(fmtNum(p,dec),pw+5,FV.hy); }
+};
+
+/* --- Market Profile (TPO) --- */
+const TPO = {k:"",at:0,kl:[]}; const TPV={dy:0,hy:null,hx:null};
+async function tpoLoad(){ const days=+S.tpoDays||5, k=S.cur+days; if(TPO.k===k && Date.now()-TPO.at<60000) return; TPO.at=Date.now();
+  const r=await getJ3(`https://fapi.binance.com/fapi/v1/klines?symbol=${S.cur}USDT&interval=30m&limit=${Math.min(1500,days*48+48)}`); if(Array.isArray(r)){ TPO.kl=r.map(x=>[+x[0],+x[1],+x[2],+x[3],+x[4],+x[5]]); TPO.k=k; ofNow(); } }
+const TPO_L="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuv";
+function tpoProfiles(){ const days=+S.tpoDays||5, st=ofBase()*(+S.tpoMul||10), by=new Map();
+  for(const k of TPO.kl){ const d=Math.floor(k[0]/864e5)*864e5; if(!by.has(d)) by.set(d,[]); by.get(d).push(k); }
+  const ds=[...by.keys()].sort((a,b)=>a-b).slice(-days);
+  return ds.map(d=>{ const ks=by.get(d), lv=new Map(); let tot=0, hi=-Infinity, lo=Infinity, vol=new Map();
+    ks.forEach(k=>{ const per=Math.floor((k[0]-d)/18e5), b0=Math.floor(k[3]/st), b1=Math.floor(k[2]/st); for(let b=b0;b<=b1;b++){ if(!lv.has(b)) lv.set(b,[]); lv.get(b).push(per); tot++; vol.set(b,(vol.get(b)||0)+k[5]/(b1-b0+1)); } hi=Math.max(hi,b1); lo=Math.min(lo,b0); });
+    let poc=lo, pm=-1; const mid=(hi+lo)/2; for(const [b,a] of lv){ if(a.length>pm||(a.length===pm&&Math.abs(b-mid)<Math.abs(poc-mid))){ pm=a.length; poc=b; } }
+    let vah=poc, val=poc, acc=pm; while(acc<tot*0.7 && (vah<hi||val>lo)){ const up=vah<hi?(lv.get(vah+1)||[]).length:-1, dn=val>lo?(lv.get(val-1)||[]).length:-1; if(up>=dn){ vah++; acc+=up; } else { val--; acc+=dn; } }
+    let vpoc=poc, vm=-1; for(const [b,v] of vol) if(v>vm){ vm=v; vpoc=b; }
+    const ib=ks.filter(k=>k[0]-d<36e5); const ibH=ib.length?Math.max(...ib.map(k=>k[2])):null, ibL=ib.length?Math.min(...ib.map(k=>k[3])):null;
+    return {d,lv,tot,hi,lo,poc,vah,val,vpoc,ibH,ibL,open:ks[0][1],close:ks[ks.length-1][4],maxN:Math.max(...[...lv.values()].map(a=>a.length)),st}; }); }
+R3.tpo = () => { tpoLoad(); const cv=$("tpo-cv"); ofInteract(cv,{wheel:e=>{ TPV.dy+=e.deltaY>0?-3:3; },drag:(dx,dy)=>{ TPV.dy+=dy/12; },hover:(x,y)=>{ TPV.hx=x; TPV.hy=y; },reset:()=>{ TPV.dy=0; }}); ofKick(); };
+OF_DRAW.tpo = () => {
+  tpoLoad(); const C=cvSetup("tpo-cv"); if(!C) return; const {g,W,H}=C, c=ofc(); g.clearRect(0,0,W,H);
+  if(!TPO.kl.length){ cvMsg(g,W,H,"Lade 30-Minuten-Kerzen von Binance …"); return; }
+  const P=tpoProfiles(), st=P[0].st, dec=ofDec(st), axR=72, top=24, bot=34, pw=W-axR, ph=H-top-bot, last=TPO.kl[TPO.kl.length-1][4];
+  const hiB=Math.max(...P.map(p=>p.hi)), loB=Math.min(...P.map(p=>p.lo)), nRows=hiB-loB+1, rh=Math.max(5,Math.min(15,ph/nRows)), rowsVis=Math.floor(ph/rh);
+  let topB=nRows<=rowsVis? hiB+Math.floor((rowsVis-nRows)/2) : Math.min(hiB, Math.floor(last/st)+Math.floor(rowsVis/2)); topB+=Math.round(TPV.dy);
+  const yB=b=>top+(topB-b)*rh, gap=16, sumN=P.reduce((a,p)=>a+p.maxN,0), cw=Math.max(2.5,Math.min(10,(pw-gap*(P.length+1)-P.length*10)/sumN)), letters=S.tpoStyle!=="b"&&cw>=6.5&&rh>=9.5;
+  g.font=`600 ${Math.min(11,rh-2)}px IBM Plex Mono, monospace`; let x=gap;
+  const cols=["#4f7cff","#5b6cff","#7a5cff","#9a4dff","#c04dd8","#e0509a","#ef6a6a","#f08a4b","#f0b64b","#c9d14f","#7fd36a","#3fcf9a"];
+  const naked=[]; P.forEach((p,i)=>{ const later=P.slice(i+1); const hit=later.some(q=>q.lo<=p.poc&&q.hi>=p.poc)||(i===P.length-1); if(!hit) naked.push(p); });
+  P.forEach((p,i)=>{ const x0=x+10;
+    for(let b=p.val;b<=p.vah;b++){ const y=yB(b); if(y<top-rh||y>top+ph) continue; g.fillStyle=rgba3(c.acc,.10); g.fillRect(x0,y,p.maxN*cw,rh); }
+    if(p.ibH!=null){ const y1=yB(Math.floor(p.ibH/st)), y2=yB(Math.floor(p.ibL/st))+rh; g.fillStyle=c.acc; g.fillRect(x0-7,y1,3,y2-y1); }
+    for(const [b,a] of p.lv){ const y=yB(b); if(y<top-rh||y>top+ph) continue; const single=a.length===1&&b<p.hi&&b>p.lo;
+      a.forEach((per,j)=>{ const xx=x0+j*cw, col=cols[Math.floor(per/4)%cols.length];
+        if(letters){ g.fillStyle=b===p.poc?c.warn:single?c.up:col; g.textAlign="left"; g.fillText(TPO_L[per]||"·",xx,y+rh/2); }
+        else { g.fillStyle=b===p.poc?c.warn:single?rgba3(c.up,.85):rgba3(col,.75); g.fillRect(xx+0.5,y+0.5,Math.max(1,cw-1),Math.max(1,rh-1)); } }); }
+    const yp=yB(p.poc)+rh/2; g.strokeStyle=c.warn; g.lineWidth=1; g.beginPath(); g.moveTo(x0,yp); g.lineTo(x0+p.maxN*cw,yp); g.stroke();
+    const yo=yB(Math.floor(p.open/st))+rh/2, yc=yB(Math.floor(p.close/st))+rh/2; g.fillStyle=c.fg; g.beginPath(); g.moveTo(x0-3,yo-3); g.lineTo(x0,yo); g.lineTo(x0-3,yo+3); g.fill(); g.fillStyle=c.dn; g.fillRect(x0-4,yc-1.5,4,3);
+    g.textAlign="left"; g.fillStyle=c.fg; g.font="600 10.5px IBM Plex Sans, sans-serif"; g.fillText(new Date(p.d).toLocaleDateString(LOC,{weekday:"short",day:"2-digit",month:"2-digit"}),x0,12);
+    g.font="500 9.5px IBM Plex Mono, monospace"; g.fillStyle=c.mut; g.fillText(`POC ${fmtNum(p.poc*st,dec)}`,x0,H-bot+11); g.fillText(`VA ${fmtNum(p.val*st,dec)}–${fmtNum((p.vah+1)*st,dec)}`,x0,H-bot+24);
+    g.font=`600 ${Math.min(11,rh-2)}px IBM Plex Mono, monospace`; x=x0+p.maxN*cw+gap; });
+  if(+S.tpoNaked) for(const p of naked){ const y=yB(p.poc)+rh/2; g.strokeStyle=rgba3(c.warn,.85); g.setLineDash([6,4]); g.lineWidth=1.2; g.beginPath(); g.moveTo(10+gap,y); g.lineTo(pw,y); g.stroke(); g.setLineDash([]); g.fillStyle=c.warn; g.font="600 9.5px IBM Plex Mono, monospace"; g.textAlign="right"; g.fillText("nPOC "+new Date(p.d).toLocaleDateString(LOC,{day:"2-digit",month:"2-digit"}),pw-4,y-7); g.textAlign="left"; }
+  g.fillStyle=c.bg; g.fillRect(pw,0,axR,H); g.strokeStyle=c.line; g.beginPath(); g.moveTo(pw+.5,0); g.lineTo(pw+.5,H); g.stroke(); g.font="500 10.5px IBM Plex Mono, monospace"; const ev=Math.max(1,Math.ceil(14/rh));
+  for(let b=topB;b>topB-rowsVis;b--){ if(b%ev) continue; g.fillStyle=c.mut; g.fillText(fmtNum(b*st,dec),pw+6,yB(b)+rh/2); }
+  const ly=yB(Math.floor(last/st))+rh/2; g.fillStyle=c.acc; g.fillRect(pw+1,ly-8,axR-2,16); g.fillStyle=c.onacc; g.font="700 10.5px IBM Plex Mono, monospace"; g.fillText(fmtNum(last,ofDec(ofBase())),pw+5,ly);
+  const cur=P[P.length-1], ib=cur.ibH!=null?`${fmtNum(cur.ibL,dec)}–${fmtNum(cur.ibH,dec)}`:"–";
+  const ca=$("tpo-cards"); if(ca) ca.innerHTML = cardH("POC heute","$"+fmtNum(cur.poc*st,dec),"TPO-Größe $"+fmtNum(st,dec),"warn")+cardH("Value Area heute",`${fmtNum(cur.val*st,dec)}–${fmtNum((cur.vah+1)*st,dec)}`,last>(cur.vah+1)*st?"Preis über der VA":last<cur.val*st?"Preis unter der VA":"Preis in der VA")+cardH("Volumen-POC heute","$"+fmtNum(cur.vpoc*st,dec),"aus 30-Minuten-Volumen")+cardH("Initial Balance",ib,"erste Stunde (UTC)")+cardH("Naked POCs",String(naked.length),naked.slice(-2).map(p=>"$"+fmtNum(p.poc*st,dec)).join(" · ")||"keine");
+};
+document.head.insertAdjacentHTML("beforeend",`<style>
+.ofwrap{position:relative;width:100%;border-radius:8px;overflow:hidden;background:var(--panel)}
+.ofwrap canvas{position:absolute;inset:0;touch-action:none;cursor:crosshair}
+.tsw{max-height:min(62vh,620px);overflow:auto}
+table.ts td,table.ts th{font-family:var(--f-mono);font-size:11.5px;padding:3px 8px;white-space:nowrap}
+table.ts tr.tsb td{color:var(--bull)} table.ts tr.tss td{color:var(--bear)}
+table.ts tr.tsbig td{font-weight:700;background:color-mix(in srgb,currentColor 12%,transparent)}
+.chip.tsv[aria-pressed="false"]{opacity:.45}
+</style>`);
+
+/* ====================== News & Kalender: Wirtschaftskalender, Market News, Earnings ====================== */
+const CAL_C = [["us","USA"],["eu","Eurozone"],["de","Deutschland"],["gb","UK"],["jp","Japan"],["cn","China"],["ch","Schweiz"],["ca","Kanada"],["au","Australien"]];
+S.calImp??="0,1"; S.calC=S.calC||"us,eu,de,gb,jp,cn";
+V3.calendar = P2("Wirtschaftskalender","Termine, Prognosen und Ergebnisse (Daten: TradingView)",'<div class="form">'+seg3("k3","calImp",[["-1,0,1","Alle"],["0,1","Mittel + Hoch"],["1","Nur Hoch"]])+'</div><div class="form" id="cal-cty"></div><div class="calbox" id="cal-box"></div><div class="note">Uhrzeiten in deiner Zeitzone. Hohe Wichtigkeit = Termine, die erfahrungsgemäß starke Bewegungen auslösen (z. B. FOMC, CPI, PPI, Arbeitsmarkt).</div>',"wide");
+NB3.add("calendar");
+const tvLoc = () => ({de:"de_DE",en:"en",es:"es",fr:"fr",pt:"br",it:"it",tr:"tr",ru:"ru",zh:"zh_CN",ja:"ja"})[(window.I18N||{}).lang]||"de_DE";
+R3.calendar = () => {
+  const cb=$("cal-cty"); const sel=new Set(String(S.calC).split(",").filter(Boolean));
+  if(cb && cb.dataset.k!==S.calC){ cb.dataset.k=S.calC; cb.innerHTML='<span class="lbl3">Länder</span>'+CAL_C.map(([k,n])=>`<button class="chip calc" data-calc="${k}" aria-pressed="${sel.has(k)}">${n}</button>`).join(""); }
+  const box=$("cal-box"); if(!box) return; const light=document.documentElement.hasAttribute("data-light"), key=[light,S.calImp,S.calC,tvLoc()].join("|"); if(box.dataset.k===key) return; box.dataset.k=key;
+  box.innerHTML='<div class="tradingview-widget-container" style="height:100%;width:100%"><div class="tradingview-widget-container__widget" style="height:100%;width:100%"></div></div>';
+  const s=document.createElement("script"); s.src="https://s3.tradingview.com/external-embedding/embed-widget-events.js"; s.async=true;
+  s.textContent=JSON.stringify({colorTheme:light?"light":"dark",isTransparent:true,width:"100%",height:"100%",locale:tvLoc(),importanceFilter:String(S.calImp),countryFilter:S.calC||"us"});
+  box.firstChild.appendChild(s);
+};
+document.addEventListener("click",e=>{ const b=e.target.closest("[data-calc]"); if(!b) return; const k=b.dataset.calc, a=new Set(String(S.calC).split(",").filter(Boolean)); if(a.has(k)){ if(a.size>1) a.delete(k); } else a.add(k); S.calC=[...a].join(","); save(); render(); });
+
+/* --- Market News: Makro-Schlagzeilen (FinancialJuice) + Krypto-News --- */
+let MN=[]; try{ MN=JSON.parse(localStorage.getItem("ft-mnews")||"[]"); }catch(e){ MN=[]; }
+let mnAt=0, mnBusy=false;
+async function loadMN(force){ if(mnBusy||(!force&&Date.now()-mnAt<60000)) return; mnBusy=true; mnAt=Date.now();
+  const r=await getJ3("https://api.rss2json.com/v1/api.json?rss_url="+encodeURIComponent("https://www.financialjuice.com/feed.ashx?xy=rss"));
+  if(r&&r.status==="ok"){ const seen=new Set(MN.map(x=>x.title)); for(const it of r.items||[]){ const t=String(it.title||"").replace(/^FinancialJuice:\s*/,"").trim(); if(!t||seen.has(t)) continue; seen.add(t); MN.push({title:t,link:it.link,ts:Date.parse((it.pubDate||"").replace(" ","T")+"Z")||Date.now(),src:"FinancialJuice"}); }
+    MN.sort((a,b)=>b.ts-a.ts); MN=MN.slice(0,400); try{ localStorage.setItem("ft-mnews",JSON.stringify(MN)); }catch(e){} }
+  mnBusy=false; scheduleRender(); }
+setInterval(()=>{ if(S.view==="mnews") loadMN(); else if(Date.now()-mnAt>5*60000) loadMN(); },30000);
+setTimeout(()=>loadMN(),8000);
+const MN_HOT=/\b(fed|fomc|powell|cpi|ppi|pce|nfp|payrolls|jobless|gdp|rate (cut|hike)|interest rate|ecb|lagarde|boj|tariff|sanction|bitcoin|btc|crypto|etf|sec|treasury|yields?|inflation|recession|breaking)\b/i;
+S.mnSrc??="all";
+V3.mnews = P2("Market News","Makro-Schlagzeilen in Echtzeit (FinancialJuice) und Krypto-News",'<div class="form">'+seg3("k3","mnSrc",[["all","Alle"],["macro","Makro"],["crypto","Krypto"],["hot","Wichtig"]])+'<label class="grow">Suche <input id="mn-q" type="search" class="chip" placeholder="z. B. Fed, CPI, ETF …" style="min-width:220px"></label><button class="btn ghost" id="mn-ref">Aktualisieren</button></div><div class="nwl" id="mn-l"></div><div class="note">Makro-Schlagzeilen werden jede Minute abgefragt und lokal gesammelt, die Liste wächst also, solange das Terminal offen ist. Wichtig = Fed, Inflation, Arbeitsmarkt, Zölle, ETF, SEC und ähnliche Stichworte.</div>',"wide");
+NB3.add("mnews");
+document.addEventListener("click",e=>{ if(e.target.id==="mn-ref"){ loadMN(true); loadNews(true); } });
+document.addEventListener("input",e=>{ if(e.target.id==="mn-q") render(); });
+const agoTxt = ts => { const m=Math.round((Date.now()-ts)/60000); return m<1?"gerade eben":m<60?`vor ${m} min`:m<1440?`vor ${Math.round(m/60)} h`:new Date(ts).toLocaleDateString(LOC,{day:"2-digit",month:"2-digit"}); };
+R3.mnews = () => { loadMN(); loadNews(); const q=String(($("mn-q")||{}).value||"").trim().toLowerCase(), src=S.mnSrc||"all";
+  let L=[...MN.map(x=>({...x,k:"macro"})),...NEWS.map(x=>({title:x.title,link:x.link,ts:x.ts,src:x.src,desc:x.desc,k:"crypto"}))];
+  if(src==="macro") L=L.filter(x=>x.k==="macro"); else if(src==="crypto") L=L.filter(x=>x.k==="crypto"); else if(src==="hot") L=L.filter(x=>MN_HOT.test(x.title));
+  if(q) L=L.filter(x=>(x.title+" "+(x.desc||"")).toLowerCase().includes(q)); L.sort((a,b)=>b.ts-a.ts); L=L.slice(0,200);
+  const esc=s=>String(s).replace(/[&<>"]/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[ch]));
+  const html=L.map(x=>`<a class="nwi${MN_HOT.test(x.title)?" hot":""}" href="${esc(x.link||"#")}" target="_blank" rel="noopener noreferrer"><div class="nwh"><span class="mut">${agoTxt(x.ts)}</span><span class="tag">${esc(x.src)}</span>${x.k==="macro"?'<span class="tag mac">Makro</span>':""}</div><div class="nwt">${esc(x.title)}</div>${x.desc?`<div class="nwd mut">${esc(x.desc)}</div>`:""}</a>`).join("")||'<div class="empty">Lade Schlagzeilen …</div>';
+  const el=$("mn-l"); if(el && el.__h!==html){ el.__h=html; el.innerHTML=html; } };
+
+/* --- Earnings-Kalender (Alpha Vantage, 3 Monate) --- */
+const ER_CRYPTO=new Set("COIN MSTR HOOD MARA RIOT CLSK CORZ HUT IREN CIFR BITF WULF BTDR GLXY XYZ PYPL NVDA TSLA BKKT APLD GME SMLR BMNR SBET CRCL BLSH GEMI ETOR FIGR CANG".split(" "));
+const ER_MEGA=new Set("AAPL MSFT NVDA AMZN GOOGL GOOG META TSLA AVGO BRK-B JPM NFLX ORCL WMT V MA LLY AMD PLTR COST UNH XOM".split(" "));
+let ER={at:0,rows:[],busy:false,err:""};
+try{ const c=JSON.parse(localStorage.getItem("ft-earn")||"null"); if(c&&c.rows) ER={...ER,...c}; }catch(e){}
+async function loadER(force){ if(ER.busy||(!force&&Date.now()-ER.at<12*3600e3&&ER.rows.length)) return; ER.busy=true; ER.err="";
+  try{ const key=(S.avKey||"").trim()||"demo", r=await fetch(`https://www.alphavantage.co/query?function=EARNINGS_CALENDAR&horizon=3month&apikey=${encodeURIComponent(key)}`); const t=await r.text();
+    if(!/^symbol,/.test(t)) throw new Error(t.slice(0,160));
+    const rows=t.trim().split(/\r?\n/).slice(1).map(l=>{ const a=l.split(","); const n=a.length; return {sym:a[0],name:a.slice(1,n-5).join(",").replace(/"/g,""),date:a[n-5],fy:a[n-4],est:a[n-3]===""?null:+a[n-3],cur:a[n-2],tod:a[n-1]}; }).filter(x=>x.sym&&x.date);
+    ER={at:Date.now(),rows,busy:false,err:""}; try{ localStorage.setItem("ft-earn",JSON.stringify({at:ER.at,rows})); }catch(e){} }
+  catch(e){ ER.busy=false; ER.err=String(e.message||e); } scheduleRender(); }
+S.erSet??="crypto"; S.erDays??=30;
+V3.earnings = P2("Earnings-Kalender","Quartalszahlen US-Unternehmen, Fokus auf Krypto-Aktien und Mega Caps",'<div class="form">'+seg3("k3","erSet",[["crypto","Krypto-Aktien"],["mega","Mega Caps"],["all","Alle"]])+seg3("k3","erDays",[[7,"7 Tage"],[30,"30 Tage"],[90,"3 Monate"]])+'<label class="grow">Suche <input id="er-q" type="search" class="chip" placeholder="Symbol oder Name" style="min-width:180px"></label></div><div class="cards" id="er-cards"></div><div id="er-t"></div><div class="form" style="margin-top:10px"><label>Eigener Alpha-Vantage-Key (optional) <input id="er-key" class="chip" placeholder="kostenlos auf alphavantage.co" style="min-width:240px" value=""></label><button class="btn ghost" id="er-load">Neu laden</button><span class="mut" id="er-st"></span></div><div class="note">Daten: Alpha Vantage, einmal pro 12 Stunden geladen und lokal zwischengespeichert. Vorbörslich = vor 15:30 MEZ, nachbörslich = nach 22:00 MEZ.</div>',"wide");
+NB3.add("earnings");
+document.addEventListener("click",e=>{ if(e.target.id==="er-load"){ const k=$("er-key"); if(k&&k.value.trim()){ S.avKey=k.value.trim(); save(); } loadER(true); } });
+document.addEventListener("input",e=>{ if(e.target.id==="er-q") render(); });
+R3.earnings = () => { loadER(); const q=String(($("er-q")||{}).value||"").trim().toUpperCase(), set=S.erSet||"crypto", days=+S.erDays||30, today=new Date(); today.setHours(0,0,0,0);
+  const lim=today.getTime()+days*864e5;
+  let L=ER.rows.filter(x=>{ const t=Date.parse(x.date+"T00:00:00"); return t>=today.getTime()&&t<=lim; });
+  if(set==="crypto") L=L.filter(x=>ER_CRYPTO.has(x.sym)); else if(set==="mega") L=L.filter(x=>ER_MEGA.has(x.sym));
+  if(q) L=L.filter(x=>x.sym.includes(q)||x.name.toUpperCase().includes(q));
+  L.sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:(ER_MEGA.has(b.sym)-ER_MEGA.has(a.sym))||a.sym.localeCompare(b.sym));
+  const tod=x=>x.tod==="pre-market"?"Vorbörslich":x.tod==="post-market"?"Nachbörslich":"–";
+  const dTo=x=>Math.round((Date.parse(x.date+"T00:00:00")-today.getTime())/864e5);
+  const next=L[0], wk=L.filter(x=>dTo(x)<7).length;
+  $("er-cards").innerHTML = cardH("Nächster Termin",next?next.sym:"–",next?new Date(next.date+"T12:00:00").toLocaleDateString(LOC,{weekday:"short",day:"2-digit",month:"2-digit"})+" · "+tod(next):"")+cardH("Diese Woche",String(wk),"Unternehmen in der Auswahl")+cardH("Im Zeitraum",String(L.length),days+" Tage");
+  $("er-t").innerHTML = tbl3(["Datum","Zeit","Symbol","Unternehmen","EPS-Schätzung","In"], L.slice(0,400).map(x=>{ const d=dTo(x); return `<tr${d<=1?' class="hl"':""}><td class="l">${new Date(x.date+"T12:00:00").toLocaleDateString(LOC,{weekday:"short",day:"2-digit",month:"2-digit"})}</td><td class="l">${tod(x)}</td><td class="l"><b>${x.sym}</b></td><td class="l">${x.name}</td><td>${x.est==null?"–":x.est.toFixed(2)+" "+(x.cur||"")}</td><td>${d===0?"heute":d===1?"morgen":d+" T"}</td></tr>`; }),"free") || "";
+  if(!L.length) $("er-t").innerHTML='<div class="empty">'+(ER.busy?"Lade Earnings-Termine …":ER.err?"Keine Daten: "+ER.err:"Keine Termine in diesem Zeitraum.")+'</div>';
+  const st=$("er-st"); if(st) st.textContent=ER.at?"Stand: "+new Date(ER.at).toLocaleString(LOC,{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})+" · "+ER.rows.length+" Termine gesamt":"";
+};
+document.head.insertAdjacentHTML("beforeend",`<style>
+.calbox{height:min(76vh,780px);border-radius:8px;overflow:hidden;background:var(--panel)}
+.nwi.hot{border-left:3px solid var(--warn)}
+.nwh .tag{font-size:10px;padding:1px 6px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
+.nwh .tag.mac{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 45%,transparent)}
+tr.hl td{background:color-mix(in srgb,var(--accent) 10%,transparent)}
+.chip.calc[aria-pressed="false"]{opacity:.45}
+label.grow{flex:1;display:flex;gap:6px;align-items:center}
+</style>`);
+
 /* ====================== Session 3: Werkzeuge, Strategie, Quant ====================== */
 const dLb = () => liveFrom(books.deribit);
 const expSel = (id,lb,key,def=7) => { const ex=expiries(lb); if(!S[key]||!ex.includes(S[key])) S[key]=nearestExpTo(lb,def)||ex[0]; fillOne(id,ex,S[key]); return S[key]; };
@@ -3651,6 +4178,14 @@ nav3("Futures",[["fterm","Term Structure"],["funding","Funding-Raten"],["bhist",
 mount3();
 const _restart3=restart; restart=function(){ _restart3(); setTimeout(start3,1500); BH.k=""; XA.at=0; QM.at=0; OPN.k=""; gpCand.k=""; klCand.k=""; spCand.k=""; try{ TVX=JSON.parse(localStorage.getItem("tqivix-"+S.cur)||"[]"); }catch(e){ TVX=[]; } };
 setTimeout(()=>{ loadNews(true); },4000);
+
+/* ====================== Navigation: News & Kalender, Orderflow ====================== */
+IC.news='<path d="M4 5h13v14H6a2 2 0 0 1-2-2z"/><path d="M17 8h3v9a2 2 0 0 1-2 2"/><path d="M7 9h7M7 12h7M7 15h4"/>';
+IC.orderflow='<path d="M4 20V11"/><path d="M9 20V5"/><path d="M14 20v-6"/><path d="M19 20V8"/><path d="M3 20h18"/>';
+(()=>{ const d=NAV2.find(x=>x.g==="Dashboard"); if(d) d.items=d.items.filter(([k])=>k!=="news");
+  NAV2.splice(NAV2.indexOf(d)+1,0,{g:"News & Kalender",ic:"news",items:[["calendar","Wirtschaftskalender"],["mnews","Market News"],["news","Krypto-News"],["earnings","Earnings-Kalender"]]});
+  const f=NAV2.find(x=>x.g==="Futures"); NAV2.splice(NAV2.indexOf(f)+1,0,{g:"Orderflow",ic:"orderflow",items:[["footprint","Footprint"],["dom","DOM"],["heatmap","Orderbuch-Heatmap"],["tape2","Time & Sales"],["tpo","Market Profile (TPO)"]]}); })();
+const _restartOF=restart; restart=function(){ _restartOF(); TSB.length=0; obStop(); tsStop(); OBH.cols=[]; OBH.cur=""; FP.cur=""; DOMT.m.clear(); TPO.k=""; for(const k in ZS) delete ZS[k]; };
 
 /* ====================== Installierbare App (PWA) & Update-Hinweis ====================== */
 let instPrompt=null;
