@@ -2878,6 +2878,22 @@ function srcStatus(){
   out.push({k:"news",n:"News (rss2json)",url:"api.rss2json.com",ok:NEWS.length>0,age:newsAt?age(newsAt):null});
   return out;
 }
+/* ---------- Aktueller Preis als Strich auf allen Strike-Charts (exakte Position zwischen den Strikes) ---------- */
+function priceLines(){
+  if(!spot) return; const v=document.getElementById("v-"+S.view); if(!v) return;
+  v.querySelectorAll(".chart").forEach(el=>{ const c=echarts.getInstanceByDom(el); if(!c) return; let op; try{ op=c.getOption(); }catch(e){ return; } if(!op||!op.series||!op.series.length) return;
+    const xa=(op.xAxis||[])[0]; if(!xa||xa.type!=="category"||!Array.isArray(xa.data)||xa.data.length<4){ if(op.graphic&&op.graphic.length) try{ c.setOption({graphic:[{id:"curpx",$action:"remove"},{id:"curpxl",$action:"remove"}]}); }catch(e){} return; }
+    const ks=xa.data.map(d=>+(typeof d==="object"&&d?d.value:d)); if(ks.some(k=>!isFinite(k))) return; const lo=Math.min(...ks), hi=Math.max(...ks); if(!(lo>spot*0.2&&hi<spot*5&&lo<spot&&hi>spot)) return;
+    // gerasterte „Spot“-Linien entfernen, damit nur der exakte Preis-Strich bleibt
+    const ser=op.series.map(s=>{ if(!s.markLine||!s.markLine.data) return {}; const d=s.markLine.data.filter(x=>!(x&&x.label&&typeof x.label.formatter==="string"&&x.label.formatter.indexOf("Spot")===0)); return d.length!==s.markLine.data.length? {markLine:{...s.markLine,data:d}} : {}; });
+    let i=0; while(i<ks.length-1 && !((ks[i]-spot)*(ks[i+1]-spot)<=0)) i++; if(i>=ks.length-1) return;
+    const p0=c.convertToPixel({xAxisIndex:0},xa.data[i]), p1=c.convertToPixel({xAxisIndex:0},xa.data[i+1]); if(p0==null||p1==null) return;
+    const x=p0+(p1-p0)*(spot-ks[i])/((ks[i+1]-ks[i])||1), g=c.getModel().getComponent("grid",0).coordinateSystem.getRect(), col=css("--accent");
+    try{ c.setOption({series:ser, graphic:[{id:"curpx",type:"line",z:50,silent:true,shape:{x1:x,y1:g.y,x2:x,y2:g.y+g.height},style:{stroke:col,lineWidth:1.6,lineDash:[5,4]}},
+      {id:"curpxl",type:"text",z:51,silent:true,x:x+4,y:g.y+2,style:{text:S.cur+" $"+fmtNum(spot),fill:col,font:"600 11px IBM Plex Mono, monospace",backgroundColor:css("--panel"),padding:[2,4],borderRadius:3}}]}); }catch(e){} });
+}
+const _render1=render; render=function(){ _render1(); try{ priceLines(); }catch(e){} };
+window.addEventListener("resize",()=>setTimeout(()=>{ try{ priceLines(); }catch(e){} },400));
 
 /* ====================== Session 3: Märkte, Börsen, Futures ====================== */
 const spotMedian = () => { const a=[...SPOTS.values()].filter(o=>Date.now()-o.ts<30000).map(o=>o.px).sort((x,y)=>x-y); return a.length? a[a.length>>1] : spot; };
@@ -3101,6 +3117,30 @@ R3.sources = () => { const st=srcStatus();
   const o=base(), keys=Object.keys(SRC_LOG), c=ch("c-src"); if(c) c.setOption({backgroundColor:"transparent",animation:false,textStyle:o.textStyle,tooltip:{...o.tooltip,trigger:"item",formatter:p=>`${keys[p.value[1]]}<br>${fmtDT(p.value[0])}: ${p.value[2]?"verbunden":"getrennt"}`},grid:{left:120,right:20,top:10,bottom:30},
     xAxis:ax(o,{type:"time",splitLine:{show:false}}),yAxis:ax(o,{type:"category",data:keys}),visualMap:{show:false,min:0,max:1,inRange:{color:[css("--bear"),css("--bull")]}},
     series:[{type:"scatter",symbol:"rect",symbolSize:[6,14],data:keys.flatMap((k,i)=>SRC_LOG[k].map(([t,ok])=>[t,i,ok]))}]},true); };
+
+/* --- Premium Net Flow (Quant-Data-Stil) --- */
+const PNF_HTML = (id)=>`<div class="form">${seg3("k3","pnfInt",[[1,"1m"],[5,"5m"],[15,"15m"],[30,"30m"],[60,"1h"]])}${seg3("k3","pnfMode",[["prem","Premium"],["vol","Kontrakte"]])}${seg3("k3","pnfShow",[["both","Calls + Puts"],["net","Netto"]])}</div><div class="cards" id="${id}-cards"></div><div class="chart tall" id="${id}"></div>`;
+V3.netflow = P2("Premium Net Flow","kumulierte Netto-Premium von Calls und Puts mit Kurs, wie bei Quant Data",PNF_HTML("c-pnf")+'<div class="note">Netto-Call-Premium = gekaufte minus verkaufte Call-Premium (Taker-Seite), Netto-Put-Premium entsprechend. Steigt die grüne Linie und fällt die rote, dominiert bullischer Flow. Zeitfenster oben (Heute, 24 h, 3 T, 7 T), Filter und Börsen gelten mit.</div>',"wide");
+function renderPNF(id, list){
+  const c=ch(id); if(!c) return; const ms=(S.pnfInt||5)*60000, vol=S.pnfMode==="vol", net=S.pnfShow==="net", bk=new Map();
+  for(const t of list){ const k=Math.floor(t.ts/ms)*ms; let b=bk.get(k); if(!b){ b={c:0,p:0,px:t.idx}; bk.set(k,b); } const v=(t.side==="buy"?1:-1)*(vol?t.amt:t.prem); if(t.cp==="C") b.c+=v; else b.p+=v; if(t.idx) b.px=t.idx; }
+  const ks=[...bk.keys()].sort((a,b)=>a-b); let cc=0,cp=0; const C=[],P=[],N=[],X=[];
+  ks.forEach(k=>{ const b=bk.get(k); cc+=b.c; cp+=b.p; C.push([k,Math.round(cc)]); P.push([k,Math.round(cp)]); N.push([k,Math.round(cc-cp)]); X.push([k,b.px]); });
+  const f=v=>vol? fmtNum(v,0)+" "+S.cur : fmtUsd(v), el=document.getElementById(id+"-cards");
+  if(el) el.innerHTML = cardH("Netto-Call-"+(vol?"Volumen":"Premium"),sgn3(cc,f),"Käufe − Verkäufe",cls3(cc))+cardH("Netto-Put-"+(vol?"Volumen":"Premium"),sgn3(cp,f),"Käufe − Verkäufe",cls3(-cp))+cardH("Calls − Puts",sgn3(cc-cp,f),cc-cp>0?"bullischer Flow":"bärischer Flow",cls3(cc-cp))+cardH("Kurs",X.length?"$"+fmtNum(X[X.length-1][1]):"–",X.length>1?pct3((X[X.length-1][1]/X[0][1]-1)*100):"");
+  const o=base(), bull=css("--bull"), bear=css("--bear"), acc=css("--accent"), grad=col=>new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:alpha(col,.35)},{offset:1,color:alpha(col,0)}]);
+  const ser = net? [{name:"Calls − Puts",type:"line",smooth:0.25,showSymbol:false,data:N,lineStyle:{color:acc,width:2.2},itemStyle:{color:acc},areaStyle:{color:grad(acc)}}]
+    : [{name:"Netto-Calls",type:"line",smooth:0.25,showSymbol:false,data:C,lineStyle:{color:bull,width:2.2},itemStyle:{color:bull},areaStyle:{color:grad(bull),origin:0}},{name:"Netto-Puts",type:"line",smooth:0.25,showSymbol:false,data:P,lineStyle:{color:bear,width:2.2},itemStyle:{color:bear},areaStyle:{color:grad(bear),origin:0}}];
+  ser.push({name:S.cur+" Kurs",type:"line",yAxisIndex:1,smooth:0.2,showSymbol:false,data:X,lineStyle:{color:css("--fg"),width:1.2,opacity:.85},itemStyle:{color:css("--fg")}});
+  c.setOption({...o,legend:{...o.legend},grid:{...o.grid,top:40},tooltip:{...o.tooltip,trigger:"axis",valueFormatter:v=>typeof v==="number"?(Math.abs(v)>1000&&v>10000&&v<1e6?"$"+fmtNum(v):vol?fmtNum(v,1):fmtUsd(v)):v},
+    xAxis:ax(o,{type:"time",splitLine:{show:false}}),yAxis:[ax(o,{type:"value",axisLabel:{...o._axis.axisLabel,formatter:v=>vol?fmtNum(v):fmtUsd(v)}}),ax(o,{type:"value",scale:true,position:"right",splitLine:{show:false},axisLabel:{...o._axis.axisLabel,formatter:v=>fmtNum(v)}})],
+    series:ser.map((s,i)=>i===0?{...s,markLine:{symbol:"none",silent:true,data:[{yAxis:0,lineStyle:{color:css("--muted"),type:"dashed",width:1},label:{show:false}}]}}:s)},true);
+}
+R3.netflow = (lb,lv,list) => renderPNF("c-pnf",list);
+R3.dashboard = (lb,lv,list) => renderPNF("c-pnfd",list);
+PANELS.pnf={n:"Premium Net Flow",cat:"Flow",w:12,h:9,d:"Kumulierte Netto-Call- und Put-Premium mit Kurs (Quant-Data-Stil)",b:[["c","c-pnfd"]],run:x=>renderPNF("c-pnfd",x.list)};
+setTimeout(()=>{ const d=document.getElementById("v-dashboard"); if(d && !document.getElementById("c-pnfd")) d.insertAdjacentHTML("afterbegin", P2("Premium Net Flow","kumulierte Netto-Premium Calls vs. Puts mit Kurs",PNF_HTML("c-pnfd"),"wide")); sync3(); },0);
+if(S.pnfInt==null) S.pnfInt=5; if(!S.pnfMode) S.pnfMode="prem"; if(!S.pnfShow) S.pnfShow="both";
 
 /* ====================== Session 3: Gamma, Greeks, Positionierung ====================== */
 function gexByStrike(lb, pct=0.25){ const m=new Map(); for(const b of lb){ if(Math.abs(b.strike/spot-1)>pct) continue; m.set(b.strike,(m.get(b.strike)||0)+exposureOf(b,"gex")); } return [...m.entries()].sort((a,b)=>a[0]-b[0]); }
@@ -3535,7 +3575,7 @@ NB3.add("docs"); R3.docs=()=>{};
 
 /* ====================== Navigation & Start ====================== */
 nav3("Dashboard",[["stats","Stats"],["spot","Spot je Börse"],["news","News"],["sources","Datenquellen"]]);
-nav3("Flow",[["tide","Market Tide & NOPE"],["premium","Premium-Matrix"],["screener","Options-Screener"]]);
+nav3("Flow",[["tide","Market Tide & NOPE"],["premium","Premium-Matrix"],["screener","Options-Screener"]]); (()=>{ const g=NAV2.find(x=>x.g==="Flow"); g.items.unshift(["netflow","Premium Net Flow"]); })();
 nav3("Greeks",[["higher","Höhere Greeks"]],"gexp");
 IC.gamma='<path d="M5 4h12"/><path d="M8 4v16"/><path d="M14 20c0-6 2-9 5-11"/>'; IC.quant='<path d="M4 19V5"/><path d="M4 19h16"/><path d="M7 15l4-5 3 3 5-7"/><circle cx="19" cy="6" r="1.5"/>';
 (()=>{ const gr=NAV2.find(x=>x.g==="Greeks"); gr.items=gr.items.filter(([k])=>!["exposure","dealer","xheat"].includes(k));
