@@ -17,7 +17,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.5.0/echarts.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/echarts-gl@2.0.9/dist/echarts-gl.min.js" onload="window.__gl=1" onerror="window.__gl=0"></script>
-<script>/* I18N-BEGIN */window.TQI_I18N_V="20261112-052820";
+<script>/* I18N-BEGIN */window.TQI_I18N_V="20261112-082345";
 /* TQI Sprach-Engine: Deutsch ist Standard. Andere Sprachen übersetzen Texte, Attribute und Chart-Beschriftungen zur Laufzeit. */
 (function(){
   var LANGS=[["de","Deutsch"],["en","English"],["es","Español"],["fr","Français"]];
@@ -1293,17 +1293,8 @@ function renderExposureView(lb, lv){
   const c2=ch("c-exexp"); if(c2) c2.setOption({...o,legend:{show:false},grid:{...o.grid,right:20},tooltip:{...o.tooltip,valueFormatter:v=>typeof v==="number"?fmtSigned(v):v},
     xAxis:ax(o,{type:"category",data:exps,splitLine:{show:false}}),yAxis:ax(o,{type:"value",axisLabel:{...o._axis.axisLabel,formatter:fmtUsd}}),
     series:[{type:"bar",name:S.exG.toUpperCase(),data:exps.map(e=>{const v=m.get(e)||0;return {value:v,itemStyle:barStyle(v>=0?css("--pos"):css("--neg"))};}),barMaxWidth:18}]},true);
-  // Interval Map
-  const ci=ch("c-interval"); if(ci){
-    const step=Math.max(1,Math.ceil(gexHist.length/220)); const pts=[]; let mx=1;
-    for(let i=0;i<gexHist.length;i+=step){ const h=gexHist[i]; for(const k in h.g){ const kk=+k; if(kk<spot*0.9||kk>spot*1.1) continue; const v=h.g[k]; mx=Math.max(mx,Math.abs(v)); pts.push([h.t,kk,v]); } }
-    const spotLine=gexHist.filter((_,i)=>i%step===0).map(h=>[h.t,h.s]);
-    $("interval-note").textContent = gexHist.length<3? "Sammle Daten … Die Interval Map füllt sich jede Minute, solange das Terminal offen ist (gespeichert bis 48 h)." : `${fmtNum(gexHist.length)} Snapshots seit ${fmtDT(gexHist[0].t)}. Wird jede Minute ergänzt, solange das Terminal offen ist.`;
-    ci.setOption({...o,legend:{show:false},grid:{...o.grid,right:24},tooltip:{...o.tooltip,trigger:"item",formatter:p=>p.seriesType==="scatter"?`${fmtDT(p.value[0])} · Strike ${fmtNum(p.value[1])}<br>GEX <b>${fmtSigned(p.value[2])}</b>`:`${fmtDT(p.value[0])} · Spot ${fmtNum(p.value[1])}`},
-      xAxis:ax(o,{type:"time",splitLine:{show:false}}),yAxis:ax(o,{type:"value",scale:true,axisLabel:{...o._axis.axisLabel,formatter:v=>fmtNum(v)}}),
-      series:[{type:"scatter",data:pts,symbolSize:d=>3+Math.sqrt(Math.abs(d[2])/mx)*22,itemStyle:{color:p=>p.value[2]>=0?css("--pos")+"bb":css("--neg")+"bb"}},
-              {type:"line",data:spotLine,showSymbol:false,lineStyle:{color:css("--accent"),width:2}}]},true);
-  }
+  // Interval Map (Darstellung wie bei Quant Data, siehe Modul s3m)
+  if(typeof imRender==="function") imRender("c-interval","interval-note",lb);
   // Levels
   const e0=frontExp(lb), mp=e0?maxPain(lb,e0):null, pc=x=>x?((x/spot-1)*100).toFixed(1)+" %":"";
   const oiK=new Map(); for(const b of lb) oiK.set(b.strike,(oiK.get(b.strike)||0)+b.open_interest); const hiOI=[...oiK.entries()].sort((a,b)=>b[1]-a[1])[0];
@@ -2793,7 +2784,7 @@ window.addEventListener("beforeunload", saveX);
     const hgt=Math.min(4,Math.abs(v)*4), w=100/N; out+=`<rect x="${i*w+w*0.18}" y="${v>=0?4-hgt:4}" width="${w*0.64}" height="${hgt}" fill="var(${v>=0?"--pos":"--neg"})"/>`; }
   el.innerHTML=out; })();
 /* S3-BEGIN */
-const TQI_BUILD="20261112-052820";
+const TQI_BUILD="20261112-082345";
 /* ====================== Session 3: Infrastruktur ====================== */
 const V3 = {}, R3 = {}, NB3 = new Set();   // Seiten-HTML, Renderer, Seiten ohne Optionskette
 // Legenden- und Tooltip-Marker in der Linienfarbe zeichnen (sonst Palettenfarbe)
@@ -4512,6 +4503,151 @@ document.addEventListener("click",e=>{ const t=e.target.closest("button"); if(!t
   if(t.dataset.padel){ S.pxAlerts=S.pxAlerts.filter(a=>a.id!==t.dataset.padel); save(); render(); }
   if(t.dataset.patog){ const a=S.pxAlerts.find(x=>x.id===t.dataset.patog); if(a){ a.on=a.on?0:1; if(a.on) a.trig=0; save(); render(); } } });
 
+/* ====================== Interval Map wie bei Quant Data ======================
+   Blasen je Strike und Intervall: Größe = Betrag, Farbe = Plus/Minus, dazu die Kurslinie.
+   Wählbar: GEX, DEX, VEX, CHEX oder Net Flow, Intervall 1 Minute bis 1 Stunde, Zeitraum, Strikes, Werte/Veränderung.
+   Daten: jede Minute lokal aufgezeichnet (IndexedDB, 72 h), sonst 5-Minuten-Snapshots, davor Schätzung aus dem aktuellen OI.
+   Net Flow: Netto-Prämie der Trades je Strike und Intervall (Call-Käufe und Put-Verkäufe positiv). */
+const IM = {h:[], key:"", saved:0, loaded:false, est:{sig:"", at:0, m:new Map()}, dz:{}, last:{}};
+const imKey = () => "imhist-"+S.cur;
+async function imLoad(){
+  const k=imKey(); IM.key=k; IM.loaded=false; const a=await IDB.get(k); if(IM.key!==k) return;
+  IM.h = Array.isArray(a)? a : [];
+  // ältere GEX-Minutenwerte (bisherige Interval Map) übernehmen, falls noch nichts aufgezeichnet ist
+  if(!IM.h.length && Array.isArray(gexHist) && gexHist.length){
+    IM.h = gexHist.map(x=>{ const ks=Object.keys(x.g).map(Number).sort((a,b)=>a-b); return {t:x.t, s:x.s, k:ks, g:ks.map(q=>x.g[q])}; }); }
+  IM.loaded=true; scheduleRender(); }
+function imRecord(){
+  if(!IM.loaded || !book.length || !spot) return; const now=Date.now(), L=IM.h; if(L.length && now-L[L.length-1].t<55e3) return;
+  const lb=liveBook(), m=new Map();
+  for(const b of lb){ if(b.strike<spot*0.88 || b.strike>spot*1.12) continue; let o=m.get(b.strike); if(!o){ o=[0,0,0,0]; m.set(b.strike,o); }
+    o[0]+=exposureOf(b,"gex"); o[1]+=exposureOf(b,"dex"); o[2]+=exposureOf(b,"vex"); o[3]+=exposureOf(b,"chex"); }
+  const ks=[...m.keys()].sort((a,b)=>a-b), col=i=>ks.map(k=>Math.round(m.get(k)[i]));
+  L.push({t:now, s:Math.round(spot*100)/100, k:ks, g:col(0), d:col(1), v:col(2), c:col(3)});
+  const cut=now-72*3600e3; let i=0; while(i<L.length && L[i].t<cut) i++; if(i) L.splice(0,i);
+  if(now-IM.saved>120e3){ IM.saved=now; IDB.set(imKey(),L); } }
+const _snapGexIM = snapshotGex; snapshotGex = function(){ _snapGexIM(); try{ imRecord(); }catch(e){} };
+const _restartIM = restart; restart = function(){ _restartIM(); IM.h=[]; IM.est={sig:"",at:0,m:new Map()}; IM.last={}; imLoad(); };
+addEventListener("pagehide",()=>{ try{ if(IM.loaded) IDB.set(imKey(),IM.h); }catch(e){} });
+imLoad();
+
+const IM_G=[["gex","GEX"],["dex","DEX"],["vex","VEX"],["chex","CHEX"],["flow","Net Flow"]];
+const IM_IV=[[1,"1m"],[2,"2m"],[3,"3m"],[5,"5m"],[10,"10m"],[15,"15m"],[30,"30m"],[60,"1h"]];
+const IM_W=[[3,"3 h"],[6,"6 h"],[12,"12 h"],[24,"24 h"],[48,"48 h"],[72,"72 h"]];
+const IM_N=[[3,"±3"],[5,"±5"],[10,"±10"],[15,"±15"]];
+S.imG??="gex"; S.imIv??=5; S.imW??=6; S.imN??=5; S.imMode??="val";
+const imForm = () => '<div class="form imf">'+seg3("k3","imG",IM_G)+'<span class="lbl3">Intervall</span>'+seg3("k3","imIv",IM_IV)+'<span class="lbl3">Zeitraum</span>'+seg3("k3","imW",IM_W)
+  +'<span class="lbl3">Strikes</span>'+seg3("k3","imN",IM_N)+'<span class="immode"></span></div>';
+
+// Kurs je Intervall-Ende aus den Perp-Kerzen
+const imTf = iv => iv<5?"1":iv<15?"5":iv<30?"15":iv<60?"30":"60";
+function imPrices(bk, Ims){
+  const tf=imTf(Ims/6e4), x=CND[S.cur+tf]; loadTF(tf); const P=new Array(bk.length).fill(null); if(!x || !x.t.length) return P;
+  if(bk[0]<x.t[0]) loadOlder(tf);
+  const ms=TFMS3[tf]; let j=0;
+  for(let i=0;i<bk.length;i++){ const end=bk[i]+Ims; while(j+1<x.t.length && x.t[j+1]<end) j++; if(x.t[j]<end && x.t[j]+ms>bk[i]-ms) P[i]=x.c[j]; }
+  return P; }
+// Strikes: Kursbereich im Zeitraum plus N Strikes darüber und darunter, bei zu vielen Zeilen nur runde Strikes
+function imStrikes(lb, P, N){
+  const all=[...new Set(lb.filter(b=>b.strike>spot*0.6 && b.strike<spot*1.4).map(b=>b.strike))].sort((a,b)=>a-b); if(!all.length) return [];
+  const ps=P.filter(v=>v!=null); ps.push(spot); const lo=Math.min(...ps), hi=Math.max(...ps);
+  let i0=all.findIndex(k=>k>=lo); if(i0<0) i0=all.length-1; let i1=0; for(let i=all.length-1;i>=0;i--) if(all[i]<=hi){ i1=i; break; }
+  let ks=all.slice(Math.max(0,Math.min(i0,i1)-N), Math.min(all.length,Math.max(i0,i1)+N+1));
+  if(ks.length>44){ let st=Infinity; for(let i=1;i<ks.length;i++) st=Math.min(st,ks[i]-ks[i-1]);
+    for(const f of [2,2.5,2,2,2.5,2,2,2.5]){ if(ks.length<=44) break; st*=f; const k2=ks.filter(k=>Math.abs(k/st-Math.round(k/st))<1e-6); if(k2.length>=6) ks=k2; else break; } }
+  return ks; }
+// Strike -> Zeile (nächstgelegene Zeile, außerhalb des Bereichs -1)
+function imRowOf(ks){ const n=ks.length, lo=ks[0]-(n>1?(ks[1]-ks[0])/2:ks[0]*0.01), hi=ks[n-1]+(n>1?(ks[n-1]-ks[n-2])/2:ks[0]*0.01), memo=new Map();
+  return k=>{ let r=memo.get(k); if(r!==undefined) return r; if(k<lo||k>hi) r=-1; else { r=0; let d=Infinity; for(let i=0;i<n;i++){ const dd=Math.abs(ks[i]-k); if(dd<d){ d=dd; r=i; } } } memo.set(k,r); return r; }; }
+// Greeks je Intervall: Aufzeichnung (1 min) > Snapshots (5 min) > Schätzung aus aktuellem OI
+function imGreeks(lb, ks, bk, Ims, P, g){
+  const nb=bk.length, nr=ks.length, rowOf=imRowOf(ks), gi={gex:"g",dex:"d",vex:"v",chex:"c"}[g], V=new Array(nb).fill(null), est=new Array(nb).fill(false);
+  const H=IM.h; let j=0;
+  for(let i=0;i<nb;i++){ const b0=bk[i], b1=b0+Ims; while(j<H.length && H[j].t<b0) j++; let last=null; for(let q=j;q<H.length && H[q].t<b1;q++) if(H[q][gi]) last=H[q];
+    if(last){ const row=new Float64Array(nr); for(let q=0;q<last.k.length;q++){ const r=rowOf(last.k[q]); if(r>=0) row[r]+=last[gi][q]; } V[i]=row; } }
+  if(snaps.length){ let s=0; for(let i=0;i<nb;i++){ if(V[i]) continue; const b0=bk[i], b1=b0+Ims; while(s<snaps.length && snaps[s].t<b0) s++; let last=null; for(let q=s;q<snaps.length && snaps[q].t<b1;q++) last=snaps[q];
+    if(last && last.st && last.st[g] && last.ks){ const row=new Float64Array(nr); last.ks.forEach((k,q)=>{ const r=rowOf(k); if(r>=0) row[r]+=last.st[g][q]||0; }); V[i]=row; } } }
+  const now=Date.now(), sig=[S.cur,g,ks.join(","),Ims].join("|"); if(IM.est.sig!==sig || now-IM.est.at>300e3) IM.est={sig,at:now,m:new Map()};
+  let grp=null;
+  for(let i=0;i<nb;i++){ if(V[i] || P[i]==null || bk[i]+Ims<now-72*3600e3) continue; const key=bk[i]+"|"+P[i], hit=IM.est.m.get(key); if(hit){ V[i]=hit; est[i]=true; continue; }
+    if(!grp){ const m=new Map(); for(const b of lb){ const r=rowOf(b.strike); if(r<0) continue; const k=b.strike+"|"+b.expTs+"|"+b.cp; let o=m.get(k); if(!o){ o={r,K:b.strike,expTs:b.expTs,cp:b.cp,oi:0,sw:0,F:b.F}; m.set(k,o); } o.oi+=b.open_interest; o.sw+=b.sig*b.open_interest; }
+      grp=[...m.values()].filter(o=>o.oi>0).map(o=>({...o,sig:o.sw/o.oi})); }
+    const t=bk[i]+Ims, ratio=P[i]/spot, row=new Float64Array(nr);
+    for(const o of grp){ const T=(o.expTs-t)/YEAR; if(T<=0) continue; const F=o.F*ratio, G=greeks(F,o.K,T,o.sig,o.cp), sg=o.cp==="C"?1:-1;
+      row[o.r] += g==="gex"? sg*G.gamma*o.oi*F*F*0.01 : g==="dex"? G.delta*o.oi*F : g==="vex"? sg*G.vanna*o.oi*F*0.01 : sg*G.charm*o.oi*F; }
+    IM.est.m.set(key,row); V[i]=row; est[i]=true; }
+  return {V, est}; }
+// Net Flow je Intervall: bullische minus bärische Prämie
+function imFlow(ks, bk, Ims, cum){
+  const nb=bk.length, nr=ks.length, rowOf=imRowOf(ks), V=new Array(nb).fill(null), t0=bk[0], t1=bk[nb-1]+Ims, allV=VLIST.every(v=>S.venues[v]);
+  for(const t of (S.histDate? histTrades : trades)){ if(t.ts<t0 || t.ts>=t1 || !t.strike) continue; if(!allV && !S.venues[t.venue]) continue; if(S.filterAll && !passFilter(t)) continue;
+    const r=rowOf(t.strike); if(r<0) continue; const i=Math.floor((t.ts-t0)/Ims); if(i<0||i>=nb) continue; if(!V[i]) V[i]=new Float64Array(nr); V[i][r]+= t.bull? t.prem : -t.prem; }
+  if(cum){ const acc=new Float64Array(nr); for(let i=0;i<nb;i++){ if(V[i]) for(let r=0;r<nr;r++) acc[r]+=V[i][r]; V[i]=acc.slice(); } }
+  return {V, est:new Array(nb).fill(false)}; }
+
+function imRender(elId, noteId, lb){
+  const c=ch(elId); if(!c || !spot) return;
+  const g=S.imG||"gex", flow=g==="flow"; let mode=S.imMode||"val"; if(flow && mode==="diff") mode="val"; if(!flow && mode==="cum") mode="val";
+  // Modus-Schalter passend zur Größe
+  const host=c.getDom().closest("article"), mw=host && host.querySelector(".immode");
+  S.imMode=mode;
+  if(mw){ const want=flow?"flow":"greek"; if(mw.dataset.k!==want){ mw.dataset.k=want; mw.innerHTML='<span class="lbl3">Anzeige</span>'+seg3("k3","imMode",flow?[["val","je Intervall"],["cum","kumuliert"]]:[["val","Werte"],["diff","Veränderung"]]); } }
+  sync3();
+  const now=Date.now(), sigR=[g,S.imIv,S.imW,S.imN,mode,S.cur,S.histDate||"",document.documentElement.dataset.skin,IM.h.length,snaps.length,c.getWidth(),c.getHeight(),flow?trades.length+histTrades.length:0,(CND[S.cur+imTf(+S.imIv||5)]||{t:[]}).t.length].join("|");
+  if(IM.last[elId] && IM.last[elId].sig===sigR && now-IM.last[elId].t<4000) return; IM.last[elId]={sig:sigR,t:now};
+  // Zeitraster
+  let Iv=+S.imIv||5, Wh=+S.imW||6, nb=Math.round(Wh*60/Iv), auto=false;
+  if(nb>600){ const need=Wh*60/600; Iv=[1,2,3,5,10,15,30,60,120,240].find(v=>v>=need)||240; nb=Math.round(Wh*60/Iv); auto=true; }
+  const Ims=Iv*6e4; let end=Math.floor(now/Ims)*Ims+Ims;
+  if(S.histDate){ const d0=Date.parse(S.histDate+"T00:00:00Z"); end=Math.min(end,d0+864e5); nb=Math.min(nb,Math.round(Math.min(24,Wh)*60/Iv)); }
+  const start=end-nb*Ims, bk=Array.from({length:nb},(_,i)=>start+i*Ims), P=imPrices(bk,Ims), ks=imStrikes(lb,P,+S.imN||5);
+  if(!ks.length){ c.clear(); return; }
+  const G=flow? imFlow(ks,bk,Ims,mode==="cum") : imGreeks(lb,ks,bk,Ims,P,g);
+  let V=G.V; if(!flow && mode==="diff") V=V.map((row,i)=>row && V[i-1]? row.map((v,r)=>v-V[i-1][r]) : null);
+  const pts=[], abs=[];
+  for(let i=0;i<nb;i++){ const row=V[i]; if(!row) continue; for(let r=0;r<ks.length;r++){ const v=row[r]; if(!v || !isFinite(v)) continue; abs.push(Math.abs(v)); pts.push([bk[i]+Ims/2, ks[r], v, G.est[i]?1:0]); } }
+  abs.sort((a,b)=>a-b); const vmax=abs.length? (abs[Math.min(abs.length-1,Math.floor(abs.length*0.985))]||abs[abs.length-1]||1) : 1;
+  const grid={left:66,right:44,top:34,bottom:58}, pw=Math.max(80,c.getWidth()-grid.left-grid.right), ph=Math.max(80,c.getHeight()-grid.top-grid.bottom);
+  const dz=IM.dz[elId]||{}, fx=(dz.xe!=null?(dz.xe-dz.xs)/100:1)||1, fy=(dz.ye!=null?(dz.ye-dz.ys)/100:1)||1;
+  const maxD=Math.max(4,Math.min(30,Math.min(ph/ks.length/fy*0.92, pw/nb/fx*1.1)));
+  const PC=css("--pos"), NC=css("--neg"), acc=css("--accent"), mut=css("--muted"), o=base();
+  const step=ks.length>1? (ks[ks.length-1]-ks[0])/(ks.length-1) : ks[0]*0.01;
+  // geschätzter Bereich (zusammenhängend ab dem Anfang)
+  let ea=-1, eb=-1; for(let i=0;i<nb;i++){ if(G.est[i]){ if(ea<0) ea=i; eb=i; } else if(ea>=0 && V[i]) break; }
+  const lbl={gex:"GEX",dex:"DEX",vex:"VEX",chex:"CHEX",flow:"Net Flow"}[g]+(mode==="diff"?" Δ":mode==="cum"?" kumuliert":"");
+  const line=bk.map((b,i)=>P[i]==null? null : [b+Ims/2,P[i]]).filter(Boolean);
+  const curName=S.cur+" $"+fmtNum(spot,spot<100?2:0);
+  c.setOption({backgroundColor:"transparent",animation:false,textStyle:o.textStyle,grid,
+    legend:{top:4,left:"center",itemWidth:14,itemHeight:8,textStyle:{color:mut,fontSize:11},data:[lbl,curName]},
+    tooltip:{...o.tooltip,trigger:"item",formatter:p=>p.seriesType==="scatter"?
+      `${fmtDT(p.value[0]-Ims/2)} – ${new Date(p.value[0]+Ims/2).toLocaleTimeString(LOC,{hour:"2-digit",minute:"2-digit"})}<br>Strike <b>${fmtNum(p.value[1])}</b><br>${lbl}: <b>${fmtSigned(p.value[2])}</b>${p.value[3]?" (geschätzt)":""}` :
+      `${fmtDT(p.value[0])}<br>${S.cur} <b>${fmtNum(p.value[1],p.value[1]<100?2:0)}</b>`},
+    xAxis:{type:"time",min:start,max:end,axisLine:{lineStyle:{color:css("--line")}},axisTick:{show:false},axisLabel:{color:mut,fontSize:10.5,hideOverlap:true},splitLine:{show:false}},
+    yAxis:{type:"value",name:"Strike",nameTextStyle:{color:mut,fontSize:10},min:ks[0]-step*0.6,max:ks[ks.length-1]+step*0.6,axisLine:{show:false},axisTick:{show:false},
+      axisLabel:{color:mut,fontSize:10.5,formatter:v=>fmtNum(v)},splitLine:{show:true,lineStyle:{color:css("--line"),opacity:.35}}},
+    dataZoom:[{type:"inside",xAxisIndex:0,filterMode:"none",start:dz.xs??0,end:dz.xe??100},{type:"slider",xAxisIndex:0,filterMode:"none",bottom:6,height:16,start:dz.xs??0,end:dz.xe??100,showDetail:false,borderColor:css("--line"),fillerColor:rgba3(acc,.12),handleStyle:{color:acc}},
+      {type:"slider",yAxisIndex:0,filterMode:"none",right:8,width:14,start:dz.ys??0,end:dz.ye??100,showDetail:false,borderColor:css("--line"),fillerColor:rgba3(acc,.12),handleStyle:{color:acc}}],
+    series:[{type:"scatter",name:lbl,data:pts,progressive:0,symbolSize:d=>Math.max(1.6,Math.min(1,Math.pow(Math.abs(d[2])/vmax,flow?0.4:0.5))*maxD),
+        itemStyle:{color:p=>rgba3(p.value[2]>=0?PC:NC,p.value[3]?.42:.92)},emphasis:{scale:1.25},z:2},
+      {type:"line",name:curName,data:line,showSymbol:false,smooth:false,lineStyle:{color:acc,width:2},itemStyle:{color:acc},z:5,
+        markArea:{silent:true,itemStyle:{color:rgba3(mut,.07)},label:{color:mut,fontSize:10,position:"insideTop"},data: ea>=0? [[{name:"Schätzung aus aktuellem OI",xAxis:bk[ea]},{xAxis:bk[eb]+Ims}]] : []}}]});
+  if(!c.__im){ c.__im=elId; c.on("datazoom",()=>{ const d=c.getOption().dataZoom||[]; IM.dz[c.__im]={xs:d[0]?d[0].start:0,xe:d[0]?d[0].end:100,ys:d[2]?d[2].start:0,ye:d[2]?d[2].end:100};
+    clearTimeout(IM.dzT); IM.dzT=setTimeout(()=>{ IM.last[c.__im]=null; scheduleRender(); },450); }); }
+  // Untertitel und Hinweis
+  const sm=host && host.querySelector(".ph small"); if(sm && host.querySelector(".imf")) sm.textContent=`${lbl} je Strike · ${Iv<60?Iv+"-Minuten":"1-Stunden"}-Intervalle`;
+  const n=$(noteId); if(n){ const first=IM.h.length? IM.h[0].t : null, sp=t=>`<span>${t}</span> `;
+    const html=(auto? sp(`Intervall automatisch auf ${Iv} Minuten erhöht (höchstens 600 Spalten).`):"")+(flow?
+      sp("Net Flow = Netto-Prämie je Strike und Intervall: Call-Käufe und Put-Verkäufe zählen positiv, Call-Verkäufe und Put-Käufe negativ. Grundlage sind die geladenen Trades im Zeitfenster oben (Heute, 24 h, 3 T, 7 T).") :
+      sp("Blasengröße = Betrag, Farbe = Plus oder Minus.")+(first? sp("Jede Minute aufgezeichnet seit")+`<b>${fmtDT(first)}</b>`+sp(", solange das Terminal offen ist (72 h im Browser).") : sp("Die Minuten-Aufzeichnung startet jetzt und läuft, solange das Terminal offen ist."))
+      +sp("Blassere Blasen davor = Schätzung aus dem aktuellen Open Interest."))+sp("Schieberegler unten und rechts zoomen Zeit und Strikes.");
+    if(n.__h!==html){ n.__h=html; n.innerHTML=html; } } }
+
+V3.imap = P2("Interval Map","GEX je Strike im Zeitverlauf",imForm()+'<div class="chart" id="c-imap" style="height:min(78vh,760px)"></div><div class="note" id="im-note"></div>',"wide");
+R3.imap = lb => imRender("c-imap","im-note",lb);
+// bisherige Interval Map auf „Gamma-Profil & Levels“ nutzt dieselbe Darstellung samt Bedienleiste
+(()=>{ const el=document.getElementById("c-interval"); if(!el) return; const art=el.closest("article"); if(art && !art.querySelector(".imf")){ el.insertAdjacentHTML("beforebegin",imForm()); el.style.height="min(66vh,620px)"; } })();
+document.head.insertAdjacentHTML("beforeend",`<style>.imf{flex-wrap:wrap;row-gap:6px}.imf .lbl3{margin-left:10px}</style>`);
+
 /* ====================== Session 3: Werkzeuge, Strategie, Quant ====================== */
 const dLb = () => liveFrom(books.deribit);
 const expSel = (id,lb,key,def=7) => { const ex=expiries(lb); if(!S[key]||!ex.includes(S[key])) S[key]=nearestExpTo(lb,def)||ex[0]; fillOne(id,ex,S[key]); return S[key]; };
@@ -4784,6 +4920,7 @@ IC.orderflow='<path d="M4 20V11"/><path d="M9 20V5"/><path d="M14 20v-6"/><path 
   const f=NAV2.find(x=>x.g==="Futures"); NAV2.splice(NAV2.indexOf(f)+1,0,{g:"Orderflow",ic:"orderflow",items:[["footprint","Footprint"],["dom","DOM"],["heatmap","Orderbuch-Heatmap"],["tape2","Time & Sales"],["tpo","Market Profile (TPO)"]]}); })();
 nav3("Dashboard",[["briefing","Marktbericht"],["alts","Altcoin-Optionen"]],"stats");
 nav3("Gamma",[["flowgex","Flow-GEX"]],"dealer");
+nav3("Gamma",[["imap","Interval Map"]],"xheat");
 nav3("Volatilität",[["fixstrike","Fixed-Strike-IV"]],"skew");
 nav3("Futures",[["liqmap","Liquidations-Heatmap"]],"liq");
 (()=>{ const q=NAV2.find(x=>x.g==="Quant"); if(q){ const i=q.items.findIndex(([k])=>k==="sim"); q.items.splice(i+1,0,["models","Vola-Modelle"],["seasonal","Saisonalität"],["correl","Korrelation"]); } })();
