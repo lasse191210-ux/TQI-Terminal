@@ -17,7 +17,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.5.0/echarts.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/echarts-gl@2.0.9/dist/echarts-gl.min.js" onload="window.__gl=1" onerror="window.__gl=0"></script>
-<script>/* I18N-BEGIN */window.TQI_I18N_V="20261112-083917";
+<script>/* I18N-BEGIN */window.TQI_I18N_V="20261112-210734";
 /* TQI Sprach-Engine: Deutsch ist Standard. Andere Sprachen übersetzen Texte, Attribute und Chart-Beschriftungen zur Laufzeit. */
 (function(){
   var LANGS=[["de","Deutsch"],["en","English"],["es","Español"],["fr","Français"]];
@@ -2784,7 +2784,7 @@ window.addEventListener("beforeunload", saveX);
     const hgt=Math.min(4,Math.abs(v)*4), w=100/N; out+=`<rect x="${i*w+w*0.18}" y="${v>=0?4-hgt:4}" width="${w*0.64}" height="${hgt}" fill="var(${v>=0?"--pos":"--neg"})"/>`; }
   el.innerHTML=out; })();
 /* S3-BEGIN */
-const TQI_BUILD="20261112-083917";
+const TQI_BUILD="20261112-210734";
 /* ====================== Session 3: Infrastruktur ====================== */
 const V3 = {}, R3 = {}, NB3 = new Set();   // Seiten-HTML, Renderer, Seiten ohne Optionskette
 // Legenden- und Tooltip-Marker in der Linienfarbe zeichnen (sonst Palettenfarbe)
@@ -4655,6 +4655,384 @@ R3.imap = lb => imRender("c-imap","im-note",lb);
 (()=>{ const el=document.getElementById("c-interval"); if(!el) return; const art=el.closest("article"); if(art && !art.querySelector(".imf")){ el.insertAdjacentHTML("beforebegin",imForm()); el.style.height="min(66vh,620px)"; } })();
 document.head.insertAdjacentHTML("beforeend",`<style>.imf{display:flex;flex-wrap:wrap;gap:8px}.imf .imsel{min-width:0;font-weight:600}</style>`);
 
+/* ====================== 0DTE und CBOE (US-Optionen) ======================
+   0DTE: Optionen des nächsten Verfalls. Krypto live (Deribit & Co. verfallen täglich um 08:00 UTC), US-Werte über CBOE.
+   CBOE: verzögerte Optionsketten (15 Min.), die ein GitHub-Job während der US-Handelszeit alle 15 Minuten in den
+   Zweig „cboe-data“ lädt (kostenlos, ohne Schlüssel). IBIT-Levels werden in BTC umgerechnet und lassen sich im BTC-Chart einblenden. */
+
+/* ---------- Zeit in New York ---------- */
+const NYF = new Intl.DateTimeFormat("en-US",{timeZone:"America/New_York",hourCycle:"h23",weekday:"short",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit"});
+function nyParts(ts){ const p={}; for(const x of NYF.formatToParts(ts)) p[x.type]=x.value; return p; }
+function nyTs(y,mo,d,h,mi,s){ const g=Date.UTC(y,mo,d,h,mi,s||0), p=nyParts(g), as=Date.UTC(+p.year,+p.month-1,+p.day,+p.hour%24,+p.minute,+p.second); return g-(as-g); }
+const usOpen = ts => { const p=nyParts(ts||Date.now()), m=(+p.hour%24)*60+ +p.minute; return p.weekday!=="Sat" && p.weekday!=="Sun" && m>=570 && m<960; };
+const nyHM = ts => { const p=nyParts(ts); return String(+p.hour%24).padStart(2,"0")+":"+p.minute; };
+const nyDay = ts => { const p=nyParts(ts); return p.year+p.month+p.day; };
+const cbExpTs = (ymd,am) => nyTs(2000+ +ymd.slice(0,2), +ymd.slice(2,4)-1, +ymd.slice(4,6), am?9:16, am?30:0);
+const dLbl = (ts,us) => new Date(ts).toLocaleDateString(LOC,Object.assign({weekday:"short",day:"2-digit",month:"2-digit"},us?{timeZone:"America/New_York"}:{}));
+const dtLbl = ts => new Date(ts).toLocaleString(LOC,{weekday:"short",day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});
+const hms = ms => { if(!(ms>0)) return "abgelaufen"; const s=Math.floor(ms/1000), d=Math.floor(s/86400), h=Math.floor(s%86400/3600), m=Math.floor(s%3600/60), x=s%60;
+  return (d?d+" T ":"")+h+":"+String(m).padStart(2,"0")+":"+String(x).padStart(2,"0"); };
+const kf = k => k==null||!isFinite(k)?"–":fmtNum(k, Math.abs(k-Math.round(k))<1e-9?0:Math.abs(k*10-Math.round(k*10))<1e-9?1:2);
+const pf = v => v==null||!isFinite(v)?"–":"$"+fmtNum(v, v<1000?2:0);
+const nf2 = v => v==null||!isFinite(v)?"–":fmtNum(v, v<1000?2:0);
+
+/* ---------- CBOE-Daten laden (GitHub, Ersatz jsDelivr, Zwischenspeicher IndexedDB) ---------- */
+const CB_SYM = [["IBIT","IBIT · Bitcoin-ETF"],["SPX","SPX · S&P 500"],["SPY","SPY · S&P 500 ETF"],["QQQ","QQQ · Nasdaq-100 ETF"],["NDX","NDX · Nasdaq-100"],["IWM","IWM · Russell 2000"],["MSTR","MSTR · Strategy"],["COIN","COIN · Coinbase"]];
+const CB = {d:{}, at:{}, busy:{}, err:{}, src:{}, px:{}, pxBusy:{}};
+const CB_URLS = s => ["https://raw.githubusercontent.com/lasse191210-ux/TQI-Terminal/cboe-data/"+s+".json", "https://cdn.jsdelivr.net/gh/lasse191210-ux/TQI-Terminal@cboe-data/"+s+".json"];
+function cbPrep(j){
+  const rows=[], exps=[];
+  for(const ek of Object.keys(j.exps||{})){ const am=ek.length>6, ymd=ek.slice(0,6), expTs=cbExpTs(ymd,am); exps.push({e:ek, ymd, am, expTs});
+    for(const r of j.exps[ek]) rows.push({e:ek, expTs, cp:r[0]?"C":"P", k:+r[1], oi:+r[2]||0, vol:+r[3]||0, iv:+r[4]||0, delta:+r[5]||0, gamma:+r[6]||0, px:+r[7]||0}); }
+  exps.sort((a,b)=>a.expTs-b.expTs);
+  const m=j.meta||{}, q=/^(\d{4})-(\d\d)-(\d\d)T(\d\d):(\d\d):(\d\d)/.exec(m.last_trade_time||""), t=Date.parse(String(j.t||"").replace(" ","T")+"Z")||Date.now();
+  const tq=q? nyTs(+q[1],+q[2]-1,+q[3],+q[4],+q[5],+q[6]) : t-15*60e3;
+  return {sym:j.sym, t, tq, spot:+j.spot||+m.current_price||0, chg:+m.price_change||0, pct:+m.price_change_percent||0, iv30:+m.iv30||null, rows, exps, v:t+"|"+rows.length};
+}
+async function cbLoad(sym, force){
+  const now=Date.now(); if(!sym || CB.busy[sym] || (!force && CB.at[sym] && now-CB.at[sym]<4*60e3)) return; CB.busy[sym]=1; CB.at[sym]=now;
+  try{
+    if(!CB.d[sym]){ const c=await IDB.get("cboe-"+sym); if(c && c.exps && !CB.d[sym]){ CB.d[sym]=cbPrep(c); CB.src[sym]="cache"; scheduleRender(); } }
+    let ok=false;
+    for(const u of CB_URLS(sym)){
+      try{ const r=await fetch(u+"?v="+Math.floor(Date.now()/60e3),{cache:"no-store"}); if(!r.ok) continue; const j=await r.json(); if(!j || !j.exps) continue;
+        const p=cbPrep(j), old=CB.d[sym]; ok=true;
+        if(!old || p.t>=old.t){ CB.d[sym]=p; CB.src[sym]=u.indexOf("jsdelivr")>0?"jsdelivr":"github"; IDB.set("cboe-"+sym,j); }
+        break; }catch(e){} }
+    CB.err[sym] = ok? "" : "CBOE-Daten gerade nicht erreichbar";
+  } finally { CB.busy[sym]=0; scheduleRender(); }
+}
+// BTC-Kurs (Deribit-Perp, 1-Minuten-Kerze) zur Zeit des IBIT-Kurses, für die Umrechnung der IBIT-Levels
+function cbBtcAt(ts){
+  const key=Math.floor(ts/60e3); if(key in CB.px) return CB.px[key]; if(CB.pxBusy[key]) return null; CB.pxBusy[key]=1;
+  dRpc("public/get_tradingview_chart_data",{instrument_name:"BTC-PERPETUAL",start_timestamp:key*60e3-10*60e3,end_timestamp:key*60e3+60e3,resolution:"1"}).then(r=>{
+    let v=null; if(r && r.ticks && r.ticks.length){ let j=0; for(let i=0;i<r.ticks.length;i++) if(r.ticks[i]<=key*60e3) j=i; v=+r.close[j]||null; }
+    CB.pxBusy[key]=0; if(v) CB.px[key]=v; scheduleRender(); });
+  return null; }
+function cbRatio(d){ // BTC je IBIT-Dollar
+  if(!d || d.sym!=="IBIT" || !d.spot) return null; const b=cbBtcAt(d.tq); if(b) return b/d.spot;
+  if(S.cur==="BTC" && spot && usOpen() && Date.now()-d.tq<40*60e3) return spot/d.spot;   // grob, bis der genaue Kurs geladen ist
+  return null; }
+function cbDates(d, now){ const m=new Map(); for(const x of d.exps){ if(x.expTs<=now) continue; let g=m.get(x.ymd); if(!g){ g={key:x.ymd, ts:x.expTs, keys:new Set()}; m.set(x.ymd,g); } g.keys.add(x.e); g.ts=Math.max(g.ts,x.expTs); }
+  return [...m.values()].sort((a,b)=>a.ts-b.ts); }
+
+/* ---------- Auswertung einer Optionskette ----------
+   rows: {k, cp, expTs, oi, vol, iv, gamma, delta, px}; mult = Kontraktgröße (US 100 Aktien, Krypto 1 Coin).
+   GEX je Strike = Gamma × OI × mult × Kurs² × 1 %, Calls positiv, Puts negativ (wie im übrigen Terminal). */
+function chainAn(rows, S0, mult){
+  const m=new Map(); let net=0, dex=0, oc=0, op=0, vc=0, vp=0;
+  for(const r of rows){ let o=m.get(r.k); if(!o){ o={k:r.k,gc:0,gp:0,oc:0,op:0,vc:0,vp:0,d:0}; m.set(r.k,o); }
+    const g=(r.cp==="C"?1:-1)*r.gamma*r.oi*mult*S0*S0*0.01, d=r.delta*r.oi*mult*S0;
+    if(r.cp==="C"){ o.gc+=g; o.oc+=r.oi; o.vc+=r.vol; oc+=r.oi; vc+=r.vol; } else { o.gp+=g; o.op+=r.oi; o.vp+=r.vol; op+=r.oi; vp+=r.vol; }
+    o.d+=d; net+=g; dex+=d; }
+  const L=[...m.values()].sort((a,b)=>a.k-b.k), nr=L.filter(o=>Math.abs(o.k/S0-1)<=0.3);
+  const calls=nr.filter(o=>o.gc>0).sort((a,b)=>b.gc-a.gc).slice(0,3), puts=nr.filter(o=>o.gp<0).sort((a,b)=>a.gp-b.gp).slice(0,3);
+  let mj=null; for(const o of nr){ const a=Math.abs(o.gc)+Math.abs(o.gp); if(a>0 && (!mj||a>mj.g)) mj={k:o.k, g:a, c:Math.abs(o.gc)/a}; }
+  return {L, net, dex, oc, op, vc, vp, calls, puts, cw:calls[0]||null, pw:puts[0]||null, mj};
+}
+// Netto-GEX bei anderem Kurs (Black-Scholes mit der IV jeder Option), Bereich Kurs × (1 ± w)
+function chainProf(rows, S0, mult, t0, w, n){
+  const R=[], tMin=0.25/(365*24), lim=Math.max(0.35,w*1.6);
+  for(const r of rows){ if(!(r.oi>0) || !(r.iv>0) || r.expTs<=t0 || Math.abs(r.k/S0-1)>lim) continue;
+    const T=Math.max((r.expTs-t0)/YEAR,tMin), sg=Math.min(r.iv,3), sT=sg*Math.sqrt(T); R.push([r.k, sT, sg*sg*T/2, (r.cp==="C"?1:-1)*r.oi*mult*0.01]); }
+  const out=[];
+  for(let i=0;i<n;i++){ const X=S0*(1-w+2*w*i/(n-1)); let tot=0; for(const q of R){ const d1=(Math.log(X/q[0])+q[2])/q[1]; if(d1>-9 && d1<9) tot+=q[3]*npdf(d1)/q[1]*X; } out.push([X,tot]); }
+  return out; }
+function flipOf(prof, S0){ let b=null; for(let i=1;i<prof.length;i++){ const a=prof[i-1], c=prof[i]; if((a[1]<0)!==(c[1]<0) && a[1]!==c[1]){ const x=a[0]+(c[0]-a[0])*(-a[1])/(c[1]-a[1]); if(b==null||Math.abs(x-S0)<Math.abs(b-S0)) b=x; } } return b; }
+function atmIvOf(rows, S0){ let k=null, d=Infinity; for(const r of rows){ if(!(r.iv>0)) continue; const dd=Math.abs(r.k-S0); if(dd<d){ d=dd; k=r.k; } }
+  if(k==null) return null; const a=rows.filter(r=>r.k===k && r.iv>0); return a.reduce((s,r)=>s+r.iv,0)/a.length; }
+function painCurve(rows, ks, mult){ return ks.map(X=>{ let p=0; for(const r of rows) if(r.oi>0) p+=r.oi*mult*(r.cp==="C"?Math.max(X-r.k,0):Math.max(r.k-X,0)); return [X,p]; }); }
+function maxPainOf(rows, mult){ const ks=[...new Set(rows.filter(r=>r.oi>0).map(r=>r.k))].sort((a,b)=>a-b); let b=null; for(const x of painCurve(rows,ks,mult)) if(!b||x[1]<b[1]) b=x; return b?b[0]:null; }
+const ZM=new Map(); function memoZ(key,fn){ if(ZM.has(key)) return ZM.get(key); const v=fn(); ZM.set(key,v); if(ZM.size>40) ZM.delete(ZM.keys().next().value); return v; }
+// Strikes im Bereich; bei zu vielen Zeilen in runde Schritte bündeln
+function strikeWin(L, lo, hi, maxN, minN, S0){
+  let R=L.filter(o=>o.k>=lo && o.k<=hi);
+  if(minN && R.length<minN && L.length){ const nr=[...L].sort((a,b)=>Math.abs(a.k-S0)-Math.abs(b.k-S0)).slice(0,minN); lo=Math.min(lo,...nr.map(o=>o.k)); hi=Math.max(hi,...nr.map(o=>o.k)); R=L.filter(o=>o.k>=lo && o.k<=hi); }
+  if(R.length<=maxN) return {R, st:0};
+  const raw=(hi-lo)/maxN, p=Math.pow(10,Math.floor(Math.log10(raw))), st=[1,2,2.5,5,10].map(f=>f*p).find(s=>s>=raw)||10*p, m=new Map();
+  for(const o of R){ const k=+(Math.round(o.k/st)*st).toFixed(6); let q=m.get(k); if(!q){ q={k,gc:0,gp:0,oc:0,op:0,vc:0,vp:0,d:0}; m.set(k,q); } for(const f of ["gc","gp","oc","op","vc","vp","d"]) q[f]+=o[f]; }
+  return {R:[...m.values()].sort((a,b)=>a.k-b.k), st};
+}
+
+/* ---------- Charts ---------- */
+// Balken je Strike (waagerecht, hoher Strike oben), Linien für Kurs und Levels, Band = erwartete Bewegung
+function strikeChart(elId, R, o2){
+  const c=ch(elId); if(!c) return; const el=c.getDom(), n=R.length; if(!n){ c.clear(); return; }
+  const want=Math.max(380,Math.min(980,n*17+120)); if(Math.abs(el.clientHeight-want)>4){ el.style.height=want+"px"; c.resize(); }
+  const ks=R.map(o=>o.k), PC=css("--pos"), NC=css("--neg"), acc=css("--accent"), mut=css("--muted"), o=base(), v=o2.view, u=o2.unit||"";
+  const amt=x=>fmtNum(Math.abs(x), Math.abs(x)<10?1:0)+(u?" "+u:"");
+  const bar=(name,data,col,stack)=>({type:"bar",name,data,stack,barMaxWidth:18,barCategoryGap:"30%",itemStyle:{color:col,borderRadius:2}});
+  let S1, axF=fmtUsd, tipF=fmtSigned;
+  if(v==="gexcp") S1=[bar("Call-GEX",R.map(o=>o.gc),PC,"a"),bar("Put-GEX",R.map(o=>o.gp),NC,"a")];
+  else if(v==="dex") S1=[bar("Netto-DEX",R.map(o=>({value:o.d,itemStyle:{color:o.d>=0?PC:NC}})))];
+  else if(v==="oi"){ S1=[bar("Call-OI",R.map(o=>o.oc),PC,"a"),bar("Put-OI",R.map(o=>-o.op),NC,"a")]; axF=x=>fmtNum(Math.abs(x)); tipF=amt; }
+  else if(v==="vol"){ S1=[bar("Call-Volumen",R.map(o=>o.vc),PC,"a"),bar("Put-Volumen",R.map(o=>-o.vp),NC,"a")]; axF=x=>fmtNum(Math.abs(x)); tipF=amt; }
+  else if(v==="pain"){ const P=o2.pain||[], mn=P.length?Math.min(...P.map(x=>x[1])):0; S1=[bar("Auszahlung bei Verfall",P.map(x=>({value:x[1],itemStyle:{color:x[1]===mn?css("--major"):rgba3(acc,.5)}})))]; tipF=fmtUsd; }
+  else if(v==="flow"){ S1=[bar("bullische Prämie",R.map(o=>o.fb||0),PC,"a"),bar("bärische Prämie",R.map(o=>-(o.fs||0)),NC,"a")]; axF=x=>fmtUsd(Math.abs(x)); tipF=x=>fmtUsd(Math.abs(x)); }
+  else S1=[bar("Netto-GEX",R.map(o=>{ const x=o.gc+o.gp; return {value:x,itemStyle:{color:x>=0?PC:NC}}; }))];
+  // genaue Lage zwischen zwei Strikes (eigene, unsichtbare Werte-Achse 0 … n−1)
+  const pos=(x,clamp)=>{ if(x==null||!isFinite(x)) return null; if(x<ks[0]) return clamp?-0.5:null; if(x>ks[n-1]) return clamp?n-0.5:null; let i=0; while(i<n-1 && ks[i+1]<x) i++; return i<n-1? i+(x-ks[i])/(ks[i+1]-ks[i]) : n-1; };
+  const top=(o2.view==="gexcp"||o2.view==="oi"||o2.view==="vol"||o2.view==="flow")?30:12, unit=Math.max(4,(want-top-26)/n), minD=16/unit, Lv=[];
+  // Kurs links beschriftet, Levels rechts; zu dicht liegende Beschriftungen einer Seite werden zusammengefasst (Linien bleiben einzeln)
+  for(const [name,x,col,dash,bold] of (o2.lv||[])){ const p=pos(x); if(p!=null) Lv.push({p,name,col,dash,bold,show:true,left:/^Spot/.test(name)}); }
+  Lv.sort((a,b)=>a.p-b.p); const lastL={};
+  for(const g of Lv){ const sd=g.left?"l":"r", q=lastL[sd]; if(q && g.p-q.p<minD){ g.show=false; if(g.bold && !q.bold){ q.name=g.name+" · "+q.name; q.col=g.col; q.bold=true; } else q.name+=" · "+g.name; } else lastL[sd]=g; }
+  const ml=Lv.map(g=>({yAxis:g.p,label:g.show?{formatter:g.name,position:g.left?"insideStartTop":"insideEndTop",color:g.col,fontSize:10.5,fontWeight:g.bold?700:500,backgroundColor:css("--panel"),padding:[1,4],borderRadius:2}:{show:false},lineStyle:{color:g.col,type:g.dash?"dashed":"solid",width:g.bold?1.8:1.1}}));
+  const em=o2.em? [pos(o2.em[0],1),pos(o2.em[1],1)] : null;
+  const mk={type:"line",name:"_lv",yAxisIndex:1,data:[],silent:true,showSymbol:false,tooltip:{show:false},
+    markLine:{symbol:"none",silent:true,data:ml}, markArea:em?{silent:true,itemStyle:{color:rgba3(acc,.08)},data:[[{yAxis:em[0]},{yAxis:em[1]}]]}:undefined};
+  c.setOption({backgroundColor:"transparent",animation:false,textStyle:o.textStyle,
+    legend:{show:S1.length>1,top:2,left:"center",itemWidth:10,itemHeight:10,textStyle:{color:mut,fontSize:11},data:S1.map(s=>s.name)},
+    grid:{left:64,right:24,top,bottom:26},
+    tooltip:{...o.tooltip,trigger:"axis",axisPointer:{type:"shadow"},formatter:ps=>{ const p=(Array.isArray(ps)?ps:[ps]).filter(q=>q.seriesName!=="_lv"); if(!p.length) return "";
+      const r=R[p[0].dataIndex]; let h=`Strike <b>${kf(r.k)}</b>${o2.st?" ±"+kf(o2.st/2):""}`; for(const q of p) h+=`<br>${q.marker}${q.seriesName}: <b>${tipF(+q.value)}</b>`;
+      if(v==="gex") h+=`<br>Calls ${fmtSigned(r.gc)} · Puts ${fmtSigned(r.gp)}`; if(v==="oi"||v==="vol"){ const a=v==="oi"?r.oc:r.vc, b=v==="oi"?r.op:r.vp; if(a) h+=`<br>P/C ${(b/a).toFixed(2)}`; } return h; }},
+    xAxis:{type:"value",axisLine:{show:false},axisTick:{show:false},axisLabel:{color:mut,fontSize:10.5,formatter:axF,hideOverlap:true},splitLine:{lineStyle:{color:css("--line"),opacity:.6}}},
+    yAxis:[{type:"category",data:ks.map(kf),axisLine:{lineStyle:{color:css("--line")}},axisTick:{show:false},axisLabel:{color:mut,fontSize:10.5,interval:n>44?Math.ceil(n/44)-1:0},splitLine:{show:false}},
+      {type:"value",min:-0.5,max:n-0.5,show:false,axisPointer:{show:false}}],
+    series:[...S1, mk]},true);
+}
+// Gamma-Profil: Netto-GEX über dem Kurs, Plus/Minus eingefärbt
+function profChart(elId, B, S0){
+  const c=ch(elId); if(!c) return; const P=B&&B.prof; if(!P||!P.length){ c.clear(); return; }
+  const o=base(), PC=css("--pos"), NC=css("--neg"), acc=css("--accent"), mut=css("--muted"), dp=S0<200?2:0;
+  const ml=[{xAxis:S0,label:{formatter:"Spot",color:acc,position:"end"},lineStyle:{color:acc,type:"solid",width:1.4}},{yAxis:0,label:{show:false},lineStyle:{color:mut,type:"solid",width:1,opacity:.6}}];
+  if(B.flip) ml.push({xAxis:B.flip,label:{formatter:"Flip",color:css("--warn"),position:"insideEndTop"},lineStyle:{color:css("--warn"),type:"dashed",width:1.2}});
+  // Plus- und Minus-Teil getrennt, mit exakten Nulldurchgängen (sauberer Farbwechsel)
+  const up=[], dn=[]; for(let i=0;i<P.length;i++){ const [x,y]=P[i]; if(i){ const [x1,y1]=P[i-1]; if((y1<0)!==(y<0) && y1!==y){ const xz=x1+(x-x1)*(-y1)/(y-y1); up.push([xz,0]); dn.push([xz,0]); } } up.push([x,Math.max(y,0)]); dn.push([x,Math.min(y,0)]); }
+  c.setOption({backgroundColor:"transparent",animation:false,textStyle:o.textStyle,grid:{left:62,right:20,top:22,bottom:30},
+    tooltip:{...o.tooltip,trigger:"axis",formatter:ps=>{ const x=ps[0].value[0], v=ps.reduce((a,p)=>a+p.value[1],0); return `Kurs <b>${fmtNum(x,dp)}</b><br>Netto-GEX: <b>${fmtSigned(v)}</b>`; }},
+    xAxis:{type:"value",min:P[0][0],max:P[P.length-1][0],axisLine:{lineStyle:{color:css("--line")}},axisTick:{show:false},axisLabel:{color:mut,fontSize:10.5,hideOverlap:true,showMinLabel:false,showMaxLabel:false,formatter:v=>fmtNum(v,dp)},splitLine:{show:false}},
+    yAxis:{type:"value",axisLine:{show:false},axisTick:{show:false},axisLabel:{color:mut,fontSize:10.5,formatter:fmtUsd},splitLine:{lineStyle:{color:css("--line"),opacity:.6}}},
+    series:[{type:"line",name:"Long Gamma",data:up,showSymbol:false,lineStyle:{width:2,color:PC},itemStyle:{color:PC},areaStyle:{color:PC,opacity:.16},markLine:{symbol:"none",silent:true,data:ml}},
+      {type:"line",name:"Short Gamma",data:dn,showSymbol:false,lineStyle:{width:2,color:NC},itemStyle:{color:NC},areaStyle:{color:NC,opacity:.16}}]},true);
+}
+// Net Flow des Verfalls: gekaufte minus verkaufte Prämie, kumuliert, dazu der Kurs
+function flowChart(elId, trs, t0, t1, cur){
+  const c=ch(elId); if(!c) return; const o=base(), PC=css("--pos"), NC=css("--neg"), mut=css("--muted"), Ims=5*60e3, now=Date.now(), end=Math.min(now,t1);
+  const nb=Math.max(1,Math.ceil((end-t0)/Ims)), cc=new Float64Array(nb), pp=new Float64Array(nb);
+  for(const t of trs){ const i=Math.floor((t.ts-t0)/Ims); if(i<0||i>=nb) continue; const s=t.side==="buy"?1:-1; if(t.cp==="C") cc[i]+=s*t.prem; else pp[i]+=s*t.prem; }
+  const C=[[t0,0]], P=[[t0,0]]; let a=0, b=0; for(let i=0;i<nb;i++){ a+=cc[i]; b+=pp[i]; const ts=Math.min(t0+(i+1)*Ims,end); C.push([ts,a]); P.push([ts,b]); }
+  const x=CND[cur+"5"]; loadTF("5"); const px=[]; if(x) for(let i=0;i<x.t.length;i++) if(x.t[i]>=t0-Ims && x.t[i]<=now) px.push([Math.min(x.t[i]+Ims,now),x.c[i]]);
+  c.setOption({backgroundColor:"transparent",animation:false,textStyle:o.textStyle,grid:{left:64,right:60,top:34,bottom:30},
+    legend:{top:4,left:"center",itemWidth:12,itemHeight:8,textStyle:{color:mut,fontSize:11},data:["Calls netto","Puts netto",cur]},
+    tooltip:{...o.tooltip,trigger:"axis",formatter:ps=>{ let h=fmtDT(ps[0].value[0]); for(const p of ps) h+=`<br>${p.marker}${p.seriesName}: <b>${p.seriesName===cur?fmtNum(p.value[1]):fmtSigned(p.value[1])}</b>`; return h; }},
+    xAxis:{type:"time",min:t0,max:t1,axisLine:{lineStyle:{color:css("--line")}},axisTick:{show:false},axisLabel:{color:mut,fontSize:10.5,hideOverlap:true},splitLine:{show:false}},
+    yAxis:[{type:"value",axisLine:{show:false},axisTick:{show:false},axisLabel:{color:mut,fontSize:10.5,formatter:fmtUsd},splitLine:{lineStyle:{color:css("--line"),opacity:.6}}},
+      {type:"value",scale:true,position:"right",axisLine:{show:false},axisTick:{show:false},axisLabel:{color:mut,fontSize:10.5,formatter:v=>fmtNum(v)},splitLine:{show:false}}],
+    series:[{type:"line",name:"Calls netto",data:C,showSymbol:false,lineStyle:{color:PC,width:2},itemStyle:{color:PC},
+        markLine:{symbol:"none",silent:true,data:[{yAxis:0,label:{show:false},lineStyle:{color:mut,type:"solid",width:1,opacity:.6}},{xAxis:end,label:{show:false},lineStyle:{color:mut,type:"dashed",width:1}}]}},
+      {type:"line",name:"Puts netto",data:P,showSymbol:false,lineStyle:{color:NC,width:2},itemStyle:{color:NC}},
+      {type:"line",name:cur,yAxisIndex:1,data:px,showSymbol:false,lineStyle:{color:mut,width:1.2,type:"dashed"},itemStyle:{color:mut}}]},true);
+}
+
+/* ---------- Bedienung ---------- */
+const zdSel = (k,tip) => `<select class="zdsel" data-zdk="${k}" aria-label="${tip}" title="${tip}"></select>`;
+function zdOpts(sel, opts, val){ if(!sel) return; const sig=opts.map(o=>o[0]+"="+o[1]).join("|");
+  if(sel.__sig!==sig){ sel.__sig=sig; sel.innerHTML=opts.map(([v,l])=>`<option value="${esc(String(v))}">${esc(l)}</option>`).join(""); }
+  const s=String(val); if(sel.value!==s) sel.value=s; if(sel.value!==s && opts.length) sel.value=String(opts[0][0]); }
+const ZD_NUM = {zdE:1, zdR:1, cbR:1};
+document.addEventListener("change",e=>{ const t=e.target, k=t.dataset && t.dataset.zdk; if(!k) return; const v=t.value; S[k]= ZD_NUM[k] && v!=="auto" && !isNaN(+v)? +v : v; save(); render(); });
+const sp = t => `<span>${t}</span>`;
+const vsSpot = (x,S0) => x==null||!S0? "" : sp(pct3((x/S0-1)*100, Math.abs(x/S0-1)<0.1?2:1)+" vom Spot");
+
+/* ====================== Seite 0DTE ====================== */
+const ZD = {x:[], xKey:"", busy:false, eTs:0, last:{}};
+const ZD_V = [["gex","Netto-GEX"],["gexcp","GEX Calls / Puts"],["oi","Open Interest"],["vol","Volumen"],["pain","Max-Pain-Kurve"],["flow","Net Premium (Trades)"]];
+const ZD_R = [[1.5,"Bereich: eng"],[2.5,"Bereich: mittel"],[4,"Bereich: weit"]];
+S.zdM??="live"; S.zdE??=0; S.zdV??="gex"; S.zdR??=2.5;
+// Trades vor dem Zeitfenster nachladen, damit der Net Flow den ganzen 0DTE-Tag zeigt (nur Deribit)
+async function zdGap(eTs){
+  if(S.histDate || ZD.busy) return; const from=eTs-DAY, ws=windowStart(); if(from>=ws-60e3) return;
+  const key=S.cur+"|"+from; if(ZD.xKey===key) return; ZD.busy=true; ZD.xKey=key; ZD.x=[]; const ids=new Set(); let start=from;
+  try{ for(let g=0; g<40; g++){ const r=await dRpc("public/get_last_trades_by_currency_and_time",{currency:S.cur,kind:"option",start_timestamp:start,end_timestamp:ws,count:1000,sorting:"asc"});
+      if(!r || !r.trades || !r.trades.length || ZD.xKey!==key) break;
+      for(const t of r.trades){ if(ids.has(t.trade_id)) continue; ids.add(t.trade_id); const ins=parseInst(t.instrument_name); if(!ins || ins.expTs!==eTs) continue;
+        ZD.x.push({id:t.trade_id, venue:"deribit", ts:t.timestamp, inst:t.instrument_name, ...ins, side:t.direction, amt:t.amount, price:t.price, prem:t.price*t.amount*t.index_price, iv:t.iv, idx:t.index_price, block:!!t.block_trade_id, bull:(ins.cp==="C")===(t.direction==="buy")}); }
+      if(!r.has_more) break; const last=r.trades[r.trades.length-1].timestamp; start= last===start? last+1 : last; }
+  } finally { ZD.busy=false; scheduleRender(); } }
+function zdTrades(e, eTs){
+  const t0=eTs-DAY, all=VLIST.every(v=>S.venues[v]), out=[];
+  const add=t=>{ if(t.exp!==e || t.ts<t0 || !t.prem) return; if(!all && !S.venues[t.venue]) return; if(S.filterAll && !passFilter(t)) return; out.push(t); };
+  for(const t of ZD.x) add(t); for(const t of trades) add(t); return out; }
+const zdLiveRows = (lb,e) => lb.filter(b=>b.exp===e).map(b=>({k:b.strike, cp:b.cp, expTs:b.expTs, oi:b.open_interest||0, vol:b.volume||0, iv:b.sig, gamma:b.g.gamma, delta:b.g.delta, px:(b.mark_price||0)*b.F}));
+
+V3.zdte = P2("0DTE","Optionen des nächsten Verfalls",'<div class="form zdf">'+zdSel("zdM","Markt")+zdSel("zdE","Verfall")+zdSel("zdV","Ansicht")+zdSel("zdR","Strike-Bereich")+'<span class="zdst" id="zd-st"></span></div><div class="cards" id="zd-cards"></div><div class="chart" id="c-zd" style="height:520px"></div><div class="note" id="zd-note"></div>',"wide")
+  + P2("Net Flow 0DTE","Prämie seit Beginn des 0DTE-Tages",'<div class="chart" id="c-zdf" style="height:340px"></div><div class="note">Calls netto und Puts netto = gekaufte minus verkaufte Prämie (Aggressor-Seite), kumuliert ab 24 Stunden vor dem Verfall. Steigende Calls und fallende Puts sprechen für bullischen Flow.</div>',"","zd-p2")
+  + P2("Gamma-Profil 0DTE","Netto-GEX bei anderem Kurs",'<div class="chart" id="c-zdp" style="height:340px"></div><div class="note">Netto-GEX dieses Verfalls, neu berechnet für Kurse rund um den aktuellen Kurs. Flip = Wechsel zwischen Short und Long Gamma: darüber dämpfen Dealer Bewegungen eher, darunter verstärken sie sie.</div>',"","zd-p3")
+  + P2('<span id="zd-t4">Größte 0DTE-Trades</span>','<span id="zd-s4">nach Prämie</span>','<div id="zd-tb"></div>',"wide","zd-p4");
+NB3.add("zdte");
+function zdMsg(t){ const c=$("zd-cards"); if(c) c.innerHTML=`<div class="empty" style="grid-column:1/-1;padding:18px;color:var(--muted)">${t}</div>`; ["c-zd","c-zdf","c-zdp"].forEach(id=>{ const x=ch(id); if(x) x.clear(); }); const tb=$("zd-tb"); if(tb) tb.innerHTML=""; ZD.last={}; }
+R3.zdte = (lb) => {
+  const host=document.getElementById("v-zdte"); if(!host) return; const now=Date.now(), live=S.zdM==="live", sel={};
+  host.querySelectorAll("select[data-zdk]").forEach(s=>sel[s.dataset.zdk]=s);
+  if(!live && S.zdV==="flow") S.zdV="gex";
+  zdOpts(sel.zdM, [["live",S.cur+" live · Deribit & Co."], ...CB_SYM.map(([s,l])=>[s,l+" · CBOE"])], S.zdM);
+  zdOpts(sel.zdV, ZD_V.filter(x=>live||x[0]!=="flow"), S.zdV); zdOpts(sel.zdR, ZD_R, S.zdR);
+  const p2=$("zd-p2"), p4=$("zd-p4"); if(p2) p2.style.display=live?"":"none"; if(p4) p4.classList.toggle("wide",live);
+  const setT=(id,t)=>{ const el=$(id); if(el && el.__t!==t){ el.__t=t; el.textContent=t; } };
+  setT("zd-t4", live? "Größte 0DTE-Trades" : "Aktivste Strikes"); setT("zd-s4", live? "nach Prämie" : "nach Volumen (heute)");
+  // Daten des gewählten Verfalls
+  let dates, rows, S0, mult, t0, unit, allOi=0, allVol=0, ver, d=null;
+  if(live){
+    if(!lb.length || !spot){ zdOpts(sel.zdE,[[0,"0DTE"]],0); zdMsg("Lade Optionsdaten …"); return; }
+    dates=expiries(lb).map(e=>({key:e, ts:expTsOf(e)})).filter(x=>x.ts>now).slice(0,3); S0=spot; mult=1; t0=now; unit=S.cur; ver=Math.floor(now/3000);
+    for(const b of lb){ allOi+=b.open_interest||0; allVol+=b.volume||0; }
+  } else {
+    cbLoad(S.zdM); d=CB.d[S.zdM]; if(!d){ zdOpts(sel.zdE,[[0,"0DTE"]],0); zdMsg(CB.err[S.zdM]||"Lade CBOE-Daten …"); return; }
+    dates=cbDates(d,now).slice(0,3); S0=d.spot; mult=100; t0=Math.min(d.t,now); unit=""; ver=d.v;
+    for(const r of d.rows) if(r.expTs>now){ allOi+=r.oi; allVol+=r.vol; }
+  }
+  if(!dates.length){ zdMsg("Kein offener Verfall gefunden."); return; }
+  const ei=Math.min(+S.zdE||0, dates.length-1), E=dates[ei], eTs=E.ts; ZD.eTs=eTs;
+  zdOpts(sel.zdE, dates.map((x,i)=>[i, i+"DTE · "+(live? dtLbl(x.ts) : dLbl(x.ts,true))]), ei);
+  rows = live? zdLiveRows(lb,E.key) : d.rows.filter(r=>E.keys.has(r.e));
+  const B=memoZ(["zd",S.zdM,S.cur,E.key,ver].join("|"), ()=>{ const A=chainAn(rows,S0,mult), iv=atmIvOf(rows,S0), T=Math.max(0,eTs-t0)/YEAR, em=iv&&T? S0*iv*Math.sqrt(T) : null;
+    const w=Math.min(0.25,Math.max(0.02,em?4*em/S0:0.05)), prof=chainProf(rows,S0,mult,t0,w,121); return Object.assign(A,{iv,T,em,mp:maxPainOf(rows,mult),prof,flip:flipOf(prof,S0)}); });
+  const trs = live? (zdGap(eTs), zdTrades(E.key,eTs)) : [];
+  let bu=0, be=0; for(const t of trs){ if(t.bull) bu+=t.prem; else be+=t.prem; }
+  // Kennzahlen
+  const oiT=B.oc+B.op, vT=B.vc+B.vp, uS=live?" "+S.cur:"", pcT=(a,b)=>a?(b/a).toFixed(2):"–";
+  const cards=[
+    ["Verfall in", `<span id="zd-cd">${hms(eTs-now)}</span>`, sp(live? dtLbl(eTs) : dLbl(eTs,true)+" · "+nyHM(eTs)+" ET"), ""],
+    ["Erwartete Bewegung", B.em? "±"+pf(B.em) : "–", B.em? sp("±"+(B.em/S0*100).toFixed(2)+" %")+" · "+sp(nf2(S0-B.em)+" – "+nf2(S0+B.em)) : "", ""],
+    ["Max Pain", pf(B.mp), vsSpot(B.mp,S0), ""],
+    ["Netto-GEX", fmtSigned(B.net), sp(B.net>=0?"Long Gamma: dämpft Bewegungen":"Short Gamma: verstärkt Bewegungen"), cls(B.net)],
+    ["Call Wall", pf(B.cw&&B.cw.k), vsSpot(B.cw&&B.cw.k,S0), "pos"],
+    ["Put Wall", pf(B.pw&&B.pw.k), vsSpot(B.pw&&B.pw.k,S0), "neg"],
+    ["Major Wall", pf(B.mj&&B.mj.k), B.mj? sp(fmtUsd(B.mj.g)+" Gamma")+" · "+sp(Math.round(B.mj.c*100)+" % Calls") : "", "maj"],
+    ["Gamma-Flip", pf(B.flip), B.flip? vsSpot(B.flip,S0) : sp("kein Wechsel im Bereich"), "warn"],
+    ["Open Interest", fmtNum(oiT, oiT<100?1:0)+uS, sp("P/C "+pcT(B.oc,B.op))+(allOi? " · "+sp(Math.round(oiT/allOi*100)+" % vom Gesamt-OI") : ""), ""],
+    ["Volumen", fmtNum(vT, vT<100?1:0)+uS, sp("P/C "+pcT(B.vc,B.vp))+(allVol? " · "+sp(Math.round(vT/allVol*100)+" % vom Gesamtvolumen") : ""), ""],
+  ];
+  if(live) cards.push(["Net Premium", fmtSigned(bu-be), sp("bullisch")+" "+fmtUsd(bu)+" · "+sp("bärisch")+" "+fmtUsd(be), cls(bu-be)]);
+  $("zd-cards").innerHTML = cards.map(([l,v,s,c])=>cardH(l,v,s,c)).join("");
+  // Status
+  const st=$("zd-st"); if(st){ const h= live? sp("Live")+" · "+sp(VLIST.filter(v=>S.venues[v]).map(v=>VEN[v].short).join("+")) :
+      sp("CBOE")+" · "+sp("Stand")+" "+sp(nyDay(d.tq)===nyDay(now)? nyHM(d.tq)+" ET" : dLbl(d.tq,true)+" "+nyHM(d.tq)+" ET")+" · "+sp(usOpen(now)?"15 Min. verzögert":"Markt geschlossen")+(CB.err[S.zdM]? " · "+sp(CB.err[S.zdM]) : "");
+    if(st.__h!==h){ st.__h=h; st.innerHTML=h; } }
+  // Charts (höchstens alle 3 Sekunden neu)
+  const sig=[S.zdM,S.cur,E.key,ver,S.zdV,S.zdR,trs.length,document.documentElement.dataset.skin,innerWidth].join("|");
+  if(ZD.last.sig!==sig){ ZD.last.sig=sig;
+    const half=B.em? Math.max(S.zdR*B.em, S0*0.01) : S0*0.03, W=strikeWin(B.L, S0-half, S0+half, 64, {1.5:8,2.5:14,4:24}[S.zdR]||14, S0);
+    let R=W.R;
+    if(S.zdV==="flow"){ const idx=new Map(R.map((o,i)=>[o.k,i])); R=R.map(o=>({...o,fb:0,fs:0}));
+      for(const t of trs){ const k=W.st? +(Math.round(t.strike/W.st)*W.st).toFixed(6) : t.strike, i=idx.get(k); if(i==null) continue; if(t.bull) R[i].fb+=t.prem; else R[i].fs+=t.prem; } }
+    const lvL=[["Spot "+nf2(S0),S0,css("--accent"),0,1],["Call Wall",B.cw&&B.cw.k,css("--pos"),0],["Put Wall",B.pw&&B.pw.k,css("--neg"),0],["Major Wall",B.mj&&B.mj.k,css("--major"),0,1],["Flip",B.flip,css("--warn"),1],["Max Pain",B.mp,css("--muted"),1]];
+    strikeChart("c-zd", R, {view:S.zdV, lv:lvL, em:B.em?[S0-B.em,S0+B.em]:null, unit:live?S.cur:"", st:W.st, pain:S.zdV==="pain"? painCurve(rows,R.map(o=>o.k),mult) : null});
+    profChart("c-zdp", B, S0);
+    if(live) flowChart("c-zdf", trs, eTs-DAY, eTs, S.cur);
+    // Tabelle
+    const tb=$("zd-tb");
+    if(live){ const top=[...trs].sort((a,b)=>b.prem-a.prem).slice(0,15);
+      tb.innerHTML = top.length? tbl3(["Zeit","Kontrakt","Seite","Menge","Prämie","IV","Börse"], top.map(t=>`<tr><td class="l">${fmtTime(t.ts)}</td><td class="l">${kf(t.strike)} ${t.cp==="C"?"Call":"Put"}</td><td class="${t.bull?"pos":"neg"}">${t.side==="buy"?"Kauf":"Verkauf"}</td><td>${fmtNum(t.amt,1)}</td><td>${fmtUsd(t.prem)}</td><td>${t.iv?(+t.iv).toFixed(1)+" %":"–"}</td><td>${vb(t)}${t.block?" Block":""}${t.sweep>=3?" Sweep":""}</td></tr>`))
+        : `<div class="empty" style="padding:14px;color:var(--muted)">Noch keine Trades in diesem Verfall.</div>`; }
+    else { const act=rows.filter(r=>r.vol>0).sort((a,b)=>b.vol-a.vol).slice(0,15);
+      tb.innerHTML = act.length? tbl3(["Strike","Typ","Volumen","OI","Vol/OI","IV","Prämie ≈"], act.map(r=>`<tr><td class="l">${kf(r.k)}</td><td class="l ${r.cp==="C"?"pos":"neg"}">${r.cp==="C"?"Call":"Put"}</td><td>${fmtNum(r.vol)}</td><td>${fmtNum(r.oi)}</td><td>${r.oi?(r.vol/r.oi).toFixed(2):"–"}</td><td>${r.iv?(r.iv*100).toFixed(1)+" %":"–"}</td><td>${fmtUsd(r.vol*r.px*100)}</td></tr>`),"free zdt")
+        : `<div class="empty" style="padding:14px;color:var(--muted)">Heute noch kein Volumen in diesem Verfall.</div>`; }
+    const n=$("zd-note"); if(n){ const h=(live? sp("0DTE = Optionen des nächsten Verfalls. Deribit & Co. verfallen täglich um 08:00 UTC.")+" "+sp(`Open Interest und Volumen in ${S.cur}, Net Premium aus den geladenen Trades.`)
+        : sp("Daten: CBOE, 15 Minuten verzögert, während der US-Handelszeit alle 15 Minuten aktualisiert. Ein Kontrakt = 100 Aktien.")+" "+sp("Volumen = heute gehandelte Kontrakte."))
+        +" "+sp("GEX = Gamma × Open Interest × Kurs² × 1 %, Calls positiv, Puts negativ. Graues Band = erwartete Bewegung bis zum Verfall (±1σ aus der ATM-IV). Max Pain = Kurs, bei dem Optionskäufer am wenigsten ausgezahlt bekommen.")
+        +(W.st? " "+sp(`Strikes in Schritten von ${kf(W.st)} gebündelt.`) : "")+(S.histDate? " "+sp("Historischer Tag aktiv: 0DTE zeigt immer den aktuellen Stand.") : "");
+      if(n.__h!==h){ n.__h=h; n.innerHTML=h; } }
+  }
+};
+setInterval(()=>{ if(S.view!=="zdte") return; const el=document.getElementById("zd-cd"); if(el && ZD.eTs) el.textContent=hms(ZD.eTs-Date.now()); },1000);
+const _restartZD = restart; restart = function(){ _restartZD(); ZD.x=[]; ZD.xKey=""; ZD.last={}; ZM.clear(); };
+
+/* ====================== Seite CBOE (US-Optionen) ====================== */
+const CB_V = [["gex","Netto-GEX"],["gexcp","GEX Calls / Puts"],["dex","Netto-DEX"],["oi","Open Interest"],["vol","Volumen"]];
+const CB_R = [["auto","Bereich: automatisch"],[2,"Bereich: ±2 %"],[5,"Bereich: ±5 %"],[10,"Bereich: ±10 %"],[20,"Bereich: ±20 %"]];
+S.cbS??="IBIT"; S.cbE??="all"; S.cbV??="gex"; S.cbR??="auto"; S.cbIb??=0;
+const CBL = {sig:""};
+V3.cboe = P2("CBOE · US-Optionen","GEX, Walls und Open Interest · 15 Min. verzögert",'<div class="form zdf">'+zdSel("cbS","Symbol")+zdSel("cbE","Verfall")+zdSel("cbV","Ansicht")+zdSel("cbR","Strike-Bereich")+'<span class="zdib"><span class="lbl3">IBIT-Levels im BTC-Chart</span>'+seg3("k3","cbIb",[[1,"An"],[0,"Aus"]])+'</span><span class="zdst" id="cb-st"></span></div><div class="cards" id="cb-cards"></div><div class="chart" id="c-cb" style="height:520px"></div><div class="note" id="cb-note"></div>',"wide")
+  + P2("Gamma-Profil","Netto-GEX bei anderem Kurs",'<div class="chart" id="c-cbp" style="height:340px"></div><div class="note">Netto-GEX der gewählten Verfälle, neu berechnet für Kurse rund um den aktuellen Kurs. Flip = Wechsel zwischen Short und Long Gamma.</div>')
+  + P2("Open Interest je Verfall","Calls nach oben, Puts nach unten",'<div class="chart" id="c-cbe" style="height:340px"></div><div class="note">Zeigt, auf welchen Verfällen das Open Interest liegt. Im Tooltip: Put/Call-Verhältnis und Anteil am gesamten Gamma.</div>')
+  + P2("Levels",'<span id="cb-lvs">mit Abstand zum Kurs</span>','<div id="cb-lv"></div>',"wide");
+NB3.add("cboe");
+function cbMsg(t){ const c=$("cb-cards"); if(c) c.innerHTML=`<div class="empty" style="grid-column:1/-1;padding:18px;color:var(--muted)">${t}</div>`; ["c-cb","c-cbp","c-cbe"].forEach(id=>{ const x=ch(id); if(x) x.clear(); }); const l=$("cb-lv"); if(l) l.innerHTML=""; CBL.sig=""; }
+// OI und Gamma je Verfallstag (einmal je Datenstand)
+function cbByExp(d, dates){ return memoZ("cbx|"+d.sym+"|"+d.v+"|"+dates.length, ()=>{ const m=new Map(); for(const r of d.rows){ let o=m.get(r.e); if(!o){ o={oc:0,op:0,ga:0}; m.set(r.e,o); } if(r.cp==="C") o.oc+=r.oi; else o.op+=r.oi; o.ga+=Math.abs(r.gamma*r.oi*100*d.spot*d.spot*0.01); }
+  return dates.map(g=>{ const x={g,oc:0,op:0,ga:0}; for(const k of g.keys){ const o=m.get(k); if(o){ x.oc+=o.oc; x.op+=o.op; x.ga+=o.ga; } } return x; }); }); }
+function expChart(elId, G){
+  const c=ch(elId); if(!c) return; if(!G.length){ c.clear(); return; } const o=base(), PC=css("--pos"), NC=css("--neg"), mut=css("--muted"), tot=G.reduce((a,x)=>a+x.ga,0)||1;
+  c.setOption({backgroundColor:"transparent",animation:false,textStyle:o.textStyle,grid:{left:58,right:16,top:30,bottom:44},
+    legend:{top:2,left:"center",itemWidth:10,itemHeight:10,textStyle:{color:mut,fontSize:11},data:["Call-OI","Put-OI"]},
+    tooltip:{...o.tooltip,trigger:"axis",axisPointer:{type:"shadow"},formatter:ps=>{ const x=G[ps[0].dataIndex]; return `${dLbl(x.g.ts,true)}<br>Call-OI <b>${fmtNum(x.oc)}</b><br>Put-OI <b>${fmtNum(x.op)}</b><br>P/C <b>${x.oc?(x.op/x.oc).toFixed(2):"–"}</b><br>Anteil am Gamma <b>${(x.ga/tot*100).toFixed(1)} %</b>`; }},
+    xAxis:{type:"category",data:G.map(x=>dLbl(x.g.ts,true)),axisLine:{lineStyle:{color:css("--line")}},axisTick:{show:false},axisLabel:{color:mut,fontSize:10,rotate:G.length>8?35:0,hideOverlap:true}},
+    yAxis:{type:"value",axisLine:{show:false},axisTick:{show:false},axisLabel:{color:mut,fontSize:10.5,formatter:v=>fmtNum(Math.abs(v))},splitLine:{lineStyle:{color:css("--line"),opacity:.6}}},
+    series:[{type:"bar",name:"Call-OI",stack:"a",data:G.map(x=>x.oc),itemStyle:{color:PC,borderRadius:2},barMaxWidth:22},{type:"bar",name:"Put-OI",stack:"a",data:G.map(x=>-x.op),itemStyle:{color:NC,borderRadius:2},barMaxWidth:22}]},true);
+}
+R3.cboe = () => {
+  const host=document.getElementById("v-cboe"); if(!host) return; const now=Date.now(), sel={}, sym=S.cbS;
+  host.querySelectorAll("select[data-zdk]").forEach(s=>sel[s.dataset.zdk]=s);
+  cbLoad(sym); zdOpts(sel.cbS, CB_SYM, sym); zdOpts(sel.cbV, CB_V, S.cbV); zdOpts(sel.cbR, CB_R, S.cbR);
+  const d=CB.d[sym], st=$("cb-st");
+  if(!d){ zdOpts(sel.cbE,[["all","Alle Verfälle"]],"all"); if(st) st.innerHTML=""; cbMsg(CB.err[sym]||"Lade CBOE-Daten …"); return; }
+  const dates=cbDates(d,now), t0=Math.min(d.t,now), S0=d.spot, r=sym==="IBIT"? cbRatio(d) : null;
+  if(!dates.length){ cbMsg("Kein offener Verfall gefunden."); return; }
+  zdOpts(sel.cbE, [["all","Alle Verfälle"],["0","0DTE · "+dLbl(dates[0].ts,true)],["w","Verfälle bis 7 Tage"],["m","Verfälle bis 5 Wochen"], ...dates.slice(0,45).map(g=>[g.key,dLbl(g.ts,true)])], S.cbE);
+  const E=String(sel.cbE? sel.cbE.value : S.cbE); if(E!==String(S.cbE)) S.cbE=E; let single=null, keys;
+  if(E==="0") single=dates[0]; else if(!["all","w","m"].includes(E)) single=dates.find(g=>g.key===E)||dates[0];
+  if(single) keys=single.keys; else { const lim=E==="w"?7*DAY:E==="m"?35*DAY:Infinity; keys=new Set(); for(const g of dates) if(g.ts-now<=lim || !keys.size) for(const k of g.keys) keys.add(k); }
+  const near=single||dates[0];
+  const B=memoZ(["cb",sym,d.v,E,dates.length].join("|"), ()=>{ const rows=d.rows.filter(q=>keys.has(q.e)), nr=d.rows.filter(q=>near.keys.has(q.e));
+    const A=chainAn(rows,S0,100), iv=atmIvOf(nr,S0), T=Math.max(0,near.ts-t0)/YEAR, em=iv&&T? S0*iv*Math.sqrt(T) : null;
+    const w=single? Math.min(0.25,Math.max(0.02,em?4*em/S0:0.05)) : Math.min(0.3,Math.max(0.06,((d.iv30||30)/100)*Math.sqrt(30/365)*2));
+    const prof=chainProf(rows,S0,100,t0,w,121); return Object.assign(A,{rows, nr, iv, T, em, mp:nr.length?maxPainOf(nr,100):null, prof, flip:flipOf(prof,S0)}); });
+  // Status: Stand, Verzögerung, Umrechnung
+  const stH=sp("Stand")+" "+sp(nyDay(d.tq)===nyDay(now)? nyHM(d.tq)+" ET" : dLbl(d.tq,true)+" "+nyHM(d.tq)+" ET")+" · "+sp(usOpen(now)?"15 Min. verzögert":"Markt geschlossen")
+    +(r? " · "+sp("BTC ≈ IBIT × "+fmtNum(r,1)) : "")+(CB.src[sym]==="jsdelivr"? " · "+sp("Ersatzquelle") : CB.src[sym]==="cache"? " · "+sp("Zwischenspeicher") : "")+(CB.err[sym]? " · "+sp(CB.err[sym]) : "");
+  if(st && st.__h!==stH){ st.__h=stH; st.innerHTML=stH; }
+  const btc=x=> r&&x!=null? " · "+sp("≈ BTC $"+fmtNum(x*r)) : "", nL=dLbl(near.ts,true);
+  const cards=[
+    [sp("Kurs")+" "+sym, pf(S0), `<span class="${cls(d.pct)}">${pct3(d.pct)}</span>`+(d.iv30? " · "+sp("IV30 "+d.iv30.toFixed(1)+" %") : "")+btc(S0), ""],
+    ["Netto-GEX", fmtSigned(B.net), sp(B.net>=0?"Long Gamma: dämpft Bewegungen":"Short Gamma: verstärkt Bewegungen"), cls(B.net)],
+    ["Gamma-Flip", pf(B.flip), (B.flip? vsSpot(B.flip,S0) : sp("kein Wechsel im Bereich"))+btc(B.flip), "warn"],
+    ["Call Wall", pf(B.cw&&B.cw.k), vsSpot(B.cw&&B.cw.k,S0)+btc(B.cw&&B.cw.k), "pos"],
+    ["Put Wall", pf(B.pw&&B.pw.k), vsSpot(B.pw&&B.pw.k,S0)+btc(B.pw&&B.pw.k), "neg"],
+    ["Major Wall", pf(B.mj&&B.mj.k), vsSpot(B.mj&&B.mj.k,S0)+btc(B.mj&&B.mj.k), "maj"],
+    ["Max Pain", pf(B.mp), sp(nL)+" · "+vsSpot(B.mp,S0)+btc(B.mp), ""],
+    ["Erwartete Bewegung", B.em? "±"+pf(B.em) : "–", B.em? sp("±"+(B.em/S0*100).toFixed(2)+" %")+" · "+sp("bis")+" "+nL : "", ""],
+    ["Put/Call OI", B.oc? (B.op/B.oc).toFixed(2) : "–", sp("Volumen P/C")+" "+(B.vc?(B.vp/B.vc).toFixed(2):"–")+" · "+sp(fmtNum(B.oc+B.op)+" Kontrakte"), ""],
+  ];
+  $("cb-cards").innerHTML = cards.map(([l,v,s,c])=>cardH(l,v,s,c)).join("");
+  const sig=[sym,d.v,E,S.cbV,S.cbR,r?r.toFixed(2):0,document.documentElement.dataset.skin,innerWidth].join("|"); if(CBL.sig===sig) return; CBL.sig=sig;
+  // Strike-Chart
+  let half; if(S.cbR!=="auto" && +S.cbR>0) half=S0*S.cbR/100; else if(single) half=B.em? Math.max(2.5*B.em, S0*0.01) : S0*0.03; else half=S0*Math.min(0.25,Math.max(0.03,1.5*((d.iv30||30)/100)*Math.sqrt(30/365)));
+  const W=strikeWin(B.L, S0-half, S0+half, 70, 16, S0);
+  const lvL=[["Spot "+nf2(S0),S0,css("--accent"),0,1],["Call Wall",B.cw&&B.cw.k,css("--pos"),0],["Put Wall",B.pw&&B.pw.k,css("--neg"),0],["Major Wall",B.mj&&B.mj.k,css("--major"),0,1],["Flip",B.flip,css("--warn"),1],["Max Pain",B.mp,css("--muted"),1]];
+  strikeChart("c-cb", W.R, {view:S.cbV, lv:lvL, em:B.em?[S0-B.em,S0+B.em]:null, unit:"", st:W.st});
+  profChart("c-cbp", B, S0);
+  expChart("c-cbe", cbByExp(d,dates).slice(0,16));
+  // Levels-Tabelle
+  const lvR=[...(B.mj?[["Major Wall",B.mj.k,B.mj.g,"maj"," brutto"]]:[]), ...B.calls.map((o,i)=>["Call Wall "+(i+1),o.k,o.gc,"pos"]), ...(B.flip?[["Gamma-Flip",B.flip,null,"warn"]]:[]), ...B.puts.map((o,i)=>["Put Wall "+(i+1),o.k,o.gp,"neg"]),
+    ...(B.mp!=null?[["Max Pain",B.mp,null,"","",nL]]:[]), ...(B.em?[["Erw. Hoch",S0+B.em,null,"","",nL],["Erw. Tief",S0-B.em,null,"","",nL]]:[])];
+  const head=["Level","Strike","vs. Kurs","GEX"].concat(r?["≈ BTC"]:[]);
+  $("cb-lv").innerHTML = tbl3(head, lvR.map(([n,k,g,c,sf,dt])=>`<tr><td class="l ${c}"${c==="maj"?' style="font-weight:700"':""}><span>${n}</span>${dt?` <span style="color:var(--muted)">(${dt})</span>`:""}</td><td>${pf(k)}</td><td>${pct3((k/S0-1)*100,2)}</td><td>${g==null?"–":fmtUsd(g)+(sf||"")}</td>${r?`<td>$${fmtNum(k*r)}</td>`:""}</tr>`),"free");
+  const n=$("cb-note"); if(n){ const h=sp("Daten: CBOE, 15 Minuten verzögert. Ein GitHub-Job lädt die Ketten während der US-Handelszeit alle 15 Minuten, dazu vor der Eröffnung (neues Open Interest) und nach Schluss.")
+      +" "+sp("GEX = Gamma × Open Interest × 100 × Kurs² × 1 %, Calls positiv, Puts negativ (Annahme: Dealer long Calls, short Puts). Graues Band = erwartete Bewegung bis zum nächsten bzw. gewählten Verfall.")
+      +(sym==="IBIT"? " "+sp("IBIT-Levels werden mit dem BTC-Kurs zur Zeit des IBIT-Kurses umgerechnet (Spalte ≈ BTC). Mit „IBIT-Levels im BTC-Chart“ erscheinen sie auch auf Key Levels und im Dashboard-Chart.") : "")
+      +(W.st? " "+sp(`Strikes in Schritten von ${kf(W.st)} gebündelt.`) : "");
+    if(n.__h!==h){ n.__h=h; n.innerHTML=h; } }
+};
+
+/* ---------- IBIT-Levels im BTC-Chart (Key Levels und Dashboard) ---------- */
+function ibitLv(){
+  if(S.cur!=="BTC" || !+S.cbIb) return null; cbLoad("IBIT"); const d=CB.d.IBIT; if(!d) return null; const r=cbRatio(d); if(!r) return null;
+  const now=Date.now(), t0=Math.min(d.t,now);
+  const B=memoZ("ib|"+d.v, ()=>{ const ok=new Set(); for(const x of d.exps) if(x.expTs>now) ok.add(x.e); const rows=d.rows.filter(q=>ok.has(q.e)), A=chainAn(rows,d.spot,100), prof=chainProf(rows,d.spot,100,t0,0.2,121); return Object.assign(A,{flip:flipOf(prof,d.spot)}); });
+  return {B, r};
+}
+function ibitLines(){ const x=ibitLv(); if(!x) return []; const {B,r}=x, L=[], add=(n,k,c)=>{ if(k!=null) L.push([n,k*r,c,1]); };
+  add("IBIT Major Wall",B.mj&&B.mj.k,css("--major")); add("IBIT Call Wall",B.cw&&B.cw.k,css("--pos")); add("IBIT Put Wall",B.pw&&B.pw.k,css("--neg")); add("IBIT Flip",B.flip,css("--warn")); return L; }
+const _ckDrawIB = ckDraw; ckDraw = function(elId,key,x,tf,o2){ if((key==="kl"||key==="ds") && S.cur==="BTC" && +S.cbIb){ const L=ibitLines(); if(L.length) o2=Object.assign({},o2,{levels:((o2&&o2.levels)||[]).concat(L)}); } return _ckDrawIB(elId,key,x,tf,o2); };
+V3.keylv = V3.keylv.replace(tog3("klVol","Volumen"), tog3("klVol","Volumen")+tog3("cbIb","IBIT-Levels"));
+const _klIB = R3.keylv; R3.keylv = (lb,lv,list) => { _klIB(lb,lv,list); const x=ibitLv(), t=$("kl-t"), tb=t&&t.querySelector("tbody"); if(!x||!tb||!spot) return; const {B,r}=x;
+  const rw=[["IBIT Major Wall",B.mj&&B.mj.k,"maj"],["IBIT Call Wall",B.cw&&B.cw.k,"pos"],["IBIT Flip",B.flip,"warn"],["IBIT Put Wall",B.pw&&B.pw.k,"neg"]].filter(q=>q[1]!=null);
+  tb.insertAdjacentHTML("beforeend", rw.map(([n,k,c])=>`<tr><td class="l ${c}">${n}</td><td>$${fmtNum(k*r)}</td><td>${pct3((k*r/spot-1)*100,1)}</td><td>IBIT $${kf(k)}</td><td class="l"></td></tr>`).join("")); };
+document.head.insertAdjacentHTML("beforeend",`<style>.zdf{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.zdf .zdsel{min-width:0;font-weight:600}.zdib{display:inline-flex;align-items:center;gap:6px}.zdst{margin-left:auto;font-size:11px;color:var(--muted)}.tw.zdt table{min-width:0}@media(max-width:700px){.zdst{margin-left:0;width:100%}}</style>`);
+
 /* ====================== Session 3: Werkzeuge, Strategie, Quant ====================== */
 const dLb = () => liveFrom(books.deribit);
 const expSel = (id,lb,key,def=7) => { const ex=expiries(lb); if(!S[key]||!ex.includes(S[key])) S[key]=nearestExpTo(lb,def)||ex[0]; fillOne(id,ex,S[key]); return S[key]; };
@@ -4890,7 +5268,7 @@ R3.quant = (lb,lv,list) => { trainQ(); const o=base(), R=QM.res;
 const DOCS=[["Implizite Volatilität (IV)","Die Erwartung des Marktes, wie stark sich der Kurs bewegt, als Prozent pro Jahr. 60 % IV ≈ ±3,5 % pro Woche. Hohe IV = teure Optionen."],["ATM IV, DVOL, TQI Vol-Index","ATM IV ist die IV am Geld. DVOL ist Deribits 30-Tage-Index (wie der VIX). Der TQI Vol-Index berechnet dasselbe modellfrei aus der ganzen Kette."],
   ["IV Rank / Perzentil","Wo die IV im Vergleich zum letzten Jahr steht. 0 % = historisch günstig, 100 % = historisch teuer."],["VRP","Volatility Risk Premium = IV minus realisierte Vola. Positiv = Optionen teuer, Verkäufer im Vorteil."],
   ["Gamma Exposure (GEX)","Wie stark Dealer beim Hedgen kaufen oder verkaufen müssen. Positiver GEX: Dealer long Gamma, sie kaufen Dips und verkaufen Rallys (bremst). Negativer GEX: sie verstärken Bewegungen."],
-  ["Call Wall / Put Wall / Flip","Call Wall = größter positiver GEX (Widerstand). Put Wall = größter negativer GEX (Unterstützung). Flip = wo Netto-GEX null kreuzt; darunter wird es meist volatiler."],["Major Wall","Der Strike mit dem meisten Gamma insgesamt, also Calls und Puts zusammen über alle Verfälle. Dort sichern Dealer am meisten ab. Der Preis wird oft dorthin gezogen oder bleibt dort hängen. In den Charts ist sie die dicke Linie in der Highlight-Farbe des Templates."],
+  ["Call Wall / Put Wall / Flip","Call Wall = größter positiver GEX (Widerstand). Put Wall = größter negativer GEX (Unterstützung). Flip = wo Netto-GEX null kreuzt; darunter wird es meist volatiler."],["0DTE","Optionen, die am nächsten Verfall auslaufen. Bei Deribit & Co. verfallen täglich um 08:00 UTC Optionen, bei SPX, SPY, QQQ und IBIT an jedem US-Handelstag. 0DTE-Gamma wirkt stark, aber nur kurz: Walls und Max Pain ziehen den Kurs oft bis zum Verfall an (Pinning), danach ist der Effekt weg."],["CBOE-Daten","Optionsketten der CBOE für US-Werte (IBIT, SPX, SPY, QQQ, NDX, IWM, MSTR, COIN), 15 Minuten verzögert. Ein GitHub-Job lädt sie während der US-Handelszeit alle 15 Minuten. Ein Kontrakt = 100 Aktien. IBIT-Levels werden mit dem BTC-Kurs zur Zeit des IBIT-Kurses in BTC umgerechnet."],["Major Wall","Der Strike mit dem meisten Gamma insgesamt, also Calls und Puts zusammen über alle Verfälle. Dort sichern Dealer am meisten ab. Der Preis wird oft dorthin gezogen oder bleibt dort hängen. In den Charts ist sie die dicke Linie in der Highlight-Farbe des Templates."],
   ["Vanna, Charm, Vomma, Speed, Zomma, Color","Vanna: Delta-Änderung bei IV-Bewegung. Charm: täglicher Delta-Verfall. Vomma: Vega-Änderung bei IV-Bewegung. Speed: Gamma-Änderung bei Spot-Bewegung. Zomma: Gamma-Änderung bei IV-Bewegung. Color: täglicher Gamma-Verfall."],
   ["Skew / Risk Reversal","25Δ RR = Call-IV minus Put-IV bei 25 Delta. Negativ = Puts teurer (Absicherung, Angst), positiv = Calls teurer (FOMO)."],["Term Structure","ATM IV über die Laufzeiten. Contango (steigend) ist normal, Backwardation (fallend) zeigt akuten kurzfristigen Stress."],
   ["Max Pain","Strike, an dem Optionskäufer beim Verfall am meisten verlieren. Wirkt nahe am Verfall oft wie ein Magnet."],["Open Interest","Anzahl offener Kontrakte. Steigendes OI = neues Geld, fallendes OI = Positionen werden geschlossen."],
@@ -4925,6 +5303,8 @@ IC.orderflow='<path d="M4 20V11"/><path d="M9 20V5"/><path d="M14 20v-6"/><path 
 (()=>{ const d=NAV2.find(x=>x.g==="Dashboard"); if(d) d.items=d.items.filter(([k])=>k!=="news");
   NAV2.splice(NAV2.indexOf(d)+1,0,{g:"News & Kalender",ic:"news",items:[["calendar","Wirtschaftskalender"],["mnews","Market News"],["news","Krypto-News"],["earnings","Earnings-Kalender"]]});
   const f=NAV2.find(x=>x.g==="Futures"); NAV2.splice(NAV2.indexOf(f)+1,0,{g:"Orderflow",ic:"orderflow",items:[["footprint","Footprint"],["dom","DOM"],["heatmap","Orderbuch-Heatmap"],["tape2","Time & Sales"],["tpo","Market Profile (TPO)"]]}); })();
+IC.zdte='<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2"/><path d="M9.5 2.5h5"/>';
+(()=>{ const g=NAV2.find(x=>x.g==="Gamma"); NAV2.splice(g? NAV2.indexOf(g)+1 : 1, 0, {g:"0DTE & CBOE",ic:"zdte",items:[["zdte","0DTE"],["cboe","CBOE US-Optionen"]]}); })();
 nav3("Dashboard",[["briefing","Marktbericht"],["alts","Altcoin-Optionen"]],"stats");
 nav3("Gamma",[["flowgex","Flow-GEX"]],"dealer");
 nav3("Gamma",[["imap","Interval Map"]],"xheat");
