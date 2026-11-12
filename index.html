@@ -17,7 +17,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.5.0/echarts.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/echarts-gl@2.0.9/dist/echarts-gl.min.js" onload="window.__gl=1" onerror="window.__gl=0"></script>
-<script>/* I18N-BEGIN */window.TQI_I18N_V="20261107-231755";
+<script>/* I18N-BEGIN */window.TQI_I18N_V="20261111-203928";
 /* TQI Sprach-Engine: Deutsch ist Standard. Andere Sprachen übersetzen Texte, Attribute und Chart-Beschriftungen zur Laufzeit. */
 (function(){
   var LANGS=[["de","Deutsch"],["en","English"],["es","Español"],["fr","Français"]];
@@ -2787,7 +2787,7 @@ window.addEventListener("beforeunload", saveX);
     const hgt=Math.min(4,Math.abs(v)*4), w=100/N; out+=`<rect x="${i*w+w*0.18}" y="${v>=0?4-hgt:4}" width="${w*0.64}" height="${hgt}" fill="var(${v>=0?"--bull":"--bear"})"/>`; }
   el.innerHTML=out; })();
 /* S3-BEGIN */
-const TQI_BUILD="20261107-231755";
+const TQI_BUILD="20261111-203928";
 /* ====================== Session 3: Infrastruktur ====================== */
 const V3 = {}, R3 = {}, NB3 = new Set();   // Seiten-HTML, Renderer, Seiten ohne Optionskette
 // Legenden- und Tooltip-Marker in der Linienfarbe zeichnen (sonst Palettenfarbe)
@@ -3408,7 +3408,7 @@ const rgba3=(c,a)=>{ c=String(c||"").trim(); let m=/^#([0-9a-f]{3})$/i.exec(c); 
 const tfOf=(key,def)=>{ const v=String(S["tf_"+key]??def); return TFMS3[v]?v:def; };
 const tfBar3=(key)=>seg3("k3","tf_"+key,TF3);
 const tog3=(key,label)=>`<span class="lbl3">${label}</span>`+seg3("k3",key,[[1,"An"],[0,"Aus"]]);
-const ckBar=(c,zs,ze,ms)=>{ try{ const g=c.getModel().getComponent("grid",0).coordinateSystem.getRect(), n=Math.max(1,(ze-zs)/ms+1); return Math.max(1,Math.min(16,g.width/n*0.72)); }catch(e){ return null; } };
+const ckBW=(pw,zs,ze,ms)=>Math.max(1,Math.min(36,pw/Math.max(1,(ze-zs)/ms)*0.7));
 const resetBtn3=key=>`<button class="btn ghost ckreset" data-ckreset="${key}" title="Doppelklick in den Chart setzt die Ansicht ebenfalls zurück">Ansicht zurücksetzen</button>`;
 document.addEventListener("click",e=>{ const b=e.target.closest("[data-ckreset]"); if(!b) return; delete ZS[b.dataset.ckreset]; render(); });
 function aggC(d,ms){ const o={ticks:[],open:[],high:[],low:[],close:[],volume:[]}; let cur=-1;
@@ -3418,11 +3418,23 @@ function aggC(d,ms){ const o={ticks:[],open:[],high:[],low:[],close:[],volume:[]
 async function loadTF(tf){
   tf=String(tf); const k=S.cur+tf, x=CND[k]||(CND[k]={t:[],o:[],h:[],l:[],c:[],v:[],at:0}); const ttl=Math.max(15000,Math.min(120000,TFMS3[tf]/3));
   if(x.busy || Date.now()-x.at<ttl) return x; x.busy=true;
-  const res=tf==="240"?"60":tf, n=tf==="240"?2000:(tf==="1D"?1500:1000), now=Date.now();
-  const r=await dRpc("public/get_tradingview_chart_data",{instrument_name:S.cur+"-PERPETUAL",start_timestamp:now-n*TFMS3[res],end_timestamp:now,resolution:res});
-  if(r&&r.ticks&&r.ticks.length){ let d=normC(r); if(tf==="240") d=aggC(d,TFMS3["240"]); Object.assign(x,{t:d.ticks.slice(),o:d.open.slice(),h:d.high.slice(),l:d.low.slice(),c:d.close.slice(),v:d.volume.slice()}); }
+  const res=tf==="240"?"60":tf, n=tf==="240"?2000:(tf==="1D"?1500:1000), now=Date.now(); let st=now-n*TFMS3[res]; if(tf==="240") st=Math.ceil(st/TFMS3["240"])*TFMS3["240"];
+  const r=await dRpc("public/get_tradingview_chart_data",{instrument_name:S.cur+"-PERPETUAL",start_timestamp:st,end_timestamp:now,resolution:res});
+  if(r&&r.ticks&&r.ticks.length){ let d=normC(r); if(tf==="240") d=aggC(d,TFMS3["240"]);
+    // ältere, beim Zurückscrollen nachgeladene Kerzen behalten
+    let j=0; const f0=d.ticks[0]; while(j<x.t.length&&x.t[j]<f0) j++;
+    Object.assign(x,{t:x.t.slice(0,j).concat(d.ticks),o:x.o.slice(0,j).concat(d.open),h:x.h.slice(0,j).concat(d.high),l:x.l.slice(0,j).concat(d.low),c:x.c.slice(0,j).concat(d.close),v:x.v.slice(0,j).concat(d.volume)}); }
   x.at=Date.now(); x.busy=false; scheduleRender(); return x;
 }
+// Wie bei TradingView: beim Zurückscrollen oder Herauszoomen ältere Kerzen nachladen (bis 5000 Kerzen)
+async function loadOlder(tf){ tf=String(tf); const x=CND[S.cur+tf]; if(!x||!x.t.length||x.busy||x.busyOld||x.noOld||x.t.length>=5000) return; x.busyOld=true;
+  try{ const res=tf==="240"?"60":tf, n=tf==="240"?2000:1000, end=x.t[0]-1; let st=end-n*TFMS3[res]; if(tf==="240") st=Math.ceil(st/TFMS3["240"])*TFMS3["240"];
+    const r=await dRpc("public/get_tradingview_chart_data",{instrument_name:S.cur+"-PERPETUAL",start_timestamp:st,end_timestamp:end,resolution:res});
+    if(r&&r.ticks&&r.ticks.length){ let d=normC(r); if(tf==="240") d=aggC(d,TFMS3["240"]); let m=0; while(m<d.ticks.length&&d.ticks[m]<x.t[0]) m++;
+      if(m>0){ x.t=d.ticks.slice(0,m).concat(x.t); x.o=d.open.slice(0,m).concat(x.o); x.h=d.high.slice(0,m).concat(x.h); x.l=d.low.slice(0,m).concat(x.l); x.c=d.close.slice(0,m).concat(x.c); x.v=d.volume.slice(0,m).concat(x.v); }
+      else x.noOld=true; }
+    else x.noOld=true; }catch(e){}
+  x.busyOld=false; scheduleRender(); }
 function liveTF(x,tf){ const p=(SPOTS.get("deribitp")||{}).px||spot; if(!p||!x.t.length) return; const ms=TFMS3[tf], b=Math.floor(Date.now()/ms)*ms, j=x.t.length-1;
   if(b>x.t[j]){ x.t.push(b); x.o.push(x.c[j]); x.h.push(Math.max(x.c[j],p)); x.l.push(Math.min(x.c[j],p)); x.c.push(p); x.v.push(0); }
   else if(b===x.t[j]){ x.c[j]=p; x.h[j]=Math.max(x.h[j],p); x.l[j]=Math.min(x.l[j],p); } }
@@ -3438,12 +3450,13 @@ function vpOf(x,s,e,ms,nb=48,vaPct=68){ const f=ckFit(x,s,e,ms), lo=f.lo, st=(f.
   while(acc<tot*vaPct/100 && (lo2>0||hi2<nb-1)){ const up=hi2<nb-1?vp[hi2+1]:-1, dn=lo2>0?vp[lo2-1]:-1; if(up>=dn){ hi2++; acc+=up; } else { lo2--; acc+=dn; } }
   return {st, rows:vp.map((v,i)=>[lo+st*(i+.5),v,i>=lo2&&i<=hi2?1:0,i===poc?1:0]).filter(r=>r[1]>0), poc:lo+st*(poc+.5), vah:lo+st*(hi2+1), val:lo+st*lo2}; }
 /* Chart-Einstellungen (wie bei ATAS: alles anpassbar, gilt für alle Kerzen-Charts) */
-const CK_DEF={style:"candle",up:"",dn:"",grid:1,pline:1,cross:1,gex:1,gexW:10,gexA:55,gexLbl:1,vp:1,vpW:16,vpBins:56,vpVA:68,vpLines:1,lvCall:1,lvPut:1,lvFlip:1,lvMp:1,lvExp:1,lvOther:1,volH:20};
+const CK_DEF={style:"candle",up:"",dn:"",grid:1,pline:1,cross:1,gex:1,gexW:10,gexA:55,gexLbl:1,vp:1,vpW:16,vpBins:56,vpVA:68,vpLines:1,lvCall:1,lvPut:1,lvFlip:1,lvMp:1,lvExp:1,lvOther:1,volH:20,zoomAnchor:"right"};
 const ckCfg=()=>Object.assign({},CK_DEF,S.ckCfg||{});
 const CK_UI=[["Kerzen",[["style","sel","Darstellung",[["candle","Kerzen"],["hollow","Hohle Kerzen"],["line","Linie"]]],["up","col","Farbe steigend"],["dn","col","Farbe fallend"],["grid","chk","Gitterlinien"],["pline","chk","Preislinie mit Preis"],["cross","chk","Fadenkreuz"],["volH","num","Volumen-Höhe %",5,40,1]]],
   ["GEX-Profil",[["gex","chk","anzeigen"],["gexW","num","Breite %",3,30,1],["gexA","num","Deckkraft %",10,100,5],["gexLbl","chk","Werte der 3 größten Strikes"]]],
   ["Volumenprofil",[["vp","chk","anzeigen"],["vpW","num","Breite %",5,40,1],["vpBins","num","Preisstufen",16,160,4],["vpVA","num","Value Area %",50,95,1],["vpLines","chk","POC, VAH, VAL als Linien"]]],
-  ["Levels",[["lvCall","chk","Call Walls"],["lvPut","chk","Put Walls"],["lvFlip","chk","Gamma Flip"],["lvMp","chk","Max Pain"],["lvExp","chk","Erwartete Tagesspanne"],["lvOther","chk","Absolute Gamma, Hedge Wall"]]]];
+  ["Levels",[["lvCall","chk","Call Walls"],["lvPut","chk","Put Walls"],["lvFlip","chk","Gamma Flip"],["lvMp","chk","Max Pain"],["lvExp","chk","Erwartete Tagesspanne"],["lvOther","chk","Absolute Gamma, Hedge Wall"]]],
+  ["Zoom",[["zoomAnchor","sel","Mausrad-Zoom",[["right","am rechten Rand (wie TradingView)"],["cursor","am Mauszeiger"]]]]]];
 const ckSetBtn=key=>`<button class="btn ghost cksetb" data-ckset="${key}" aria-label="Chart-Einstellungen" title="Chart-Einstellungen"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg> Einstellungen</button>`;
 function ckSetPanel(){ const c=ckCfg(); return '<div class="ckset" role="dialog" aria-label="Chart-Einstellungen"><div class="cksh"><b>Chart-Einstellungen</b><span class="mut">gelten für alle Kerzen-Charts</span><button class="iconbtn" data-ckclose aria-label="Schließen">✕</button></div><div class="cksg">'+CK_UI.map(([g,items])=>`<fieldset><legend>${g}</legend>`+items.map(([k,t,l,a,b2,s2])=>{
     if(t==="chk") return `<label class="ckr"><input type="checkbox" data-ckc="${k}" ${+c[k]?"checked":""}> ${l}</label>`;
@@ -3455,31 +3468,37 @@ document.addEventListener("click",e=>{ const b=e.target.closest("[data-ckset]");
   const d=e.target.closest("[data-ckdef]"); if(d){ const k=d.dataset.ckdef; S.ckCfg=Object.assign({},S.ckCfg,{[k]:""}); save(); render(); return; }
   if(e.target.closest("[data-ckall]")){ S.ckCfg={}; save(); const p=e.target.closest(".panel"); p.querySelector(".ckset").remove(); p.insertAdjacentHTML("beforeend",ckSetPanel()); render(); } });
 document.addEventListener("change",e=>{ const k=e.target.dataset&&e.target.dataset.ckc; if(!k) return; const el=e.target; let v=el.type==="checkbox"?(el.checked?1:0):el.type==="number"?Math.max(+el.min,Math.min(+el.max,+el.value||CK_DEF[k])):el.value; S.ckCfg=Object.assign({},S.ckCfg,{[k]:v}); save(); render(); });
-/* Zeichnet einen Kerzen-Chart mit freiem Zoom (Mausrad / Pinch), Verschieben (Ziehen), Auto-Skalierung der Preisachse.
+/* Zeichnet einen Kerzen-Chart mit Bedienung wie bei TradingView (siehe ckInit unten).
    o2: {levels:[[name,wert,farbe,gestrichelt]], prof:[[strike,gex]], heat:{data,dk,mx,rel}, vol:bool, vp:bool, show:anzahl} */
 function lvKind(n){ return /^Call/.test(n)?"lvCall":/^Put/.test(n)?"lvPut":/Flip|Vol Trigger/.test(n)?"lvFlip":/^Max Pain/.test(n)?"lvMp":/^Erw\./.test(n)?"lvExp":"lvOther"; }
 function ckDraw(elId,key,x,tf,o2={}){
   const c=ch(elId); if(!c||!x||!x.t.length) return null; const o=base(), ms=TFMS3[tf], n=x.t.length, lastT=x.t[n-1], cf=ckCfg();
-  let z=ZS[key]; if(!z||z.tf!==tf||z.cur!==S.cur){ z=ZS[key]={tf,cur:S.cur,s:x.t[Math.max(0,n-(o2.show||110))],e:lastT+ms*6,lastT}; }
+  let z=ZS[key]; if(!z||z.tf!==tf||z.cur!==S.cur){ z=ZS[key]={tf,cur:S.cur,s:x.t[Math.max(0,n-(o2.show||110))],e:lastT+ms*6,lastT,auto:true}; }
   else if(lastT>z.lastT){ if(z.e>=z.lastT-ms*0.5){ const d=lastT-z.lastT; z.s+=d; z.e+=d; } z.lastT=lastT; }
   const f=ckFit(x,z.s,z.e,ms), up=cf.up||css("--bull"), dn=cf.dn||css("--bear"), acc=css("--accent"), fg=css("--fg"), mut=css("--muted"), line=css("--line"), warn=css("--warn"), last=x.c[n-1];
+  if(z.auto!==false||!(z.hi>z.lo)){ z.auto=true; z.lo=f.lo; z.hi=f.hi; }
+  const bw=ckBW(c.getWidth()-84,z.s,z.e,ms);
   const series=[]; let heatIdx=-1;
   if(o2.heat && o2.heat.data.length){ const H=o2.heat; heatIdx=series.length;
     series.push({id:"heat",type:"custom",name:"GEX",clip:true,z:1,silent:true,encode:{x:0,y:1},data:H.data,
       renderItem:(p,api)=>{ const t=api.value(0), k=api.value(1), w=api.value(3); const a=api.coord([t,k+H.dk/2]), b=api.coord([t+w,k-H.dk/2]); return {type:"rect",shape:{x:a[0],y:a[1],width:Math.max(1,b[0]-a[0]),height:Math.max(1,b[1]-a[1])},style:{fill:api.visual("color")}}; }}); }
   const lvm=new Map(); for(const l of (o2.levels||[])){ if(!l[1]||!+cf[lvKind(l[0])]) continue; const k=Math.round(l[1]*100); if(lvm.has(k)) lvm.get(k)[0]+=" · "+l[0]; else lvm.set(k,[l[0],l[1],l[2],l[3]]); }
-  const lv=[...lvm.values()].map(([nm,v,col,dash])=>({yAxis:v,lineStyle:{color:col,type:dash?"dashed":"solid",width:1.1,opacity:.95},label:{formatter:nm+"  "+fmtNum(v),position:"insideStartTop",color:col,fontSize:10,fontFamily:"IBM Plex Mono"}}));
-  // Volumenprofil links
-  const vpOn=o2.vp!==false && +cf.vp && o2.vp, V=vpOn? vpOf(x,z.s,z.e,ms,+cf.vpBins,+cf.vpVA) : null;
-  if(V && +cf.vpLines){ lv.push({yAxis:V.poc,lineStyle:{color:warn,type:"dashed",width:1},label:{formatter:"VPOC  "+fmtNum(V.poc),position:"insideEndTop",color:warn,fontSize:10,fontFamily:"IBM Plex Mono"}});
+  const lv0=[...lvm.values()].map(([nm,v,col,dash])=>({yAxis:v,lineStyle:{color:col,type:dash?"dashed":"solid",width:1.1,opacity:.95},label:{formatter:nm+"  "+fmtNum(v),position:"insideStartTop",color:col,fontSize:10,fontFamily:"IBM Plex Mono"}}));
+  // Linien: Levels, VPOC/VAH/VAL des sichtbaren Bereichs, Preis-Alerts, Preislinie (wird beim Zoomen neu berechnet)
+  const mk=V=>{ const lv=lv0.slice();
+    if(V && +cf.vpLines){ lv.push({yAxis:V.poc,lineStyle:{color:warn,type:"dashed",width:1},label:{formatter:"VPOC  "+fmtNum(V.poc),position:"insideEndTop",color:warn,fontSize:10,fontFamily:"IBM Plex Mono"}});
     lv.push({yAxis:V.vah,lineStyle:{color:mut,type:"dotted",width:1},label:{formatter:"VAH  "+fmtNum(V.vah),position:"insideEndTop",color:mut,fontSize:10,fontFamily:"IBM Plex Mono"}});
     lv.push({yAxis:V.val,lineStyle:{color:mut,type:"dotted",width:1},label:{formatter:"VAL  "+fmtNum(V.val),position:"insideEndBottom",color:mut,fontSize:10,fontFamily:"IBM Plex Mono"}}); }
-  if(window.pxAlertLines) try{ for(const a of pxAlertLines()) lv.push(a); }catch(e){}
-  if(+cf.pline) lv.push({yAxis:last,lineStyle:{color:acc,type:"dotted",width:1},label:{formatter:fmtNum(last,last<100?2:0),position:"end",color:css("--on-accent"),backgroundColor:acc,padding:[2,4],borderRadius:2,fontSize:10.5,fontFamily:"IBM Plex Mono"}});
+    if(window.pxAlertLines) try{ for(const a of pxAlertLines()) lv.push(a); }catch(e){}
+    if(+cf.pline) lv.push({yAxis:last,lineStyle:{color:acc,type:"dotted",width:1},label:{formatter:fmtNum(last,last<100?2:0),position:"end",color:css("--on-accent"),backgroundColor:acc,padding:[2,4],borderRadius:2,fontSize:10.5,fontFamily:"IBM Plex Mono"}});
+    return lv; };
+  // Volumenprofil links
+  const vpOn=o2.vp!==false && +cf.vp && o2.vp, V=vpOn? vpOf(x,z.s,z.e,ms,+cf.vpBins,+cf.vpVA) : null;
+  const lv=mk(V);
   if(cf.style==="line") series.push({id:"cdl",type:"line",name:S.cur+"-PERP",z:3,showSymbol:false,data:x.t.map((t,i)=>[t,x.c[i]]),lineStyle:{color:fg,width:1.5},itemStyle:{color:fg},markLine:{symbol:"none",silent:true,animation:false,data:lv}});
-  else series.push({id:"cdl",type:"candlestick",name:S.cur+"-PERP",z:3,clip:true,large:false,barMaxWidth:16,data:x.t.map((t,i)=>[t,x.o[i],x.c[i],x.l[i],x.h[i]]),
+  else series.push({id:"cdl",type:"candlestick",name:S.cur+"-PERP",z:3,clip:true,large:false,barMaxWidth:36,barWidth:bw,data:x.t.map((t,i)=>[t,x.o[i],x.c[i],x.l[i],x.h[i]]),
     itemStyle:{color:cf.style==="hollow"?"transparent":up,color0:dn,borderColor:up,borderColor0:dn,borderWidth:1},markLine:{symbol:"none",silent:true,animation:false,data:lv}});
-  if(o2.vol) series.push({id:"vol",type:"bar",name:"Volumen",yAxisIndex:1,z:2,barMaxWidth:16,silent:true,data:x.t.map((t,i)=>({value:[t,x.v[i]||0],itemStyle:{color:rgba3(x.c[i]>=x.o[i]?up:dn,.32)}}))});
+  if(o2.vol) series.push({id:"vol",type:"bar",name:"Volumen",yAxisIndex:1,z:2,barMaxWidth:36,barWidth:bw,silent:true,data:x.t.map((t,i)=>({value:[t,x.v[i]||0],itemStyle:{color:rgba3(x.c[i]>=x.o[i]?up:dn,.32)}}))});
   if(V){ const vm=Math.max(...V.rows.map(r=>r[1]),1e-9); CKX[key]=Object.assign(CKX[key]||{},{vpm:vm,vpst:V.st});
     series.push({id:"vp",type:"custom",name:"Volumenprofil",clip:true,z:2,silent:true,encode:{y:1},data:V.rows.map(r=>[lastT,...r]),
       renderItem:(p,api)=>{ const cs=p.coordSys, P=CKX[key]||{}, k=api.value(1), v=api.value(2), va=api.value(3), pc=api.value(4), ya=api.coord([lastT,k+P.vpst*0.46])[1], yb=api.coord([lastT,k-P.vpst*0.46])[1], len=v/(P.vpm||1)*cs.width*(+ckCfg().vpW/100);
@@ -3498,25 +3517,108 @@ function ckDraw(elId,key,x,tf,o2={}){
     tooltip:{...o.tooltip,trigger:"axis",axisPointer:{type:+cf.cross?"cross":"line",label:{backgroundColor:css("--panel-2"),color:fg,fontFamily:"IBM Plex Mono",fontSize:10.5,formatter:p=>p.axisDimension==="y"?fmtNum(p.value,p.value<100?2:0):fmtDT(p.value)}},
       formatter:ps=>{ const p=(ps||[]).find(q=>q.seriesId==="cdl"); if(!p) return ""; const t=typeof p.axisValue==="number"?p.axisValue:(p.value||[])[0], i=x.t.indexOf(t); if(i<0) return fmtDT(t); const op=x.o[i], cl=x.c[i], lo=x.l[i], hi=x.h[i], ch2=op?(cl/op-1)*100:0;
         return `<b>${fmtDT(t)}</b><br>O ${fmtNum(op)} &nbsp;H ${fmtNum(hi)}<br>L ${fmtNum(lo)} &nbsp;C <b style="color:${cl>=op?up:dn}">${fmtNum(cl)}</b> (${ch2>=0?"+":""}${ch2.toFixed(2)} %)`+(x.v[i]?`<br>Volumen ${fmtNum(x.v[i],1)}`:""); }},
-    xAxis:{type:"time",axisLine:{lineStyle:{color:line}},axisTick:{show:false},axisLabel:{color:mut,fontSize:10.5,hideOverlap:true},splitLine:{show:!!+cf.grid,lineStyle:{color:line,opacity:.45}}},
-    yAxis:[{type:"value",position:"right",min:f.lo,max:f.hi,axisLine:{show:false},axisTick:{show:false},axisLabel:{color:mut,fontSize:10.5,formatter:v=>fmtNum(v,v<100?2:0)},splitLine:{show:!!+cf.grid,lineStyle:{color:line,opacity:.45}}},
+    xAxis:{type:"time",min:z.s,max:z.e,axisLine:{lineStyle:{color:line}},axisTick:{show:false},axisLabel:{color:mut,fontSize:10.5,hideOverlap:true},splitLine:{show:!!+cf.grid,lineStyle:{color:line,opacity:.45}}},
+    yAxis:[{type:"value",position:"right",min:z.lo,max:z.hi,axisLine:{show:false},axisTick:{show:false},axisLabel:{color:mut,fontSize:10.5,formatter:v=>fmtNum(v,v<100?2:0)},splitLine:{show:!!+cf.grid,lineStyle:{color:line,opacity:.45}}},
       {type:"value",show:false,min:0,max:f.vm*100/Math.max(5,+cf.volH),axisPointer:{show:false}}],
-    dataZoom:[{type:"inside",xAxisIndex:0,filterMode:"none",startValue:z.s,endValue:z.e,zoomOnMouseWheel:true,moveOnMouseMove:true,moveOnMouseWheel:false,preventDefaultMouseMove:true,minValueSpan:ms*8}],
     series};
   if(heatIdx>=0){ const H=o2.heat; opt.visualMap={show:true,orient:"horizontal",left:12,top:4,itemHeight:120,itemWidth:9,min:H.pos?0:(-H.mx||-1),max:H.mx||1,dimension:2,seriesIndex:heatIdx,calculable:false,text:[(H.lbl?H.lbl+" ":"")+(H.rel?"+max":H.pos?fmtNum(H.mx,0):fmtUsd(H.mx)),H.pos?"0":H.rel?"−max":fmtUsd(-H.mx)],textStyle:{color:mut,fontSize:10},
     inRange:{color:H.pos?[rgba3(acc,0),rgba3(acc,.22),rgba3(acc,.6)]:[rgba3(dn,.6),rgba3(dn,.16),rgba3(css("--panel-2")||"#000",0),rgba3(up,.16),rgba3(up,.6)]}}; }
-  c.setOption(opt,true); CKX[key]=Object.assign(CKX[key]||{},{x,ms,tf,o2});
-  { const bw=ckBar(c,z.s,z.e,ms); if(bw) c.setOption({series:[{id:"cdl",barWidth:bw}]}); }
-  if(!c.__ck){ c.__ck=key;
-    c.on("datazoom",()=>{ const k2=c.__ck, zz=ZS[k2], X=CKX[k2]; if(!zz||!X) return; const dz=(c.getOption().dataZoom||[])[0]; if(!dz) return; zz.s=dz.startValue; zz.e=dz.endValue; const ff=ckFit(X.x,zz.s,zz.e,X.ms), C2=ckCfg();
-      const upd={yAxis:[{min:ff.lo,max:ff.hi},{max:ff.vm*100/Math.max(5,+C2.volH)}]};
-      if(X.o2.vp && +C2.vp){ const V2=vpOf(X.x,zz.s,zz.e,X.ms,+C2.vpBins,+C2.vpVA); X.vpm=Math.max(...V2.rows.map(r=>r[1]),1e-9); X.vpst=V2.st; const lt=X.x.t[X.x.t.length-1]; upd.series=[{id:"vp",data:V2.rows.map(r=>[lt,...r])}]; }
-      const bw=ckBar(c,zz.s,zz.e,X.ms); if(bw) upd.series=(upd.series||[]).concat([{id:"cdl",barWidth:bw}]);
-      c.setOption(upd); });
-    c.getZr().on("dblclick",()=>{ delete ZS[c.__ck]; render(); });
-    c.getDom().addEventListener("contextmenu",ev=>{ ev.preventDefault(); try{ const r=c.getDom().getBoundingClientRect(), px=c.convertFromPixel({yAxisIndex:0},ev.clientY-r.top); if(px>0&&window.addPxAlert) addPxAlert(Math.round(px),"cross","aus Chart"); }catch(e){} }); }
+  c.setOption(opt,true); CKX[key]=Object.assign(CKX[key]||{},{x,ms,tf,o2,grid:opt.grid,mk});
+  ckInit(c,key,opt.grid);
+  if(z.s<x.t[0]+(z.e-z.s)*0.25) loadOlder(tf);
   return c;
 }
+
+/* ===== Bedienung wie bei TradingView =====
+   Mausrad = Zoom (Anker: rechter Rand oder Mauszeiger, einstellbar), Ziehen = Verschieben (bei manueller Preisachse auch senkrecht),
+   Preisachse ziehen = Preis strecken/stauchen (schaltet Auto aus), Doppelklick Preisachse oder „A“ = Auto-Skalierung,
+   Zeitachse ziehen = Zeit zoomen, Pinch auf Touch-Geräten, Tastatur: Strg + ↑/↓ zoomen, ←/→ verschieben, Alt + R zurücksetzen */
+let CK_HOVER=null;
+const ckX=dom=>{ const key=dom.__ckKey; return {c:echarts.getInstanceByDom(dom),key,z:ZS[key],X:CKX[key]}; };
+function ckRect(dom,X){ const r=dom.getBoundingClientRect(), g=X.grid; return {l:r.left+g.left,t:r.top+g.top,w:Math.max(20,r.width-g.left-g.right),h:Math.max(20,r.height-g.top-g.bottom)}; }
+const ckSpan=(sp,X,R)=>{ const t=X.x.t, ms=X.ms; return Math.max(ms*10,Math.min(sp,Math.max(ms*30,Math.min((t[t.length-1]-t[0])*1.25+ms*20,R.w*2*ms)))); };
+const ckPos=(z,X)=>{ const t=X.x.t, sp=z.e-z.s, maxE=t[t.length-1]+sp*0.85, minS=t[0]-sp*0.3; if(z.e>maxE){ z.e=maxE; z.s=maxE-sp; } if(z.s<minS){ z.s=minS; z.e=minS+sp; } };
+function ckZoom(dom,f,cx){ const {z,X}=ckX(dom); if(!z||!X) return; const R=ckRect(dom,X), sp0=z.e-z.s, sp=ckSpan(sp0*f,X,R);
+  if(ckCfg().zoomAnchor==="cursor"&&cx!=null){ const r=Math.max(0,Math.min(1,(cx-R.l)/R.w)), ta=z.s+r*sp0; z.s=ta-r*sp; z.e=z.s+sp; } else z.s=z.e-sp;
+  ckPos(z,X); ckViewQ(dom); }
+function ckPan(dom,dt){ const {z,X}=ckX(dom); if(!z||!X) return; z.s+=dt; z.e+=dt; ckPos(z,X); ckViewQ(dom); }
+function ckReset(dom){ delete ZS[dom.__ckKey]; render(); }
+function ckViewQ(dom){ if(dom.__q) return; dom.__q=requestAnimationFrame(()=>{ dom.__q=0; ckView(dom); }); }
+function ckAutoUI(dom,z){ const b=dom.querySelector(":scope > .ckab"); if(b) b.classList.toggle("on",!z||z.auto!==false); }
+function ckView(dom){ const {c,z,X}=ckX(dom); if(!c||!z||!X||!X.x||!X.x.t.length) return; const C2=ckCfg(), ff=ckFit(X.x,z.s,z.e,X.ms);
+  if(z.auto!==false){ z.lo=ff.lo; z.hi=ff.hi; }
+  const bw=ckBW(c.getWidth()-X.grid.left-X.grid.right,z.s,z.e,X.ms), ser=[{id:"cdl",barWidth:bw}]; if(X.o2.vol) ser.push({id:"vol",barWidth:bw});
+  let V2=null; if(X.o2.vp!==false && +C2.vp && X.o2.vp){ V2=vpOf(X.x,z.s,z.e,X.ms,+C2.vpBins,+C2.vpVA); X.vpm=Math.max(...V2.rows.map(r=>r[1]),1e-9); X.vpst=V2.st; const lt=X.x.t[X.x.t.length-1]; ser.push({id:"vp",data:V2.rows.map(r=>[lt,...r])}); }
+  if(X.mk) ser[0].markLine={data:X.mk(V2)};
+  c.setOption({xAxis:{min:z.s,max:z.e},yAxis:[{min:z.lo,max:z.hi},{max:ff.vm*100/Math.max(5,+C2.volH)}],series:ser});
+  ckAutoUI(dom,z);
+  if(z.s<X.x.t[0]+(z.e-z.s)*0.25) loadOlder(X.tf); }
+function ckAxisDrag(dom){ const pa=dom.querySelector(":scope > .ckpa"), ta=dom.querySelector(":scope > .ckta"); let A=null, T=null, tapP=0, tapT=0;
+  pa.addEventListener("pointerdown",ev=>{ ev.stopPropagation(); ev.preventDefault(); const {z,X}=ckX(dom); if(!z||!X) return; A={y:ev.clientY,lo:z.lo,hi:z.hi,h:ckRect(dom,X).h}; try{ pa.setPointerCapture(ev.pointerId); }catch(e){} });
+  pa.addEventListener("pointermove",ev=>{ if(!A||Math.abs(ev.clientY-A.y)<2) return; const {z}=ckX(dom); if(!z) return; const k=Math.exp((ev.clientY-A.y)/A.h*2.2), m=(A.lo+A.hi)/2, hw=(A.hi-A.lo)/2*k; z.auto=false; z.lo=m-hw; z.hi=m+hw; ckViewQ(dom); });
+  pa.addEventListener("pointerup",ev=>{ if(A&&Math.abs(ev.clientY-A.y)<3){ const now=Date.now(); if(now-tapP<400){ const {z}=ckX(dom); if(z){ z.auto=true; ckViewQ(dom); } tapP=0; } else tapP=now; } A=null; });
+  pa.addEventListener("pointercancel",()=>{ A=null; });
+  ta.addEventListener("pointerdown",ev=>{ ev.stopPropagation(); ev.preventDefault(); const {z,X}=ckX(dom); if(!z||!X) return; T={x:ev.clientX,s:z.s,e:z.e,R:ckRect(dom,X)}; try{ ta.setPointerCapture(ev.pointerId); }catch(e){} });
+  ta.addEventListener("pointermove",ev=>{ if(!T||Math.abs(ev.clientX-T.x)<2) return; const {z,X}=ckX(dom); if(!z||!X) return; const R=T.R, a=Math.max(10,R.l+R.w-T.x), b=Math.max(10,R.l+R.w-ev.clientX), sp=ckSpan((T.e-T.s)*a/b,X,R); z.e=T.e; z.s=T.e-sp; ckPos(z,X); ckViewQ(dom); });
+  ta.addEventListener("pointerup",ev=>{ if(T&&Math.abs(ev.clientX-T.x)<3){ const now=Date.now(); if(now-tapT<400){ const {z,X}=ckX(dom); if(z&&X){ const t=X.x.t, n=t.length; z.s=t[Math.max(0,n-((X.o2&&X.o2.show)||110))]; z.e=t[n-1]+X.ms*6; ckPos(z,X); ckViewQ(dom); } tapT=0; } else tapT=now; } T=null; });
+  ta.addEventListener("pointercancel",()=>{ T=null; }); }
+function ckInit(c,key,grid){ const dom=c.getDom(); dom.__ckKey=key; dom.classList.add("ckc");
+  if(!dom.querySelector(":scope > .ckpa")){
+    dom.insertAdjacentHTML("beforeend",'<div class="ckov ckpa" title="Ziehen = Preisachse strecken oder stauchen · Doppelklick = Auto-Skalierung"></div><div class="ckov ckta" title="Ziehen = Zeitachse zoomen · Doppelklick = Zeitachse zurücksetzen"></div>'
+      +'<button type="button" class="ckab on" title="Auto-Skalierung der Preisachse">A</button>'
+      +'<div class="cknav"><button type="button" data-ckz="out" title="Herauszoomen">−</button><button type="button" data-ckz="in" title="Hineinzoomen">+</button><button type="button" data-ckz="left" title="Nach links">‹</button><button type="button" data-ckz="right" title="Nach rechts">›</button><button type="button" data-ckz="reset" title="Ansicht zurücksetzen">⟲</button></div>');
+    ckAxisDrag(dom); }
+  const q=s2=>dom.querySelector(":scope > "+s2), pa=q(".ckpa"), ta=q(".ckta"), nv=q(".cknav");
+  pa.style.top=grid.top+"px"; pa.style.bottom=grid.bottom+"px"; pa.style.width=grid.right+"px";
+  ta.style.left=grid.left+"px"; ta.style.right=grid.right+"px"; ta.style.height=grid.bottom+"px"; nv.style.bottom=(grid.bottom+10)+"px";
+  ckAutoUI(dom,ZS[key]);
+  if(dom.__ckI) return; dom.__ckI=1; dom.style.touchAction="pan-y"; if(getComputedStyle(dom).position==="static") dom.style.position="relative";
+  const P=new Map(); let G=null;
+  dom.addEventListener("pointerenter",()=>{ CK_HOVER=dom; });
+  dom.addEventListener("pointerleave",()=>{ if(CK_HOVER===dom) CK_HOVER=null; });
+  dom.addEventListener("wheel",ev=>{ const {z,X}=ckX(dom); if(!z||!X) return; ev.preventDefault();
+    let dy=ev.deltaY, dx=ev.deltaX; if(ev.deltaMode===1){ dy*=33; dx*=33; } else if(ev.deltaMode===2){ dy*=400; dx*=400; }
+    const R=ckRect(dom,X);
+    if(!ev.ctrlKey&&(ev.shiftKey||Math.abs(dx)>Math.abs(dy))){ const d=Math.abs(dx)>Math.abs(dy)?dx:dy; ckPan(dom,d/R.w*(z.e-z.s)); return; }
+    ckZoom(dom,Math.exp(Math.max(-300,Math.min(300,dy))*(ev.ctrlKey?0.01:0.0016)),ev.clientX); },{passive:false});
+  dom.addEventListener("pointerdown",ev=>{ if(ev.target.closest(".ckov,.ckab,.cknav")) return; if(ev.pointerType==="mouse"&&ev.button!==0) return; const {z,X}=ckX(dom); if(!z||!X) return;
+    P.set(ev.pointerId,{x:ev.clientX,y:ev.clientY});
+    if(P.size>=2){ const [a,b]=[...P.values()]; G={pinch:1,d:Math.hypot(a.x-b.x,a.y-b.y)||1,s:z.s,e:z.e,cx:(a.x+b.x)/2}; }
+    else G={x:ev.clientX,y:ev.clientY,s:z.s,e:z.e,lo:z.lo,hi:z.hi,mv:0,touch:ev.pointerType!=="mouse"};
+    try{ dom.setPointerCapture(ev.pointerId); }catch(e){} });
+  dom.addEventListener("pointermove",ev=>{ if(!G||!P.has(ev.pointerId)) return; P.set(ev.pointerId,{x:ev.clientX,y:ev.clientY}); const {z,X}=ckX(dom); if(!z||!X) return; const R=ckRect(dom,X);
+    if(G.pinch){ if(P.size<2) return; const [a,b]=[...P.values()], d=Math.hypot(a.x-b.x,a.y-b.y)||1, sp0=G.e-G.s, sp=ckSpan(sp0*G.d/d,X,R);
+      if(ckCfg().zoomAnchor==="cursor"){ const r=Math.max(0,Math.min(1,(G.cx-R.l)/R.w)), t0=G.s+r*sp0; z.s=t0-r*sp; z.e=z.s+sp; } else { z.e=G.e; z.s=G.e-sp; }
+      ckPos(z,X); ckViewQ(dom); return; }
+    const dx=ev.clientX-G.x, dy=ev.clientY-G.y; if(!G.mv&&Math.hypot(dx,dy)<3) return; G.mv=1; dom.classList.add("ckgrab");
+    const sp=G.e-G.s, dt=-dx/R.w*sp; z.s=G.s+dt; z.e=G.e+dt; ckPos(z,X);
+    if(z.auto===false&&!G.touch&&G.hi>G.lo){ const dp=dy/R.h*(G.hi-G.lo); z.lo=G.lo+dp; z.hi=G.hi+dp; }
+    ckViewQ(dom); });
+  const end=ev=>{ P.delete(ev.pointerId); if(!P.size){ G=null; dom.classList.remove("ckgrab"); } else if(G&&G.pinch){ const {z}=ckX(dom), [a]=[...P.values()]; G=z?{x:a.x,y:a.y,s:z.s,e:z.e,lo:z.lo,hi:z.hi,mv:1,touch:true}:null; } };
+  dom.addEventListener("pointerup",end); dom.addEventListener("pointercancel",end);
+  dom.addEventListener("dblclick",ev=>{ if(ev.target.closest(".ckov,.ckab,.cknav")) return; ckReset(dom); });
+  dom.addEventListener("click",ev=>{ const b=ev.target.closest(".ckab,[data-ckz]"); if(!b) return; ev.stopPropagation(); const {z,X}=ckX(dom); if(!z||!X) return;
+    if(b.classList.contains("ckab")){ z.auto=z.auto===false; ckViewQ(dom); return; }
+    const k=b.dataset.ckz, sp=z.e-z.s; if(k==="in") ckZoom(dom,0.8); else if(k==="out") ckZoom(dom,1.25); else if(k==="left") ckPan(dom,-sp*0.2); else if(k==="right") ckPan(dom,sp*0.2); else if(k==="reset") ckReset(dom); });
+  dom.addEventListener("contextmenu",ev=>{ if(ev.target.closest(".ckab,.cknav")) return; ev.preventDefault(); try{ const c2=echarts.getInstanceByDom(dom), r=dom.getBoundingClientRect(), px=c2.convertFromPixel({yAxisIndex:0},ev.clientY-r.top); if(px>0&&window.addPxAlert) addPxAlert(Math.round(px),"cross","aus Chart"); }catch(e){} }); }
+document.addEventListener("keydown",ev=>{ const dom=CK_HOVER; if(!dom||!dom.isConnected) return; const tg=ev.target; if(tg&&(/^(INPUT|SELECT|TEXTAREA)$/.test(tg.tagName)||tg.isContentEditable)) return; const {z,X}=ckX(dom); if(!z||!X) return;
+  const mod=ev.ctrlKey||ev.metaKey, k=ev.key;
+  if(mod&&(k==="ArrowUp"||k==="ArrowDown")){ ev.preventDefault(); ckZoom(dom,k==="ArrowUp"?0.8:1.25); }
+  else if(!mod&&!ev.altKey&&(k==="ArrowLeft"||k==="ArrowRight")){ ev.preventDefault(); ckPan(dom,(k==="ArrowLeft"?-1:1)*(ev.shiftKey?10:1)*X.ms); }
+  else if(ev.altKey&&!mod&&ev.code==="KeyR"){ ev.preventDefault(); ckReset(dom); } });
+document.head.insertAdjacentHTML("beforeend",`<style id="ck-tv">
+.ckov{position:absolute;z-index:3;background:transparent}
+.ckpa{right:0;cursor:ns-resize;touch-action:none}
+.ckta{bottom:0;cursor:ew-resize;touch-action:none}
+.ckab{position:absolute;right:6px;bottom:3px;z-index:4;min-width:22px;height:19px;padding:0 5px;border-radius:4px;border:1px solid var(--line);background:var(--panel-2);color:var(--muted);font:700 10.5px/17px "IBM Plex Mono",monospace;cursor:pointer}
+.ckab.on{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.cknav{position:absolute;left:50%;transform:translateX(-50%);z-index:4;display:flex;gap:4px;opacity:0;pointer-events:none;transition:opacity .15s}
+.ckc:hover>.cknav{opacity:1;pointer-events:auto}
+.cknav button{width:28px;height:26px;border-radius:6px;border:1px solid var(--line);background:var(--panel-2);color:var(--fg);cursor:pointer;font:600 14px/1 "IBM Plex Sans",sans-serif;padding:0;box-shadow:0 1px 3px rgba(0,0,0,.15)}
+.cknav button:hover{border-color:var(--accent);color:var(--accent)}
+.ckgrab,.ckgrab *{cursor:grabbing!important}
+@media (hover:none){.cknav{display:none}}
+</style>`);
 
 /* --- GEX-Profil: Kerzen + Gamma-Oberfläche im Zeitverlauf + GEX je Strike am rechten Rand --- */
 V3.gexprof = P2("GEX-Profil","Kerzen mit Gamma-Oberfläche im Zeitverlauf, GEX je Strike am rechten Rand",'<div class="form">'+tfBar3("gp")+seg3("k3","gpScale",[["abs","Absolut"],["rel","Relativ"]])+tog3("gpVol","Volumen")+resetBtn3("gp")+ckSetBtn("gp")+'</div><div class="cards" id="gp-cards"></div><div class="chart" id="c-gpheat" style="height:min(74vh,680px)"></div><div class="note" id="gp-note"></div>',"wide")+
@@ -3530,7 +3632,7 @@ R3.gexprof = (lb,lv) => {
   const ks=[...new Set(lb.map(b=>b.strike))].filter(k=>k>=lo&&k<=hi).sort((a,b)=>a-b), dk=ks.length>1? Math.max(100,Math.min(...ks.slice(1).map((k,i)=>k-ks[i]))) : spot*0.01;
   const levels=[["Call Wall",K.calls[0]&&K.calls[0][0],css("--bull")],["Put Wall",K.puts[0]&&K.puts[0][0],css("--bear")],["Flip",K.flip,css("--warn"),1]];
   if(x&&x.t.length) ckDraw("c-gpheat","gp",x,tf,{heat:{data,dk,mx,rel,pos:gk==="oi",lbl:{gex:"GEX",dex:"DEX",vex:"VEX",chex:"CHEX",oi:"OI"}[gk]},prof:K.g,vp:false,levels,vol:!!+(S.gpVol??0)});
-  $("gp-note").textContent = (snaps.length? `${snaps.length} Gamma-Snapshots gespeichert (alle 5 Minuten, solange das Terminal offen ist). Grün = Dealer long Gamma (bremst), rot = short Gamma (beschleunigt). `:"Die Gamma-Oberfläche entsteht aus Snapshots alle 5 Minuten; lass das Terminal offen, dann füllt sie sich. ")+"Mausrad = Zoom, Ziehen = Verschieben, Doppelklick = Ansicht zurücksetzen.";
+  $("gp-note").textContent = (snaps.length? `${snaps.length} Gamma-Snapshots gespeichert (alle 5 Minuten, solange das Terminal offen ist). Grün = Dealer long Gamma (bremst), rot = short Gamma (beschleunigt). `:"Die Gamma-Oberfläche entsteht aus Snapshots alle 5 Minuten; lass das Terminal offen, dann füllt sie sich. ")+"Mausrad = Zoom, Ziehen = Verschieben, an der Preisachse ziehen = Preis strecken (Doppelklick dort oder „A“ = wieder automatisch), Doppelklick in den Chart = Ansicht zurücksetzen.";
   const exps=expiries(lb); if(S.gpExp!=="all" && !exps.includes(S.gpExp)) S.gpExp="all"; fillOne("gp-exp",["all"].concat(exps),S.gpExp||"all"); const se=$("gp-exp"); if(se&&se.options[0]) se.options[0].text="Alle Verfälle";
   const g=gexByStrike(S.gpExp==="all"?lb:lb.filter(b=>b.exp===S.gpExp),0.15), o=base(), c2=ch("c-gpbar");
   if(c2) c2.setOption({...o,grid:{...o.grid,right:24,bottom:50},tooltip:{...o.tooltip,valueFormatter:v=>typeof v==="number"?fmtUsd(v):v},xAxis:ax(o,{type:"category",data:g.map(x=>String(x[0])),axisLabel:{...o._axis.axisLabel,rotate:45,formatter:v=>fmtNum(+v)}}),yAxis:ax(o,{type:"value",axisLabel:{...o._axis.axisLabel,formatter:v=>fmtUsd(v)}}),
@@ -3538,7 +3640,7 @@ R3.gexprof = (lb,lv) => {
 };
 
 /* --- Key Levels: Kerzen mit allen GEX-Levels und GEX-Profil --- */
-V3.keylv = P2("Key Levels","GEX-gewichtet, alle Verfälle",'<div class="cards" id="kl-cards"></div><div class="form">'+tfBar3("kl")+tog3("klVol","Volumen")+resetBtn3("kl")+ckSetBtn("kl")+'</div><div class="chart" id="c-kl" style="height:min(70vh,620px)"></div><div class="note">Mausrad = Zoom, Ziehen = Verschieben, Doppelklick = Ansicht zurücksetzen. Die Preisachse passt sich dem sichtbaren Bereich an.</div>',"wide")+
+V3.keylv = P2("Key Levels","GEX-gewichtet, alle Verfälle",'<div class="cards" id="kl-cards"></div><div class="form">'+tfBar3("kl")+tog3("klVol","Volumen")+resetBtn3("kl")+ckSetBtn("kl")+'</div><div class="chart" id="c-kl" style="height:min(70vh,620px)"></div><div class="note">Bedienung wie bei TradingView: Mausrad = Zoom, Ziehen = Verschieben, an der Preisachse ziehen = Preis strecken oder stauchen (Doppelklick dort oder „A“ = wieder automatisch), an der Zeitachse ziehen = Zeit zoomen. Beim Herauszoomen wird ältere Historie nachgeladen. Strg + ↑/↓ zoomt, ←/→ verschiebt, Alt + R oder Doppelklick in den Chart setzt die Ansicht zurück, Rechtsklick setzt einen Preis-Alert.</div>',"wide")+
   P2("Level-Tabelle","mit Abstand zum Spot und GEX-Stärke",'<div id="kl-t"></div><div class="note">Call Wall = größte positive GEX (Widerstand), Put Wall = größte negative GEX (Unterstützung), Flip = Netto-GEX kreuzt null. Absolute Gamma = Strike mit dem größten Betrag. Hedge Wall = stärkste negative GEX unter dem Spot. Vol Trigger ≈ Flip: darunter steigt die Volatilität tendenziell.</div>',"wide");
 R3.keylv = (lb,lv) => {
   const tf=tfOf("kl","60"), x=CND[S.cur+tf]; loadTF(tf); if(x) liveTF(x,tf);
@@ -3600,13 +3702,15 @@ function ofLoop(){ ofRAF=0; const v=S.view; if(!OF_VIEWS.has(v)||document.hidden
 function ofKick(){ if(!ofRAF) ofRAF=requestAnimationFrame(ofLoop); }
 function ofNow(){ ofLast[S.view]=0; ofKick(); }
 document.addEventListener("visibilitychange",()=>{ if(!document.hidden) ofKick(); });
-function ofInteract(cv,h){ if(!cv||cv.__of) return; cv.__of=1; let drag=null, pinch=null; const pts=new Map();
+function ofInteract(cv,h){ if(!cv||cv.__of) return; cv.__of=1; let drag=null, pinch=null, axm=null; const pts=new Map();
+  const zone=e=>{ if(!h.ax) return null; const r=cv.getBoundingClientRect(), x=e.clientX-r.left, y=e.clientY-r.top; if(h.ax.y&&x>r.width-(h.ax.r||70)&&y<r.height-(h.ax.b||0)) return "y"; if(h.ax.x&&y>r.height-(h.ax.b||18)&&x<r.width-(h.ax.r||70)) return "x"; return null; };
   cv.addEventListener("wheel",e=>{ e.preventDefault(); h.wheel&&h.wheel(e); ofNow(); },{passive:false});
-  cv.addEventListener("pointerdown",e=>{ pts.set(e.pointerId,{x:e.clientX,y:e.clientY}); if(pts.size===2){ const [a,b]=[...pts.values()]; pinch={d:Math.hypot(a.x-b.x,a.y-b.y)}; drag=null; } else drag={x:e.clientX,y:e.clientY}; try{ cv.setPointerCapture(e.pointerId); }catch(err){} });
+  cv.addEventListener("pointerdown",e=>{ pts.set(e.pointerId,{x:e.clientX,y:e.clientY}); if(pts.size===2){ const [a,b]=[...pts.values()]; pinch={d:Math.hypot(a.x-b.x,a.y-b.y)}; drag=null; axm=null; } else { axm=zone(e); drag={x:e.clientX,y:e.clientY}; } try{ cv.setPointerCapture(e.pointerId); }catch(err){} });
   cv.addEventListener("pointermove",e=>{ if(pts.has(e.pointerId)) pts.set(e.pointerId,{x:e.clientX,y:e.clientY});
     if(pinch && pts.size===2){ const [a,b]=[...pts.values()], d=Math.hypot(a.x-b.x,a.y-b.y); if(h.wheel) h.wheel({deltaY:(pinch.d-d)*2,shiftKey:false,offsetX:(a.x+b.x)/2-cv.getBoundingClientRect().left,offsetY:(a.y+b.y)/2-cv.getBoundingClientRect().top}); pinch.d=d; ofNow(); return; }
-    if(drag){ const dx=e.clientX-drag.x, dy=e.clientY-drag.y; drag={x:e.clientX,y:e.clientY}; h.drag&&h.drag(dx,dy,e); ofNow(); } else if(h.hover){ const r=cv.getBoundingClientRect(); h.hover(e.clientX-r.left,e.clientY-r.top); ofNow(); } });
-  const up=e=>{ pts.delete(e.pointerId); if(pts.size<2) pinch=null; if(!pts.size) drag=null; };
+    if(drag){ const dx=e.clientX-drag.x, dy=e.clientY-drag.y; drag={x:e.clientX,y:e.clientY}; if(axm==="y") h.ax.y(dy); else if(axm==="x") h.ax.x(dx); else h.drag&&h.drag(dx,dy,e); ofNow(); }
+    else { if(h.ax){ const zz=zone(e); cv.style.cursor=zz==="y"?"ns-resize":zz==="x"?"ew-resize":""; } if(h.hover){ const r=cv.getBoundingClientRect(); h.hover(e.clientX-r.left,e.clientY-r.top); ofNow(); } } });
+  const up=e=>{ pts.delete(e.pointerId); if(pts.size<2) pinch=null; if(!pts.size){ drag=null; axm=null; } };
   cv.addEventListener("pointerup",up); cv.addEventListener("pointercancel",up);
   cv.addEventListener("pointerleave",()=>{ if(h.hover){ h.hover(null,null); ofNow(); } });
   cv.addEventListener("dblclick",()=>{ h.reset&&h.reset(); ofNow(); }); }
@@ -3699,9 +3803,9 @@ function fpAgg(tfMs,mul){ const out=new Map();
 const ofWrap=(id,h="min(74vh,700px)")=>`<div class="ofwrap" style="height:${h}"><canvas id="${id}"></canvas></div>`;
 V3.tape2 = P2("Time & Sales","Trades aller Börsen in Echtzeit (Futures und Spot)",'<div class="form" id="ts-ven"></div><div class="form">'+num3("ts-min",S.tsMin??10000,1000,"Min. Größe $",110)+num3("ts-big",S.tsBig??250000,10000,"Großer Trade ab $",120)+seg3("k3","tsAgg",[[1,"Zusammengefasst"],[0,"Einzeln"]])+seg3("k3","tsPause",[[0,"Live"],[1,"Pause"]])+'</div><div class="cards" id="ts-cards"></div><div class="tw tsw"><table class="ts"><thead><tr><th class="l">Zeit</th><th class="l">Börse</th><th>Preis</th><th>Größe</th><th>Wert</th><th class="l">Seite</th></tr></thead><tbody id="ts-t"></tbody></table></div><div class="note">Zusammengefasst: Teil-Ausführungen derselben Börse und Seite innerhalb von 100 ms werden wie in einem Smart Tape zu einer Order gebündelt.</div>',"wide");
 V3.dom = P2("DOM","Orderbuch Binance Perp mit gehandeltem Volumen je Preis",'<div class="form">'+seg3("k3","domMul",[[1,"Stufe 1×"],[2,"2×"],[5,"5×"],[10,"10×"],[20,"20×"]])+'<button class="btn ghost" id="dom-center">Zentrieren</button><button class="btn ghost" id="dom-reset">Volumen zurücksetzen</button><span class="mut" id="dom-info"></span></div>'+ofWrap("dom-cv")+'<div class="note">Mausrad = Leiter verschieben, Doppelklick = wieder auf den aktuellen Preis zentrieren. Gekauft/Verkauft = aggressive Market-Orders seit dem Öffnen der Seite bzw. dem letzten Zurücksetzen.</div>',"wide");
-V3.heatmap = P2("Orderbuch-Heatmap","Liquidität im Orderbuch über die Zeit, Binance Perp, Trades als Blasen, Farbe nach Template",'<div class="form">'+seg3("k3","hmSpan",[[300,"5 min"],[900,"15 min"],[1800,"30 min"]])+seg3("k3","hmCon",[[1,"Kontrast niedrig"],[2,"mittel"],[3,"hoch"]])+num3("hm-bub",S.hmBub??50000,10000,"Blasen ab $",110)+'<button class="btn ghost" id="hm-follow">Preis folgen</button></div>'+ofWrap("hm-cv")+'<div class="note" id="hm-note">Die Aufzeichnung startet mit dem Öffnen dieser Seite (eine Spalte pro Sekunde, bis 30 Minuten). Mausrad = Preis-Zoom, Umschalt + Mausrad = Zeit-Zoom, Ziehen = Verschieben, Doppelklick = zurücksetzen.</div>',"wide");
-V3.footprint = P2("Footprint","Cluster-Chart: Verkäufe × Käufe je Preis, Binance Perp",'<div class="form">'+seg3("k3","fpTf",[[1,"1m"],[5,"5m"],[15,"15m"],[30,"30m"],[60,"1h"]])+seg3("k3","fpMul",[[1,"Cluster 1×"],[2,"2×"],[5,"5×"],[10,"10×"],[20,"20×"]])+seg3("k3","fpMode",[["ba","Bid × Ask"],["delta","Delta"],["vol","Volumen"]])+seg3("k3","fpImb",[[0,"Imbalance aus"],[3,"Imbalance 300 %"],[4,"400 %"]])+'</div>'+ofWrap("fp-cv")+'<div class="note" id="fp-note">Der Footprint wird live aus allen Trades aufgebaut und lokal gespeichert (8 Stunden). Beim Öffnen werden die letzten Minuten nachgeladen. Mausrad = Zoom, Umschalt + Mausrad = Preis-Zoom, Ziehen = Verschieben, Doppelklick = zurücksetzen.</div>',"wide");
-V3.tpo = P2("Market Profile (TPO)","30-Minuten-Perioden je Tag (UTC), Binance Perp",'<div class="form">'+seg3("k3","tpoDays",[[3,"3 Tage"],[5,"5 Tage"],[10,"10 Tage"]])+seg3("k3","tpoMul",[[5,"TPO 5×"],[10,"10×"],[20,"20×"],[50,"50×"]])+seg3("k3","tpoStyle",[["l","Buchstaben"],["b","Blöcke"]])+tog3("tpoComp","Composite")+tog3("tpoNaked","nPOC (Volumen)")+num3("tpo-va",S.tpoVA??68,1,"Value Area %",60)+'</div><div class="cards" id="tpo-cards"></div>'+ofWrap("tpo-cv","min(76vh,760px)")+'<div class="note">POC = Preis mit den meisten TPOs, Value Area = 68 % der TPOs um den POC (innerhalb Akzentfarbe, außerhalb zweite Template-Farbe), IB = Initial Balance (erste Stunde). Composite = Volumenprofil über alle angezeigten Tage mit cVAH, cPOC und cVAL. nPOC = Volumen-POC eines Tages, der seitdem nicht mehr gehandelt wurde. Mausrad = Preis-Zoom, Ziehen oder Umschalt + Mausrad = Verschieben, Doppelklick = zurücksetzen.</div>',"wide");
+V3.heatmap = P2("Orderbuch-Heatmap","Liquidität im Orderbuch über die Zeit, Binance Perp, Trades als Blasen, Farbe nach Template",'<div class="form">'+seg3("k3","hmSpan",[[300,"5 min"],[900,"15 min"],[1800,"30 min"]])+seg3("k3","hmCon",[[1,"Kontrast niedrig"],[2,"mittel"],[3,"hoch"]])+num3("hm-bub",S.hmBub??50000,10000,"Blasen ab $",110)+'<button class="btn ghost" id="hm-follow">Preis folgen</button></div>'+ofWrap("hm-cv")+'<div class="note" id="hm-note">Die Aufzeichnung startet mit dem Öffnen dieser Seite (eine Spalte pro Sekunde, bis 30 Minuten). Mausrad = Preis-Zoom, Umschalt + Mausrad = Zeit-Zoom, Ziehen = Verschieben, an der Preisachse ziehen = Preis-Zoom, Doppelklick = zurücksetzen.</div>',"wide");
+V3.footprint = P2("Footprint","Cluster-Chart: Verkäufe × Käufe je Preis, Binance Perp",'<div class="form">'+seg3("k3","fpTf",[[1,"1m"],[5,"5m"],[15,"15m"],[30,"30m"],[60,"1h"]])+seg3("k3","fpMul",[[1,"Cluster 1×"],[2,"2×"],[5,"5×"],[10,"10×"],[20,"20×"]])+seg3("k3","fpMode",[["ba","Bid × Ask"],["delta","Delta"],["vol","Volumen"]])+seg3("k3","fpImb",[[0,"Imbalance aus"],[3,"Imbalance 300 %"],[4,"400 %"]])+'</div>'+ofWrap("fp-cv")+'<div class="note" id="fp-note">Der Footprint wird live aus allen Trades aufgebaut und lokal gespeichert (8 Stunden). Beim Öffnen werden die letzten Minuten nachgeladen. Mausrad = Zoom, Umschalt + Mausrad = Preis-Zoom, Ziehen = Verschieben, an der Preis- oder Zeitachse ziehen = zoomen wie bei TradingView, Doppelklick = zurücksetzen.</div>',"wide");
+V3.tpo = P2("Market Profile (TPO)","30-Minuten-Perioden je Tag (UTC), Binance Perp",'<div class="form">'+seg3("k3","tpoDays",[[3,"3 Tage"],[5,"5 Tage"],[10,"10 Tage"]])+seg3("k3","tpoMul",[[5,"TPO 5×"],[10,"10×"],[20,"20×"],[50,"50×"]])+seg3("k3","tpoStyle",[["l","Buchstaben"],["b","Blöcke"]])+tog3("tpoComp","Composite")+tog3("tpoNaked","nPOC (Volumen)")+num3("tpo-va",S.tpoVA??68,1,"Value Area %",60)+'</div><div class="cards" id="tpo-cards"></div>'+ofWrap("tpo-cv","min(76vh,760px)")+'<div class="note">POC = Preis mit den meisten TPOs, Value Area = 68 % der TPOs um den POC (innerhalb Akzentfarbe, außerhalb zweite Template-Farbe), IB = Initial Balance (erste Stunde). Composite = Volumenprofil über alle angezeigten Tage mit cVAH, cPOC und cVAL. nPOC = Volumen-POC eines Tages, der seitdem nicht mehr gehandelt wurde. Mausrad = Preis-Zoom, Ziehen oder Umschalt + Mausrad = Verschieben, an der Preisachse ziehen = Preis-Zoom, Doppelklick = zurücksetzen.</div>',"wide");
 for(const v of OF_VIEWS) NB3.add(v);
 S.tsAgg??=1; S.tsPause??=0; S.domMul??=2; S.hmSpan??=900; S.hmCon??=2; S.fpTf??=1; S.fpMul??=2; S.fpMode??="ba"; S.fpImb??=3; S.tpoDays??=5; S.tpoMul??=10; S.tpoStyle??="l"; S.tpoNaked??=1; S.tpoComp??=1; S.tpoVA??=68;
 S.tsVen=Object.assign({bnp:1,byp:1,okp:1,drp:1,bns:1,cbs:1},S.tsVen||{});
@@ -3773,7 +3877,8 @@ function themeLut(){ const c=ofc(), heat=css("--heat")||c.acc, k=heat+"|"+c.ligh
 R3.heatmap = () => { obStart(); const cv=$("hm-cv"); ofInteract(cv,{
   wheel:e=>{ if(e.shiftKey){ const v=[300,900,1800]; let i=v.indexOf(+S.hmSpan||900); i=Math.max(0,Math.min(2,i+(e.deltaY>0?1:-1))); S.hmSpan=v[i]; sync3(); } else HV.range=Math.max(0.0006,Math.min(0.015,HV.range*(e.deltaY>0?1.15:1/1.15))); },
   drag:(dx,dy)=>{ const C=$("hm-cv"); if(!C) return; const H=C.clientHeight-20; if(HV.follow){ const l=OBH.cols[OBH.cols.length-1]; HV.center=l?(l.bb+l.ba)/2:spot; HV.follow=false; } HV.center+=dy/H*2*HV.range*HV.center; const span=+S.hmSpan||900, W=C.clientWidth-150; HV.off=Math.max(0,Math.min(OBH.cols.length-10,HV.off+Math.round(dx/W*span))); },
-  hover:(x,y)=>{ HV.hx=x; HV.hy=y; }, reset:()=>{ HV.follow=true; HV.off=0; HV.range=0.004; } }); ofKick(); };
+  hover:(x,y)=>{ HV.hx=x; HV.hy=y; }, reset:()=>{ HV.follow=true; HV.off=0; HV.range=0.004; },
+  ax:{r:74,y:dy=>{ HV.range=Math.max(0.0006,Math.min(0.015,HV.range*Math.exp(dy/150))); }} }); ofKick(); };
 OF_DRAW.heatmap = () => {
   const C=cvSetup("hm-cv"); if(!C) return; const {g,W,H}=C, c=ofc(); g.clearRect(0,0,W,H);
   const cols=OBH.cols; if(!OB.ready||cols.length<2){ cvMsg(g,W,H,OB.ready?"Aufzeichnung läuft, die ersten Sekunden sammeln sich …":"Verbinde mit dem Binance-Orderbuch …"); return; }
@@ -3815,7 +3920,8 @@ const FV = {colW:118,rowH:17,off:0,follow:true,pc:0,hx:null,hy:null};
 R3.footprint = () => { fpInit(); fpBackfill(); const cv=$("fp-cv"); ofInteract(cv,{
   wheel:e=>{ if(e.shiftKey) FV.rowH=Math.max(7,Math.min(30,FV.rowH*(e.deltaY>0?1/1.1:1.1))); else FV.colW=Math.max(14,Math.min(260,FV.colW*(e.deltaY>0?1/1.12:1.12))); },
   drag:(dx,dy)=>{ const st=ofBase()*(+S.fpMul||2); if(FV.follow){ FV.pc=PERP.binance.last||spot; FV.follow=false; } FV.pc+=dy/FV.rowH*st; FV.off=Math.max(0,FV.off+dx/FV.colW); },
-  hover:(x,y)=>{ FV.hx=x; FV.hy=y; }, reset:()=>{ FV.follow=true; FV.off=0; FV.colW=118; FV.rowH=17; } }); ofKick(); };
+  hover:(x,y)=>{ FV.hx=x; FV.hy=y; }, reset:()=>{ FV.follow=true; FV.off=0; FV.colW=118; FV.rowH=17; },
+  ax:{r:72,b:18,y:dy=>{ FV.rowH=Math.max(7,Math.min(30,FV.rowH*Math.exp(-dy/120))); },x:dx=>{ FV.colW=Math.max(14,Math.min(260,FV.colW*Math.exp(-dx/150))); }} }); ofKick(); };
 OF_DRAW.footprint = () => {
   const C=cvSetup("fp-cv"); if(!C) return; const {g,W,H}=C, c=ofc(); g.clearRect(0,0,W,H); fpInit();
   const tf=(+S.fpTf||1)*6e4, mul=+S.fpMul||2, st=FP.base*mul, dec=ofDec(st), mode=S.fpMode||"ba", imb=+S.fpImb||0, all=fpAgg(tf,mul);
@@ -3868,7 +3974,7 @@ function tpoProfiles(){ const days=+S.tpoDays||5, st=ofBase()*(+S.tpoMul||10), p
   // nPOC nur aus dem Volumenprofil: VPOC eines Tages, den der Preis seitdem nicht mehr gehandelt hat
   const naked=[]; for(const p of P.slice(0,-1)){ const lo=p.vpoc*st, hi=lo+st, end=p.d+864e5; if(!TPO.kl.some(k=>k[0]>=end&&k[3]<=hi&&k[2]>=lo)) naked.push({d:p.d,b:p.vpoc}); }
   return {P,st,comp,C,cLo,cHi,naked}; }
-R3.tpo = () => { tpoLoad(); const cv=$("tpo-cv"); ofInteract(cv,{wheel:e=>{ if(e.shiftKey) TPV.dy+=e.deltaY>0?-3:3; else TPV.z=Math.max(0.6,Math.min(8,TPV.z*(e.deltaY>0?1/1.12:1.12))); },drag:(dx,dy)=>{ TPV.dy+=dy/(TPV.rh||8); },hover:(x,y)=>{ TPV.hx=x; TPV.hy=y; },reset:()=>{ TPV.dy=0; TPV.z=1; }}); ofKick(); };
+R3.tpo = () => { tpoLoad(); const cv=$("tpo-cv"); ofInteract(cv,{wheel:e=>{ if(e.shiftKey) TPV.dy+=e.deltaY>0?-3:3; else TPV.z=Math.max(0.6,Math.min(8,TPV.z*(e.deltaY>0?1/1.12:1.12))); },drag:(dx,dy)=>{ TPV.dy+=dy/(TPV.rh||8); },hover:(x,y)=>{ TPV.hx=x; TPV.hy=y; },reset:()=>{ TPV.dy=0; TPV.z=1; },ax:{r:78,y:dy=>{ TPV.z=Math.max(0.6,Math.min(8,TPV.z*Math.exp(-dy/150))); }}}); ofKick(); };
 OF_DRAW.tpo = () => {
   tpoLoad(); const Cv=cvSetup("tpo-cv"); if(!Cv) return; const {g,W,H}=Cv, c=ofc(); g.clearRect(0,0,W,H);
   if(!TPO.kl.length){ cvMsg(g,W,H,"Lade 30-Minuten-Kerzen von Binance …"); return; }
