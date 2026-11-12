@@ -17,7 +17,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.5.0/echarts.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/echarts-gl@2.0.9/dist/echarts-gl.min.js" onload="window.__gl=1" onerror="window.__gl=0"></script>
-<script>/* I18N-BEGIN */window.TQI_I18N_V="20261112-082345";
+<script>/* I18N-BEGIN */window.TQI_I18N_V="20261112-083917";
 /* TQI Sprach-Engine: Deutsch ist Standard. Andere Sprachen übersetzen Texte, Attribute und Chart-Beschriftungen zur Laufzeit. */
 (function(){
   var LANGS=[["de","Deutsch"],["en","English"],["es","Español"],["fr","Français"]];
@@ -2784,7 +2784,7 @@ window.addEventListener("beforeunload", saveX);
     const hgt=Math.min(4,Math.abs(v)*4), w=100/N; out+=`<rect x="${i*w+w*0.18}" y="${v>=0?4-hgt:4}" width="${w*0.64}" height="${hgt}" fill="var(${v>=0?"--pos":"--neg"})"/>`; }
   el.innerHTML=out; })();
 /* S3-BEGIN */
-const TQI_BUILD="20261112-082345";
+const TQI_BUILD="20261112-083917";
 /* ====================== Session 3: Infrastruktur ====================== */
 const V3 = {}, R3 = {}, NB3 = new Set();   // Seiten-HTML, Renderer, Seiten ohne Optionskette
 // Legenden- und Tooltip-Marker in der Linienfarbe zeichnen (sonst Palettenfarbe)
@@ -4531,13 +4531,16 @@ const _restartIM = restart; restart = function(){ _restartIM(); IM.h=[]; IM.est=
 addEventListener("pagehide",()=>{ try{ if(IM.loaded) IDB.set(imKey(),IM.h); }catch(e){} });
 imLoad();
 
-const IM_G=[["gex","GEX"],["dex","DEX"],["vex","VEX"],["chex","CHEX"],["flow","Net Flow"]];
-const IM_IV=[[1,"1m"],[2,"2m"],[3,"3m"],[5,"5m"],[10,"10m"],[15,"15m"],[30,"30m"],[60,"1h"]];
-const IM_W=[[3,"3 h"],[6,"6 h"],[12,"12 h"],[24,"24 h"],[48,"48 h"],[72,"72 h"]];
-const IM_N=[[3,"±3"],[5,"±5"],[10,"±10"],[15,"±15"]];
-S.imG??="gex"; S.imIv??=5; S.imW??=6; S.imN??=5; S.imMode??="val";
-const imForm = () => '<div class="form imf">'+seg3("k3","imG",IM_G)+'<span class="lbl3">Intervall</span>'+seg3("k3","imIv",IM_IV)+'<span class="lbl3">Zeitraum</span>'+seg3("k3","imW",IM_W)
-  +'<span class="lbl3">Strikes</span>'+seg3("k3","imN",IM_N)+'<span class="immode"></span></div>';
+const IM_G=[["gex","Gamma (GEX)"],["dex","Delta (DEX)"],["vex","Vanna (VEX)"],["chex","Charm (CHEX)"],["flow","Net Flow (Prämie)"]];
+const IM_IV=[[1,"1 Min"],[2,"2 Min"],[3,"3 Min"],[5,"5 Min"],[10,"10 Min"],[15,"15 Min"],[30,"30 Min"],[60,"1 Std"]];
+const IM_W=[[3,"3 Std"],[6,"6 Std"],[12,"12 Std"],[24,"24 Std"],[48,"48 Std"],[72,"72 Std"]];
+const IM_N=[[3,"±3 Strikes"],[5,"±5 Strikes"],[10,"±10 Strikes"],[15,"±15 Strikes"]];
+const IM_M={greek:[["val","Werte"],["diff","Veränderung je Intervall"]], flow:[["val","je Intervall"],["cum","kumuliert"]]};
+S.imG??="gex"; S.imIv??=5; S.imW??=(innerWidth<700?3:6); S.imN??=5; S.imMode??="val";
+const imOpts = o => o.map(([v,l])=>`<option value="${v}">${l}</option>`).join("");
+const imSel = (k,o,tip) => `<select class="imsel" data-imk="${k}" aria-label="${tip}" title="${tip}">${imOpts(o)}</select>`;
+const imForm = () => '<div class="form imf">'+imSel("imG",IM_G,"Größe")+imSel("imIv",IM_IV,"Intervall")+imSel("imW",IM_W,"Zeitraum")+imSel("imN",IM_N,"Strikes um den Kursbereich")+imSel("imMode",IM_M.greek,"Anzeige")+'</div>';
+document.addEventListener("change",e=>{ const k=e.target.dataset && e.target.dataset.imk; if(!k) return; const v=e.target.value; S[k]=isNaN(+v)? v : +v; save(); IM.last={}; render(); });
 
 // Kurs je Intervall-Ende aus den Perp-Kerzen
 const imTf = iv => iv<5?"1":iv<15?"5":iv<30?"15":iv<60?"30":"60";
@@ -4589,10 +4592,8 @@ function imRender(elId, noteId, lb){
   const c=ch(elId); if(!c || !spot) return;
   const g=S.imG||"gex", flow=g==="flow"; let mode=S.imMode||"val"; if(flow && mode==="diff") mode="val"; if(!flow && mode==="cum") mode="val";
   // Modus-Schalter passend zur Größe
-  const host=c.getDom().closest("article"), mw=host && host.querySelector(".immode");
-  S.imMode=mode;
-  if(mw){ const want=flow?"flow":"greek"; if(mw.dataset.k!==want){ mw.dataset.k=want; mw.innerHTML='<span class="lbl3">Anzeige</span>'+seg3("k3","imMode",flow?[["val","je Intervall"],["cum","kumuliert"]]:[["val","Werte"],["diff","Veränderung"]]); } }
-  sync3();
+  const host=c.getDom().closest("article"); S.imMode=mode;
+  if(host) host.querySelectorAll("select[data-imk]").forEach(sl=>{ const k=sl.dataset.imk; if(k==="imMode"){ const want=flow?"flow":"greek"; if(sl.dataset.set!==want){ sl.dataset.set=want; sl.innerHTML=imOpts(IM_M[want]); } } if(sl.value!==String(S[k])) sl.value=String(S[k]); });
   const now=Date.now(), sigR=[g,S.imIv,S.imW,S.imN,mode,S.cur,S.histDate||"",document.documentElement.dataset.skin,IM.h.length,snaps.length,c.getWidth(),c.getHeight(),flow?trades.length+histTrades.length:0,(CND[S.cur+imTf(+S.imIv||5)]||{t:[]}).t.length].join("|");
   if(IM.last[elId] && IM.last[elId].sig===sigR && now-IM.last[elId].t<4000) return; IM.last[elId]={sig:sigR,t:now};
   // Zeitraster
@@ -4607,46 +4608,52 @@ function imRender(elId, noteId, lb){
   const pts=[], abs=[];
   for(let i=0;i<nb;i++){ const row=V[i]; if(!row) continue; for(let r=0;r<ks.length;r++){ const v=row[r]; if(!v || !isFinite(v)) continue; abs.push(Math.abs(v)); pts.push([bk[i]+Ims/2, ks[r], v, G.est[i]?1:0]); } }
   abs.sort((a,b)=>a-b); const vmax=abs.length? (abs[Math.min(abs.length-1,Math.floor(abs.length*0.985))]||abs[abs.length-1]||1) : 1;
-  const grid={left:66,right:44,top:34,bottom:58}, pw=Math.max(80,c.getWidth()-grid.left-grid.right), ph=Math.max(80,c.getHeight()-grid.top-grid.bottom);
+  { const thr=vmax*(flow?0.02:0.03); for(let q=pts.length-1;q>=0;q--) if(Math.abs(pts[q][2])<thr) pts.splice(q,1); }
+  const grid={left:66,right:82,top:56,bottom:58}, pw=Math.max(80,c.getWidth()-grid.left-grid.right), ph=Math.max(80,c.getHeight()-grid.top-grid.bottom);
   const dz=IM.dz[elId]||{}, fx=(dz.xe!=null?(dz.xe-dz.xs)/100:1)||1, fy=(dz.ye!=null?(dz.ye-dz.ys)/100:1)||1;
   const maxD=Math.max(4,Math.min(30,Math.min(ph/ks.length/fy*0.92, pw/nb/fx*1.1)));
   const PC=css("--pos"), NC=css("--neg"), acc=css("--accent"), mut=css("--muted"), o=base();
-  const step=ks.length>1? (ks[ks.length-1]-ks[0])/(ks.length-1) : ks[0]*0.01;
+  const gaps=new Map(); for(let i=1;i<ks.length;i++){ const d=+(ks[i]-ks[i-1]).toFixed(6); gaps.set(d,(gaps.get(d)||0)+1); }
+  const step=ks.length>1? [...gaps.entries()].sort((a,b)=>b[1]-a[1]||a[0]-b[0])[0][0] : ks[0]*0.01, every=Math.max(1,Math.ceil(ks.length/12)), fg=css("--fg");
   // geschätzter Bereich (zusammenhängend ab dem Anfang)
   let ea=-1, eb=-1; for(let i=0;i<nb;i++){ if(G.est[i]){ if(ea<0) ea=i; eb=i; } else if(ea>=0 && V[i]) break; }
-  const lbl={gex:"GEX",dex:"DEX",vex:"VEX",chex:"CHEX",flow:"Net Flow"}[g]+(mode==="diff"?" Δ":mode==="cum"?" kumuliert":"");
+  const lbl={gex:"GEX",dex:"DEX",vex:"VEX",chex:"CHEX",flow:"Net Flow"}[g]+(mode==="diff"?" Δ":mode==="cum"?" kumuliert":""), pn=flow?["bullisch","bärisch"]:["Plus","Minus"];
   const line=bk.map((b,i)=>P[i]==null? null : [b+Ims/2,P[i]]).filter(Boolean);
   const curName=S.cur+" $"+fmtNum(spot,spot<100?2:0);
+  const lastP=line.length? line[line.length-1][1] : null;
   c.setOption({backgroundColor:"transparent",animation:false,textStyle:o.textStyle,grid,
-    legend:{top:4,left:"center",itemWidth:14,itemHeight:8,textStyle:{color:mut,fontSize:11},data:[lbl,curName]},
+    title:{text:`Interval Map (${lbl}) · ${S.cur}`,left:"center",top:2,textStyle:{color:fg,fontSize:13,fontWeight:600,fontFamily:"IBM Plex Sans, sans-serif"}},
+    legend:{top:26,left:"center",itemWidth:10,itemHeight:10,itemGap:16,selectedMode:false,textStyle:{color:mut,fontSize:11},data:[{name:pn[0],icon:"circle"},{name:pn[1],icon:"circle"},{name:curName}]},
     tooltip:{...o.tooltip,trigger:"item",formatter:p=>p.seriesType==="scatter"?
       `${fmtDT(p.value[0]-Ims/2)} – ${new Date(p.value[0]+Ims/2).toLocaleTimeString(LOC,{hour:"2-digit",minute:"2-digit"})}<br>Strike <b>${fmtNum(p.value[1])}</b><br>${lbl}: <b>${fmtSigned(p.value[2])}</b>${p.value[3]?" (geschätzt)":""}` :
       `${fmtDT(p.value[0])}<br>${S.cur} <b>${fmtNum(p.value[1],p.value[1]<100?2:0)}</b>`},
     xAxis:{type:"time",min:start,max:end,axisLine:{lineStyle:{color:css("--line")}},axisTick:{show:false},axisLabel:{color:mut,fontSize:10.5,hideOverlap:true},splitLine:{show:false}},
-    yAxis:{type:"value",name:"Strike",nameTextStyle:{color:mut,fontSize:10},min:ks[0]-step*0.6,max:ks[ks.length-1]+step*0.6,axisLine:{show:false},axisTick:{show:false},
-      axisLabel:{color:mut,fontSize:10.5,formatter:v=>fmtNum(v)},splitLine:{show:true,lineStyle:{color:css("--line"),opacity:.35}}},
+    yAxis:{type:"value",min:ks[0]-step,max:ks[ks.length-1]+step,interval:step,axisLine:{show:false},axisTick:{show:false},
+      axisLabel:{color:mut,fontSize:10.5,showMinLabel:false,showMaxLabel:false,formatter:v=>Math.round(v/step)%every===0? fmtNum(v) : ""},splitLine:{show:true,lineStyle:{color:css("--line"),opacity:.5}}},
     dataZoom:[{type:"inside",xAxisIndex:0,filterMode:"none",start:dz.xs??0,end:dz.xe??100},{type:"slider",xAxisIndex:0,filterMode:"none",bottom:6,height:16,start:dz.xs??0,end:dz.xe??100,showDetail:false,borderColor:css("--line"),fillerColor:rgba3(acc,.12),handleStyle:{color:acc}},
       {type:"slider",yAxisIndex:0,filterMode:"none",right:8,width:14,start:dz.ys??0,end:dz.ye??100,showDetail:false,borderColor:css("--line"),fillerColor:rgba3(acc,.12),handleStyle:{color:acc}}],
-    series:[{type:"scatter",name:lbl,data:pts,progressive:0,symbolSize:d=>Math.max(1.6,Math.min(1,Math.pow(Math.abs(d[2])/vmax,flow?0.4:0.5))*maxD),
+    series:[{type:"scatter",name:pn[0],data:[],itemStyle:{color:PC}},{type:"scatter",name:pn[1],data:[],itemStyle:{color:NC}},
+      {type:"scatter",name:lbl,data:pts,progressive:0,symbolSize:d=>Math.max(1.6,Math.min(1,Math.pow(Math.abs(d[2])/vmax,flow?0.4:0.5))*maxD),
         itemStyle:{color:p=>rgba3(p.value[2]>=0?PC:NC,p.value[3]?.42:.92)},emphasis:{scale:1.25},z:2},
       {type:"line",name:curName,data:line,showSymbol:false,smooth:false,lineStyle:{color:acc,width:2},itemStyle:{color:acc},z:5,
-        markArea:{silent:true,itemStyle:{color:rgba3(mut,.07)},label:{color:mut,fontSize:10,position:"insideTop"},data: ea>=0? [[{name:"Schätzung aus aktuellem OI",xAxis:bk[ea]},{xAxis:bk[eb]+Ims}]] : []}}]});
+        endLabel:{show:lastP!=null,formatter:()=>fmtNum(lastP,lastP<100?2:0),color:css("--on-accent"),backgroundColor:acc,padding:[2,5],borderRadius:3,fontSize:10.5,fontFamily:"IBM Plex Mono"},
+        markArea:{silent:true,itemStyle:{color:rgba3(mut,.08)},label:{color:mut,fontSize:10,position:"insideTop"},data: ea>=0? [[{name:"Schätzung",xAxis:bk[ea]},{xAxis:bk[eb]+Ims}]] : []}}]});
   if(!c.__im){ c.__im=elId; c.on("datazoom",()=>{ const d=c.getOption().dataZoom||[]; IM.dz[c.__im]={xs:d[0]?d[0].start:0,xe:d[0]?d[0].end:100,ys:d[2]?d[2].start:0,ye:d[2]?d[2].end:100};
     clearTimeout(IM.dzT); IM.dzT=setTimeout(()=>{ IM.last[c.__im]=null; scheduleRender(); },450); }); }
   // Untertitel und Hinweis
-  const sm=host && host.querySelector(".ph small"); if(sm && host.querySelector(".imf")) sm.textContent=`${lbl} je Strike · ${Iv<60?Iv+"-Minuten":"1-Stunden"}-Intervalle`;
-  const n=$(noteId); if(n){ const first=IM.h.length? IM.h[0].t : null, sp=t=>`<span>${t}</span> `;
+  const sm=host && host.querySelector(".ph small"); if(sm && host.querySelector(".imf")) sm.textContent=`${lbl} je Strike im Zeitverlauf`;
+  const n=$(noteId); if(n){ const sp=t=>`<span>${t}</span> `;
     const html=(auto? sp(`Intervall automatisch auf ${Iv} Minuten erhöht (höchstens 600 Spalten).`):"")+(flow?
-      sp("Net Flow = Netto-Prämie je Strike und Intervall: Call-Käufe und Put-Verkäufe zählen positiv, Call-Verkäufe und Put-Käufe negativ. Grundlage sind die geladenen Trades im Zeitfenster oben (Heute, 24 h, 3 T, 7 T).") :
-      sp("Blasengröße = Betrag, Farbe = Plus oder Minus.")+(first? sp("Jede Minute aufgezeichnet seit")+`<b>${fmtDT(first)}</b>`+sp(", solange das Terminal offen ist (72 h im Browser).") : sp("Die Minuten-Aufzeichnung startet jetzt und läuft, solange das Terminal offen ist."))
-      +sp("Blassere Blasen davor = Schätzung aus dem aktuellen Open Interest."))+sp("Schieberegler unten und rechts zoomen Zeit und Strikes.");
+      sp("Blase = Netto-Prämie je Strike und Intervall. Bullisch = Call-Käufe und Put-Verkäufe, bärisch = Call-Verkäufe und Put-Käufe. Daten: geladene Trades im Zeitfenster oben.") :
+      sp("Blase = Betrag, Farbe = Plus oder Minus. Grauer Bereich = Schätzung aus dem aktuellen Open Interest, danach jede Minute aufgezeichnet, solange das Terminal offen ist."))
+      +sp("Mausrad zoomt, Ziehen verschiebt, die Schieberegler unten und rechts zoomen Zeit und Strikes.");
     if(n.__h!==html){ n.__h=html; n.innerHTML=html; } } }
 
 V3.imap = P2("Interval Map","GEX je Strike im Zeitverlauf",imForm()+'<div class="chart" id="c-imap" style="height:min(78vh,760px)"></div><div class="note" id="im-note"></div>',"wide");
 R3.imap = lb => imRender("c-imap","im-note",lb);
 // bisherige Interval Map auf „Gamma-Profil & Levels“ nutzt dieselbe Darstellung samt Bedienleiste
 (()=>{ const el=document.getElementById("c-interval"); if(!el) return; const art=el.closest("article"); if(art && !art.querySelector(".imf")){ el.insertAdjacentHTML("beforebegin",imForm()); el.style.height="min(66vh,620px)"; } })();
-document.head.insertAdjacentHTML("beforeend",`<style>.imf{flex-wrap:wrap;row-gap:6px}.imf .lbl3{margin-left:10px}</style>`);
+document.head.insertAdjacentHTML("beforeend",`<style>.imf{display:flex;flex-wrap:wrap;gap:8px}.imf .imsel{min-width:0;font-weight:600}</style>`);
 
 /* ====================== Session 3: Werkzeuge, Strategie, Quant ====================== */
 const dLb = () => liveFrom(books.deribit);
