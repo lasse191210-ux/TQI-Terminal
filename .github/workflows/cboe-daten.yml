@@ -1,0 +1,36 @@
+name: CBOE-Daten
+# Lädt alle 15 Minuten während der US-Handelszeit die verzögerten CBOE-Optionsketten
+# und veröffentlicht sie im Zweig "cboe-data" (nur ein Commit, keine wachsende Historie).
+on:
+  schedule:
+    - cron: "*/15 13-21 * * 1-5"
+    - cron: "40 23 * * 1-5"
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [".github/workflows/cboe-daten.yml", ".github/cboe/**"]
+permissions:
+  contents: write
+concurrency:
+  group: cboe-daten
+  cancel-in-progress: true
+jobs:
+  laden:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github/cboe
+      - name: CBOE-Daten laden
+        run: python3 .github/cboe/slim.py
+      - name: Im Zweig cboe-data veröffentlichen
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd out
+          git init -q
+          git checkout -q -b cboe-data
+          git add .
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -qm "CBOE-Daten $(date -u +%Y-%m-%dT%H:%MZ)"
+          git push -qf "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" cboe-data
