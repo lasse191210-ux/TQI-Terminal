@@ -1,11 +1,11 @@
 name: CBOE-Daten
-# Lädt alle 15 Minuten während der US-Handelszeit die verzögerten CBOE-Optionsketten (plus einmal nach Schluss
+# Lädt alle 15 Minuten (Minuten abseits der vollen Stunde, dort startet GitHub zuverlässiger) während der US-Handelszeit die verzögerten CBOE-Optionsketten (plus einmal nach Schluss
 # und einmal vor der Eröffnung, wenn das neue Open Interest da ist) und veröffentlicht sie im Zweig "cboe-data" (nur ein Commit, keine wachsende Historie).
 on:
   schedule:
-    - cron: "*/15 13-21 * * 1-5"
-    - cron: "40 23 * * 1-5"
-    - cron: "30 11 * * 1-5"
+    - cron: "7,22,37,52 13-21 * * 1-5"
+    - cron: "41 23 * * 1-5"
+    - cron: "33 11 * * 1-5"
   workflow_dispatch:
   push:
     branches: [main]

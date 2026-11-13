@@ -17,7 +17,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.5.0/echarts.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/echarts-gl@2.0.9/dist/echarts-gl.min.js" onload="window.__gl=1" onerror="window.__gl=0"></script>
-<script>/* I18N-BEGIN */window.TQI_I18N_V="20261112-210734";
+<script>/* I18N-BEGIN */window.TQI_I18N_V="20261113-072039";
 /* TQI Sprach-Engine: Deutsch ist Standard. Andere Sprachen übersetzen Texte, Attribute und Chart-Beschriftungen zur Laufzeit. */
 (function(){
   var LANGS=[["de","Deutsch"],["en","English"],["es","Español"],["fr","Français"]];
@@ -2784,7 +2784,7 @@ window.addEventListener("beforeunload", saveX);
     const hgt=Math.min(4,Math.abs(v)*4), w=100/N; out+=`<rect x="${i*w+w*0.18}" y="${v>=0?4-hgt:4}" width="${w*0.64}" height="${hgt}" fill="var(${v>=0?"--pos":"--neg"})"/>`; }
   el.innerHTML=out; })();
 /* S3-BEGIN */
-const TQI_BUILD="20261112-210734";
+const TQI_BUILD="20261113-072039";
 /* ====================== Session 3: Infrastruktur ====================== */
 const V3 = {}, R3 = {}, NB3 = new Set();   // Seiten-HTML, Renderer, Seiten ohne Optionskette
 // Legenden- und Tooltip-Marker in der Linienfarbe zeichnen (sonst Palettenfarbe)
@@ -4745,11 +4745,15 @@ function painCurve(rows, ks, mult){ return ks.map(X=>{ let p=0; for(const r of r
 function maxPainOf(rows, mult){ const ks=[...new Set(rows.filter(r=>r.oi>0).map(r=>r.k))].sort((a,b)=>a-b); let b=null; for(const x of painCurve(rows,ks,mult)) if(!b||x[1]<b[1]) b=x; return b?b[0]:null; }
 const ZM=new Map(); function memoZ(key,fn){ if(ZM.has(key)) return ZM.get(key); const v=fn(); ZM.set(key,v); if(ZM.size>40) ZM.delete(ZM.keys().next().value); return v; }
 // Strikes im Bereich; bei zu vielen Zeilen in runde Schritte bündeln
-function strikeWin(L, lo, hi, maxN, minN, S0){
+// grid > 0: Strikes kleinerer Börsen auf das Raster der Börse mit dem meisten OI legen (gleichmäßige Leiter)
+function strikeWin(L, lo, hi, maxN, minN, S0, grid){
+  if(grid>0 && minN){ lo=Math.min(lo,S0-grid*minN/2); hi=Math.max(hi,S0+grid*minN/2); }
   let R=L.filter(o=>o.k>=lo && o.k<=hi);
-  if(minN && R.length<minN && L.length){ const nr=[...L].sort((a,b)=>Math.abs(a.k-S0)-Math.abs(b.k-S0)).slice(0,minN); lo=Math.min(lo,...nr.map(o=>o.k)); hi=Math.max(hi,...nr.map(o=>o.k)); R=L.filter(o=>o.k>=lo && o.k<=hi); }
-  if(R.length<=maxN) return {R, st:0};
-  const raw=(hi-lo)/maxN, p=Math.pow(10,Math.floor(Math.log10(raw))), st=[1,2,2.5,5,10].map(f=>f*p).find(s=>s>=raw)||10*p, m=new Map();
+  if(!(grid>0) && minN && R.length<minN && L.length){ const nr=[...L].sort((a,b)=>Math.abs(a.k-S0)-Math.abs(b.k-S0)).slice(0,minN); lo=Math.min(lo,...nr.map(o=>o.k)); hi=Math.max(hi,...nr.map(o=>o.k)); R=L.filter(o=>o.k>=lo && o.k<=hi); }
+  let st= grid>0 && R.some(o=>Math.abs(o.k/grid-Math.round(o.k/grid))>1e-6)? grid : 0;
+  if(R.length<=maxN && !st) return {R, st:0};
+  if(!st || (hi-lo)/st>maxN){ const raw=(hi-lo)/maxN, p=Math.pow(10,Math.floor(Math.log10(raw))); st=Math.max(st,[1,2,2.5,5,10].map(f=>f*p).find(s=>s>=raw)||10*p); }
+  const m=new Map();
   for(const o of R){ const k=+(Math.round(o.k/st)*st).toFixed(6); let q=m.get(k); if(!q){ q={k,gc:0,gp:0,oc:0,op:0,vc:0,vp:0,d:0}; m.set(k,q); } for(const f of ["gc","gp","oc","op","vc","vp","d"]) q[f]+=o[f]; }
   return {R:[...m.values()].sort((a,b)=>a.k-b.k), st};
 }
@@ -4855,7 +4859,12 @@ function zdTrades(e, eTs){
   const t0=eTs-DAY, all=VLIST.every(v=>S.venues[v]), out=[];
   const add=t=>{ if(t.exp!==e || t.ts<t0 || !t.prem) return; if(!all && !S.venues[t.venue]) return; if(S.filterAll && !passFilter(t)) return; out.push(t); };
   for(const t of ZD.x) add(t); for(const t of trades) add(t); return out; }
-const zdLiveRows = (lb,e) => lb.filter(b=>b.exp===e).map(b=>({k:b.strike, cp:b.cp, expTs:b.expTs, oi:b.open_interest||0, vol:b.volume||0, iv:b.sig, gamma:b.g.gamma, delta:b.g.delta, px:(b.mark_price||0)*b.F}));
+const zdLiveRows = (lb,e) => lb.filter(b=>b.exp===e).map(b=>({k:b.strike, cp:b.cp, expTs:b.expTs, oi:b.open_interest||0, vol:b.volume||0, iv:b.sig, gamma:b.g.gamma, delta:b.g.delta, px:(b.mark_price||0)*b.F, venue:b.venue}));
+// Strike-Raster der Börse mit dem meisten Open Interest (häufigster Abstand nahe am Kurs)
+function liveGrid(rows, S0){ const by=new Map(); for(const r of rows) by.set(r.venue,(by.get(r.venue)||0)+r.oi); const top=[...by.entries()].sort((a,b)=>b[1]-a[1])[0]; if(!top) return 0;
+  const ks=[...new Set(rows.filter(r=>r.venue===top[0] && Math.abs(r.k/S0-1)<0.08).map(r=>r.k))].sort((a,b)=>a-b), cnt=new Map();
+  for(let i=1;i<ks.length;i++){ const g=+(ks[i]-ks[i-1]).toFixed(6); if(g>0) cnt.set(g,(cnt.get(g)||0)+1); }
+  let best=0, bc=0; for(const [g,c] of cnt) if(c>bc || (c===bc && g<best)){ best=g; bc=c; } return best; }
 
 V3.zdte = P2("0DTE","Optionen des nächsten Verfalls",'<div class="form zdf">'+zdSel("zdM","Markt")+zdSel("zdE","Verfall")+zdSel("zdV","Ansicht")+zdSel("zdR","Strike-Bereich")+'<span class="zdst" id="zd-st"></span></div><div class="cards" id="zd-cards"></div><div class="chart" id="c-zd" style="height:520px"></div><div class="note" id="zd-note"></div>',"wide")
   + P2("Net Flow 0DTE","Prämie seit Beginn des 0DTE-Tages",'<div class="chart" id="c-zdf" style="height:340px"></div><div class="note">Calls netto und Puts netto = gekaufte minus verkaufte Prämie (Aggressor-Seite), kumuliert ab 24 Stunden vor dem Verfall. Steigende Calls und fallende Puts sprechen für bullischen Flow.</div>',"","zd-p2")
@@ -4914,7 +4923,7 @@ R3.zdte = (lb) => {
   // Charts (höchstens alle 3 Sekunden neu)
   const sig=[S.zdM,S.cur,E.key,ver,S.zdV,S.zdR,trs.length,document.documentElement.dataset.skin,innerWidth].join("|");
   if(ZD.last.sig!==sig){ ZD.last.sig=sig;
-    const half=B.em? Math.max(S.zdR*B.em, S0*0.01) : S0*0.03, W=strikeWin(B.L, S0-half, S0+half, 64, {1.5:8,2.5:14,4:24}[S.zdR]||14, S0);
+    const half=B.em? Math.max(S.zdR*B.em, S0*0.01) : S0*0.03, W=strikeWin(B.L, S0-half, S0+half, 64, {1.5:8,2.5:14,4:24}[S.zdR]||14, S0, live? memoZ("zdg|"+S.cur+"|"+E.key+"|"+Math.floor(now/60e3), ()=>liveGrid(rows,S0)) : 0);
     let R=W.R;
     if(S.zdV==="flow"){ const idx=new Map(R.map((o,i)=>[o.k,i])); R=R.map(o=>({...o,fb:0,fs:0}));
       for(const t of trs){ const k=W.st? +(Math.round(t.strike/W.st)*W.st).toFixed(6) : t.strike, i=idx.get(k); if(i==null) continue; if(t.bull) R[i].fb+=t.prem; else R[i].fs+=t.prem; } }
@@ -4931,7 +4940,7 @@ R3.zdte = (lb) => {
       tb.innerHTML = act.length? tbl3(["Strike","Typ","Volumen","OI","Vol/OI","IV","Prämie ≈"], act.map(r=>`<tr><td class="l">${kf(r.k)}</td><td class="l ${r.cp==="C"?"pos":"neg"}">${r.cp==="C"?"Call":"Put"}</td><td>${fmtNum(r.vol)}</td><td>${fmtNum(r.oi)}</td><td>${r.oi?(r.vol/r.oi).toFixed(2):"–"}</td><td>${r.iv?(r.iv*100).toFixed(1)+" %":"–"}</td><td>${fmtUsd(r.vol*r.px*100)}</td></tr>`),"free zdt")
         : `<div class="empty" style="padding:14px;color:var(--muted)">Heute noch kein Volumen in diesem Verfall.</div>`; }
     const n=$("zd-note"); if(n){ const h=(live? sp("0DTE = Optionen des nächsten Verfalls. Deribit & Co. verfallen täglich um 08:00 UTC.")+" "+sp(`Open Interest und Volumen in ${S.cur}, Net Premium aus den geladenen Trades.`)
-        : sp("Daten: CBOE, 15 Minuten verzögert, während der US-Handelszeit alle 15 Minuten aktualisiert. Ein Kontrakt = 100 Aktien.")+" "+sp("Volumen = heute gehandelte Kontrakte."))
+        : sp("Daten: CBOE, 15 Minuten verzögert, während der US-Handelszeit etwa alle 15 bis 30 Minuten aktualisiert. Ein Kontrakt = 100 Aktien.")+" "+sp("Volumen = heute gehandelte Kontrakte."))
         +" "+sp("GEX = Gamma × Open Interest × Kurs² × 1 %, Calls positiv, Puts negativ. Graues Band = erwartete Bewegung bis zum Verfall (±1σ aus der ATM-IV). Max Pain = Kurs, bei dem Optionskäufer am wenigsten ausgezahlt bekommen.")
         +(W.st? " "+sp(`Strikes in Schritten von ${kf(W.st)} gebündelt.`) : "")+(S.histDate? " "+sp("Historischer Tag aktiv: 0DTE zeigt immer den aktuellen Stand.") : "");
       if(n.__h!==h){ n.__h=h; n.innerHTML=h; } }
@@ -5010,7 +5019,7 @@ R3.cboe = () => {
     ...(B.mp!=null?[["Max Pain",B.mp,null,"","",nL]]:[]), ...(B.em?[["Erw. Hoch",S0+B.em,null,"","",nL],["Erw. Tief",S0-B.em,null,"","",nL]]:[])];
   const head=["Level","Strike","vs. Kurs","GEX"].concat(r?["≈ BTC"]:[]);
   $("cb-lv").innerHTML = tbl3(head, lvR.map(([n,k,g,c,sf,dt])=>`<tr><td class="l ${c}"${c==="maj"?' style="font-weight:700"':""}><span>${n}</span>${dt?` <span style="color:var(--muted)">(${dt})</span>`:""}</td><td>${pf(k)}</td><td>${pct3((k/S0-1)*100,2)}</td><td>${g==null?"–":fmtUsd(g)+(sf||"")}</td>${r?`<td>$${fmtNum(k*r)}</td>`:""}</tr>`),"free");
-  const n=$("cb-note"); if(n){ const h=sp("Daten: CBOE, 15 Minuten verzögert. Ein GitHub-Job lädt die Ketten während der US-Handelszeit alle 15 Minuten, dazu vor der Eröffnung (neues Open Interest) und nach Schluss.")
+  const n=$("cb-note"); if(n){ const h=sp("Daten: CBOE, 15 Minuten verzögert. Ein GitHub-Job lädt die Ketten während der US-Handelszeit etwa alle 15 bis 30 Minuten (GitHub startet geplante Jobs teils später), dazu vor der Eröffnung (neues Open Interest) und nach Schluss.")
       +" "+sp("GEX = Gamma × Open Interest × 100 × Kurs² × 1 %, Calls positiv, Puts negativ (Annahme: Dealer long Calls, short Puts). Graues Band = erwartete Bewegung bis zum nächsten bzw. gewählten Verfall.")
       +(sym==="IBIT"? " "+sp("IBIT-Levels werden mit dem BTC-Kurs zur Zeit des IBIT-Kurses umgerechnet (Spalte ≈ BTC). Mit „IBIT-Levels im BTC-Chart“ erscheinen sie auch auf Key Levels und im Dashboard-Chart.") : "")
       +(W.st? " "+sp(`Strikes in Schritten von ${kf(W.st)} gebündelt.`) : "");
@@ -5268,7 +5277,7 @@ R3.quant = (lb,lv,list) => { trainQ(); const o=base(), R=QM.res;
 const DOCS=[["Implizite Volatilität (IV)","Die Erwartung des Marktes, wie stark sich der Kurs bewegt, als Prozent pro Jahr. 60 % IV ≈ ±3,5 % pro Woche. Hohe IV = teure Optionen."],["ATM IV, DVOL, TQI Vol-Index","ATM IV ist die IV am Geld. DVOL ist Deribits 30-Tage-Index (wie der VIX). Der TQI Vol-Index berechnet dasselbe modellfrei aus der ganzen Kette."],
   ["IV Rank / Perzentil","Wo die IV im Vergleich zum letzten Jahr steht. 0 % = historisch günstig, 100 % = historisch teuer."],["VRP","Volatility Risk Premium = IV minus realisierte Vola. Positiv = Optionen teuer, Verkäufer im Vorteil."],
   ["Gamma Exposure (GEX)","Wie stark Dealer beim Hedgen kaufen oder verkaufen müssen. Positiver GEX: Dealer long Gamma, sie kaufen Dips und verkaufen Rallys (bremst). Negativer GEX: sie verstärken Bewegungen."],
-  ["Call Wall / Put Wall / Flip","Call Wall = größter positiver GEX (Widerstand). Put Wall = größter negativer GEX (Unterstützung). Flip = wo Netto-GEX null kreuzt; darunter wird es meist volatiler."],["0DTE","Optionen, die am nächsten Verfall auslaufen. Bei Deribit & Co. verfallen täglich um 08:00 UTC Optionen, bei SPX, SPY, QQQ und IBIT an jedem US-Handelstag. 0DTE-Gamma wirkt stark, aber nur kurz: Walls und Max Pain ziehen den Kurs oft bis zum Verfall an (Pinning), danach ist der Effekt weg."],["CBOE-Daten","Optionsketten der CBOE für US-Werte (IBIT, SPX, SPY, QQQ, NDX, IWM, MSTR, COIN), 15 Minuten verzögert. Ein GitHub-Job lädt sie während der US-Handelszeit alle 15 Minuten. Ein Kontrakt = 100 Aktien. IBIT-Levels werden mit dem BTC-Kurs zur Zeit des IBIT-Kurses in BTC umgerechnet."],["Major Wall","Der Strike mit dem meisten Gamma insgesamt, also Calls und Puts zusammen über alle Verfälle. Dort sichern Dealer am meisten ab. Der Preis wird oft dorthin gezogen oder bleibt dort hängen. In den Charts ist sie die dicke Linie in der Highlight-Farbe des Templates."],
+  ["Call Wall / Put Wall / Flip","Call Wall = größter positiver GEX (Widerstand). Put Wall = größter negativer GEX (Unterstützung). Flip = wo Netto-GEX null kreuzt; darunter wird es meist volatiler."],["0DTE","Optionen, die am nächsten Verfall auslaufen. Bei Deribit & Co. verfallen täglich um 08:00 UTC Optionen, bei SPX, SPY, QQQ und IBIT an jedem US-Handelstag. 0DTE-Gamma wirkt stark, aber nur kurz: Walls und Max Pain ziehen den Kurs oft bis zum Verfall an (Pinning), danach ist der Effekt weg."],["CBOE-Daten","Optionsketten der CBOE für US-Werte (IBIT, SPX, SPY, QQQ, NDX, IWM, MSTR, COIN), 15 Minuten verzögert. Ein GitHub-Job lädt sie während der US-Handelszeit etwa alle 15 bis 30 Minuten. Ein Kontrakt = 100 Aktien. IBIT-Levels werden mit dem BTC-Kurs zur Zeit des IBIT-Kurses in BTC umgerechnet."],["Major Wall","Der Strike mit dem meisten Gamma insgesamt, also Calls und Puts zusammen über alle Verfälle. Dort sichern Dealer am meisten ab. Der Preis wird oft dorthin gezogen oder bleibt dort hängen. In den Charts ist sie die dicke Linie in der Highlight-Farbe des Templates."],
   ["Vanna, Charm, Vomma, Speed, Zomma, Color","Vanna: Delta-Änderung bei IV-Bewegung. Charm: täglicher Delta-Verfall. Vomma: Vega-Änderung bei IV-Bewegung. Speed: Gamma-Änderung bei Spot-Bewegung. Zomma: Gamma-Änderung bei IV-Bewegung. Color: täglicher Gamma-Verfall."],
   ["Skew / Risk Reversal","25Δ RR = Call-IV minus Put-IV bei 25 Delta. Negativ = Puts teurer (Absicherung, Angst), positiv = Calls teurer (FOMO)."],["Term Structure","ATM IV über die Laufzeiten. Contango (steigend) ist normal, Backwardation (fallend) zeigt akuten kurzfristigen Stress."],
   ["Max Pain","Strike, an dem Optionskäufer beim Verfall am meisten verlieren. Wirkt nahe am Verfall oft wie ein Magnet."],["Open Interest","Anzahl offener Kontrakte. Steigendes OI = neues Geld, fallendes OI = Positionen werden geschlossen."],
