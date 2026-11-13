@@ -17,7 +17,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.5.0/echarts.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/echarts-gl@2.0.9/dist/echarts-gl.min.js" onload="window.__gl=1" onerror="window.__gl=0"></script>
-<script>/* I18N-BEGIN */window.TQI_I18N_V="20261113-072039";
+<script>/* I18N-BEGIN */window.TQI_I18N_V="20261114-004509";
 /* TQI Sprach-Engine: Deutsch ist Standard. Andere Sprachen übersetzen Texte, Attribute und Chart-Beschriftungen zur Laufzeit. */
 (function(){
   var LANGS=[["de","Deutsch"],["en","English"],["es","Español"],["fr","Français"]];
@@ -2784,7 +2784,7 @@ window.addEventListener("beforeunload", saveX);
     const hgt=Math.min(4,Math.abs(v)*4), w=100/N; out+=`<rect x="${i*w+w*0.18}" y="${v>=0?4-hgt:4}" width="${w*0.64}" height="${hgt}" fill="var(${v>=0?"--pos":"--neg"})"/>`; }
   el.innerHTML=out; })();
 /* S3-BEGIN */
-const TQI_BUILD="20261113-072039";
+const TQI_BUILD="20261114-004509";
 /* ====================== Session 3: Infrastruktur ====================== */
 const V3 = {}, R3 = {}, NB3 = new Set();   // Seiten-HTML, Renderer, Seiten ohne Optionskette
 // Legenden- und Tooltip-Marker in der Linienfarbe zeichnen (sonst Palettenfarbe)
@@ -3209,8 +3209,8 @@ function renderPNF(id, list){
 }
 R3.netflow = (lb,lv,list) => renderPNF("c-pnf",list);
 R3.dashboard = (lb,lv,list) => renderPNF("c-pnfd",list);
-PANELS.pnf={n:"Premium Net Flow",cat:"Flow",w:12,h:9,d:"Kumulierte Netto-Call- und Put-Premium mit Kurs (Quant-Data-Stil)",b:[["c","c-pnfd"]],run:x=>renderPNF("c-pnfd",x.list)};
-setTimeout(()=>{ const d=document.getElementById("v-dashboard"); if(d && !document.getElementById("c-pnfd")) d.insertAdjacentHTML("afterbegin", P2("Premium Net Flow","kumulierte Netto-Premium Calls vs. Puts mit Kurs",PNF_HTML("c-pnfd"),"wide")); sync3(); },0);
+PANELS.pnf={n:"Net Drift",cat:"Flow",w:12,h:9,d:"Kumulierte Netto-Call- und Put-Premium mit Kurs (Quant-Data-Stil)",b:[["c","c-pnfd"]],run:x=>renderPNF("c-pnfd",x.list)};
+setTimeout(()=>{ const d=document.getElementById("v-dashboard"); if(d && !document.getElementById("c-pnfd")) d.insertAdjacentHTML("afterbegin", P2("Net Drift","kumulierte Netto-Premium Calls vs. Puts mit Kurs",PNF_HTML("c-pnfd"),"wide")); sync3(); },0);
 if(S.pnfInt==null) S.pnfInt=5; if(!S.pnfMode) S.pnfMode="prem"; if(!S.pnfShow) S.pnfShow="both";
 
 /* ====================== Session 3: Gamma, Greeks, Positionierung ====================== */
@@ -3481,7 +3481,8 @@ function ckDraw(elId,key,x,tf,o2={}){
       renderItem:(p,api)=>{ const t=api.value(0), k=api.value(1), w=api.value(3); const a=api.coord([t,k+H.dk/2]), b=api.coord([t+w,k-H.dk/2]); return {type:"rect",shape:{x:a[0],y:a[1],width:Math.max(1,b[0]-a[0]),height:Math.max(1,b[1]-a[1])},style:{fill:api.visual("color")}}; }}); }
   const lvm=new Map(); for(const l of (o2.levels||[])){ if(!l[1]||!+cf[lvKind(l[0])]) continue; const k=Math.round(l[1]*100); if(lvm.has(k)) lvm.get(k)[0]+=" · "+l[0]; else lvm.set(k,[l[0],l[1],l[2],l[3]]); }
   const lbg=rgba3(css("--panel"),.86), lbl=(o)=>Object.assign({backgroundColor:lbg,padding:[1,4],borderRadius:2,fontSize:10,fontFamily:"IBM Plex Mono"},o);
-  const lv0=[...lvm.values()].map(([nm,v,col,dash])=>{ const mj=/^Major Wall/.test(nm); return {yAxis:v,lineStyle:{color:col,type:dash?"dashed":"solid",width:mj?2.4:1.2,opacity:.95},label:lbl({formatter:nm+"  "+fmtNum(v),position:"insideStartTop",color:col,fontWeight:mj?700:500})}; });
+  const thrL=(z.hi-z.lo)/Math.max(200,c.getHeight()-60)*15, POSL=["insideStartTop","insideStartBottom","insideMiddleTop","insideMiddleBottom"], lvs=[...lvm.values()].sort((a,b)=>a[1]-b[1]); let ci=0;
+  const lv0=lvs.map(([nm,v,col,dash],i)=>{ ci= i && v-lvs[i-1][1]<thrL ? ci+1 : 0; const mj=/^Major Wall/.test(nm); return {yAxis:v,lineStyle:{color:col,type:dash?"dashed":"solid",width:mj?2.4:1.2,opacity:.95},label:lbl({formatter:nm+"  "+fmtNum(v),position:POSL[ci%4],color:col,fontWeight:mj?700:500})}; });
   // Linien: Levels, VPOC/VAH/VAL des sichtbaren Bereichs, Preis-Alerts, Preislinie (wird beim Zoomen neu berechnet)
   const mk=V=>{ const lv=lv0.slice();
     if(V && +cf.vpLines){ lv.push({yAxis:V.poc,lineStyle:{color:warn,type:"dashed",width:1},label:lbl({formatter:"VPOC  "+fmtNum(V.poc),position:"insideEndTop",color:warn})});
@@ -5042,6 +5043,170 @@ const _klIB = R3.keylv; R3.keylv = (lb,lv,list) => { _klIB(lb,lv,list); const x=
   tb.insertAdjacentHTML("beforeend", rw.map(([n,k,c])=>`<tr><td class="l ${c}">${n}</td><td>$${fmtNum(k*r)}</td><td>${pct3((k*r/spot-1)*100,1)}</td><td>IBIT $${kf(k)}</td><td class="l"></td></tr>`).join("")); };
 document.head.insertAdjacentHTML("beforeend",`<style>.zdf{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.zdf .zdsel{min-width:0;font-weight:600}.zdib{display:inline-flex;align-items:center;gap:6px}.zdst{margin-left:auto;font-size:11px;color:var(--muted)}.tw.zdt table{min-width:0}@media(max-width:700px){.zdst{margin-left:0;width:100%}}</style>`);
 
+/* ====================== Net Drift (wie Quant Data) und GEX Daily Model ======================
+   Net Drift: Netto-Prämie (gekauft minus verkauft, Aggressor-Seite) von Calls und Puts, über das Zeitfenster aufsummiert,
+   mit Kurs, Netto-Volumen je Intervall und CVD. Kombi-Trades (mehrere Beine) sind wie bei Quant Data ausgeschlossen.
+   GEX Daily Model: Call Resistance, Put Support, HVL, 0DTE-Decke/-Boden, HVL 0DTE, Gamma Wall 0DTE, 1D Max/Min und GEX 1–10. */
+
+/* ---------- Net Drift ---------- */
+S.ndView??="drift"; S.ndExp??="all"; S.ndMon??="all"; S.ndCombo??=0; S.ndCvd??=0;
+const ND = {sel:null, list:[], ms:3e5, cvd:{k:"", t:[], v:[], at:0, busy:0}, zr:0};
+V3.netflow = P2("Net Drift","Netto-Prämie von Calls und Puts über das Zeitfenster, wie bei Quant Data",
+  '<div class="form">'+seg3("k3","pnfInt",[[1,"1m"],[5,"5m"],[15,"15m"],[30,"30m"],[60,"1h"]])+seg3("k3","ndView",[["drift","Net Drift"],["flow","Net Flow"]])+seg3("k3","pnfMode",[["prem","Premium"],["vol","Kontrakte"]])+seg3("k3","pnfShow",[["both","Calls + Puts"],["net","Netto"]])+'</div>'
+  +'<div class="form"><span class="lbl3">Verfall</span>'+seg3("k3","ndExp",[["all","Alle"],["0","0DTE"],["7","bis 7 T"],["30","bis 30 T"]])+'<span class="lbl3">Moneyness</span>'+seg3("k3","ndMon",[["all","Alle"],["otm","OTM"],["itm","ITM"]])
+  +'<span class="lbl3">Kombi-Trades</span>'+seg3("k3","ndCombo",[[0,"ohne"],[1,"mit"]])+'<span class="lbl3">CVD</span>'+seg3("k3","ndCvd",[[1,"An"],[0,"Aus"]])+'</div>'
+  +'<div class="cards" id="c-nd-cards"></div><div class="chart" id="c-nd" style="height:min(76vh,680px)"></div><div id="nd-tr"></div>'
+  +'<div class="note" id="nd-note"></div>',"wide");
+// Filter wie bei Quant Data: ohne Kombis, Restlaufzeit zum Zeitpunkt des Trades, Moneyness zum Indexkurs des Trades
+function ndPass(t){
+  if(!t.cp || !t.prem) return false; if(!+S.ndCombo && t.combo) return false;
+  const e=String(S.ndExp); if(e!=="all"){ const d=(t.expTs-t.ts)/DAY; if(e==="0"? d>1 : d>+e) return false; }
+  if(S.ndMon!=="all" && t.idx && t.strike){ const otm= t.cp==="C"? t.strike>t.idx : t.strike<t.idx; if((S.ndMon==="otm")!==otm) return false; }
+  return true; }
+// CVD aus Binance-Perp-Kerzen (Taker-Kauf minus -Verkauf) für das ganze Zeitfenster
+async function ndLoadCvd(t0, ms){
+  const ivs=[[60e3,"1m"],[3e5,"5m"],[9e5,"15m"],[18e5,"30m"],[36e5,"1h"],[144e5,"4h"]];
+  const [m,iv]=ivs.find(([m])=>m>=ms && (Date.now()-t0)/m<=1500) || ivs[ivs.length-1];
+  const key=S.cur+"|"+iv+"|"+Math.floor(t0/m); if(ND.cvd.busy || (ND.cvd.k===key && Date.now()-ND.cvd.at<60e3)) return; ND.cvd.busy=1;
+  try{ const r=await getJ3(`https://fapi.binance.com/fapi/v1/klines?symbol=${S.cur}USDT&interval=${iv}&startTime=${Math.floor(t0/m)*m}&limit=1500`);
+    if(Array.isArray(r)){ let cum=0; const T=[], V=[]; for(const x of r){ cum+=2*(+x[9])-(+x[5]); T.push(Math.min(+x[0]+m,Date.now())); V.push(cum); } ND.cvd={...ND.cvd,k:key,t:T,v:V,at:Date.now()}; } }
+  finally{ ND.cvd.busy=0; scheduleRender(); } }
+function renderND(list){
+  const c=ch("c-nd"); if(!c) return; const ms=(+S.pnfInt||5)*60e3, vol=S.pnfMode==="vol", net=S.pnfShow==="net", flowV=S.ndView==="flow";
+  const L=list.filter(ndPass), bk=new Map(); ND.list=L; ND.ms=ms;
+  for(const t of L){ const k=Math.floor(t.ts/ms)*ms; let b=bk.get(k); if(!b){ b={c:0,p:0,cv:0,pv:0,px:0}; bk.set(k,b); }
+    const s=t.side==="buy"?1:-1; if(t.cp==="C"){ b.c+=s*t.prem; b.cv+=s*t.amt; } else { b.p+=s*t.prem; b.pv+=s*t.amt; } if(t.idx) b.px=t.idx; }
+  const ks=[...bk.keys()].sort((a,b)=>a-b); let cc=0, cp=0, prev=null; const C=[], P=[], N=[], X=[], V=[], cross=[];
+  for(const k of ks){ const b=bk.get(k), vc=vol?b.cv:b.c, vp=vol?b.pv:b.p; cc+=vc; cp+=vp;
+    if(flowV){ C.push([k,vc]); P.push([k,vp]); N.push([k,vc-vp]); } else { C.push([k,cc]); P.push([k,cp]); N.push([k,cc-cp]); }
+    const d=cc-cp; if(prev!=null && d!==0 && (prev<0)!==(d<0)) cross.push([k,(cc+cp)/2,d>0?1:0]); if(d!==0) prev=d;
+    if(b.px) X.push([k,b.px]); V.push([k,b.cv-b.pv]); }
+  if(+S.ndCvd && ks.length) ndLoadCvd(ks[0], ms);
+  // Kennzahlen
+  const f=v=>vol? fmtNum(v,Math.abs(v)<10?1:0)+" "+S.cur : fmtUsd(v), lc=cross[cross.length-1], el=document.getElementById("c-nd-cards");
+  if(el) el.innerHTML = cardH("Netto-Call-"+(vol?"Volumen":"Premium"),sgn3(cc,f),"Käufe − Verkäufe",cls3(cc))+cardH("Netto-Put-"+(vol?"Volumen":"Premium"),sgn3(cp,f),"Käufe − Verkäufe",cls3(-cp))
+    +cardH("Calls − Puts",sgn3(cc-cp,f),cc-cp>0?"bullischer Flow":"bärischer Flow",cls3(cc-cp))
+    +cardH("Letzte Kreuzung",lc?fmtTime(lc[0]).slice(0,5):"–",lc?(lc[2]?"Calls über Puts":"Puts über Calls"):"keine im Zeitfenster",lc?(lc[2]?"pos":"neg"):"")
+    +cardH("Kurs",X.length?"$"+fmtNum(X[X.length-1][1]):"–",X.length>1?pct3((X[X.length-1][1]/X[0][1]-1)*100):"")
+    +cardH("Trades",fmtNum(L.length),+S.ndCombo?"mit Kombi-Trades":"ohne Kombi-Trades");
+  const o=base(), PC=css("--pos"), NC=css("--neg"), acc=css("--accent"), mut=css("--muted"), fg=css("--fg"), ln=css("--line"), cvdOn=+S.ndCvd && ND.cvd.t.length;
+  const axl={color:mut,fontSize:10.5}, grd=col=>new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:rgba3(col,.28)},{offset:1,color:rgba3(col,0)}]);
+  const top=[];
+  if(flowV){ if(net) top.push({name:"Calls − Puts",type:"bar",data:N.map(([k,v])=>({value:[k,v],itemStyle:{color:v>=0?PC:NC}})),barMaxWidth:10});
+    else top.push({name:"Calls netto",type:"bar",data:C,itemStyle:{color:PC},barMaxWidth:8},{name:"Puts netto",type:"bar",data:P,itemStyle:{color:NC},barMaxWidth:8}); }
+  else { if(net) top.push({name:"Calls − Puts",type:"line",data:N,showSymbol:false,lineStyle:{color:acc,width:2.2},itemStyle:{color:acc},areaStyle:{color:grd(acc)}});
+    else top.push({name:"Calls netto",type:"line",data:C,showSymbol:false,lineStyle:{color:PC,width:2.2},itemStyle:{color:PC}},{name:"Puts netto",type:"line",data:P,showSymbol:false,lineStyle:{color:NC,width:2.2},itemStyle:{color:NC}},
+      {name:"Kreuzung",type:"scatter",data:cross.map(([k,y,u])=>({value:[k,y],itemStyle:{color:u?PC:NC,borderColor:css("--panel"),borderWidth:1.5}})),symbolSize:9,z:6}); }
+  top[0].markLine={symbol:"none",silent:true,data:[{yAxis:0,label:{show:false},lineStyle:{color:mut,type:"solid",width:1,opacity:.6}}]};
+  const sers=[...top,{name:S.cur+" Kurs",type:"line",yAxisIndex:1,data:X,showSymbol:false,lineStyle:{color:mut,width:1.2},itemStyle:{color:mut}},
+    {name:"Netto-Volumen",type:"bar",xAxisIndex:1,yAxisIndex:2,itemStyle:{color:PC},data:V.map(([k,v])=>({value:[k,v],itemStyle:{color:v>=0?PC:NC}})),barMaxWidth:8}];
+  if(cvdOn) sers.push({name:"CVD",type:"line",xAxisIndex:1,yAxisIndex:3,data:ND.cvd.t.map((t,i)=>[t,ND.cvd.v[i]]),showSymbol:false,lineStyle:{color:css("--warn"),width:1.4},itemStyle:{color:css("--warn")}});
+  const legend=sers.filter(s=>s.name!=="Kreuzung").map(s=>s.name);
+  c.setOption({backgroundColor:"transparent",animation:false,textStyle:o.textStyle,axisPointer:{link:[{xAxisIndex:"all"}]},
+    legend:{top:4,left:"center",itemWidth:12,itemHeight:8,textStyle:{color:mut,fontSize:11},data:legend},
+    grid:[{left:66,right:66,top:34,height:"60%"},{left:66,right:66,top:"74%",bottom:28}],
+    tooltip:{...o.tooltip,trigger:"axis",axisPointer:{type:"cross",label:{show:false}},formatter:ps=>{ if(!ps||!ps.length) return ""; const t=ps[0].value[0]; let h=`${fmtDT(t)} – ${new Date(t+ms).toLocaleTimeString(LOC,{hour:"2-digit",minute:"2-digit"})}`;
+      for(const p of ps){ if(p.seriesName==="Kreuzung") continue; const v=p.value[1]; h+=`<br>${p.marker}${p.seriesName}: <b>${p.seriesName===S.cur+" Kurs"?"$"+fmtNum(v):p.seriesName==="Netto-Volumen"||p.seriesName==="CVD"?(v>0?"+":"")+fmtNum(v,Math.abs(v)<10?1:0)+" "+S.cur:sgn3(v,f)}</b>`; }
+      return h+"<br><span style='opacity:.7'>Klick zeigt die Trades</span>"; }},
+    xAxis:[{type:"time",gridIndex:0,axisLine:{lineStyle:{color:ln}},axisTick:{show:false},axisLabel:{show:false},splitLine:{show:false}},
+      {type:"time",gridIndex:1,axisLine:{lineStyle:{color:ln}},axisTick:{show:false},axisLabel:{...axl,hideOverlap:true},splitLine:{show:false}}],
+    yAxis:[{type:"value",gridIndex:0,axisLine:{show:false},axisTick:{show:false},axisLabel:{...axl,formatter:v=>vol?fmtNum(v):fmtUsd(v)},splitLine:{lineStyle:{color:ln,opacity:.6}}},
+      {type:"value",gridIndex:0,scale:true,position:"right",axisLine:{show:false},axisTick:{show:false},axisLabel:{...axl,formatter:v=>fmtNum(v)},splitLine:{show:false}},
+      {type:"value",gridIndex:1,axisLine:{show:false},axisTick:{show:false},axisLabel:{...axl,formatter:v=>fmtNum(v)},splitLine:{lineStyle:{color:ln,opacity:.4}},splitNumber:2},
+      {type:"value",gridIndex:1,scale:true,position:"right",show:!!cvdOn,axisLine:{show:false},axisTick:{show:false},axisLabel:{...axl,formatter:v=>fmtNum(v)},splitLine:{show:false}}],
+    dataZoom:[{type:"inside",xAxisIndex:[0,1],filterMode:"none"}],
+    series:sers},true);
+  if(!c.__nd){ c.__nd=1; c.getZr().on("click",e=>{ const pt=[e.offsetX,e.offsetY], g=c.containPixel({gridIndex:0},pt)?0:c.containPixel({gridIndex:1},pt)?1:-1; if(g<0) return;
+    const ts=c.convertFromPixel({xAxisIndex:g},pt[0]); if(!isFinite(ts)) return; ND.sel=Math.floor(ts/ND.ms)*ND.ms; ndTrades(); }); }
+  ndTrades();
+  const n=$("nd-note"); if(n){ const h=`<span>${flowV?"Net Flow = Netto-Prämie von Calls und Puts je Intervall (gekauft minus verkauft, Aggressor-Seite). Große Balken zeigen Spitzen im Flow.":"Net Drift = Netto-Prämie von Calls und Puts (gekauft minus verkauft, Aggressor-Seite), über das Zeitfenster aufsummiert. Steigt die Call-Linie und fällt die Put-Linie, dominiert bullischer Flow. Punkte = Kreuzung der beiden Linien."}</span> <span>Kombi-Trades mit mehreren Beinen sind standardmäßig ausgeschlossen, weil ihre Richtung unklar ist. Unten: Netto-Volumen je Intervall (Call-Kontrakte minus Put-Kontrakte, jeweils gekauft minus verkauft) und auf Wunsch CVD des Binance-Perps. Zeitfenster, Filter und Börsen oben gelten mit.</span>`;
+    if(n.__h!==h){ n.__h=h; n.innerHTML=h; } }
+}
+// Trades des angeklickten Intervalls
+function ndTrades(){ const el=$("nd-tr"); if(!el) return; if(ND.sel==null){ if(el.innerHTML) el.innerHTML=""; return; }
+  const a=ND.sel, b=a+ND.ms, L=ND.list.filter(t=>t.ts>=a && t.ts<b).sort((x,y)=>y.prem-x.prem), top=L.slice(0,25);
+  let bu=0, be=0; for(const t of L){ if(t.bull) bu+=t.prem; else be+=t.prem; }
+  const head=`<div class="form" style="justify-content:space-between"><span><b>${fmtTime(a).slice(0,5)} – ${fmtTime(b).slice(0,5)}</b> · <span>${fmtNum(L.length)} Trades</span> · <span class="pos">${sp("bullisch")} ${fmtUsd(bu)}</span> · <span class="neg">${sp("bärisch")} ${fmtUsd(be)}</span></span><button class="btn ghost" data-ndclose="1">Schließen</button></div>`;
+  const rows=top.map(t=>`<tr><td class="l">${fmtTime(t.ts)}</td><td class="l">${esc(t.inst)}</td><td class="${t.bull?"pos":"neg"}">${t.side==="buy"?"Kauf":"Verkauf"}</td><td>${fmtNum(t.amt,1)}</td><td>${fmtUsd(t.prem)}</td><td>${t.iv?(+t.iv).toFixed(1)+" %":"–"}</td><td>${vb(t)}${t.block?" Block":""}</td></tr>`);
+  const h=head+(rows.length? tbl3(["Zeit","Kontrakt","Seite","Menge","Prämie","IV","Börse"],rows,"free zdt") : `<div class="empty" style="padding:12px;color:var(--muted)">Keine Trades in diesem Intervall.</div>`);
+  if(el.__h!==h){ el.__h=h; el.innerHTML=h; } }
+document.addEventListener("click",e=>{ if(e.target.closest("[data-ndclose]")){ ND.sel=null; ndTrades(); } });
+R3.netflow = (lb,lv,list) => renderND(list);
+// Dashboard-Fassung: ebenfalls ohne Kombi-Trades (gleiche Rechnung)
+const _renderPNF = renderPNF; renderPNF = function(id, list){ return _renderPNF(id, +S.ndCombo? list : list.filter(t=>!t.combo)); };
+
+/* ---------- GEX Daily Model ---------- */
+// rowsAll: alle offenen Verfälle, rows0: nächster Verfall, sd: erwartete Tagesbewegung (1σ, als Anteil)
+function dailyModel(rowsAll, rows0, S0, mult, t0, sd){
+  const A=chainAn(rowsAll,S0,mult), hvl=flipOf(chainProf(rowsAll,S0,mult,t0,0.15,121),S0);
+  // Decke über dem Kurs (meistes Call-Gamma), Boden unter dem Kurs (meistes Put-Gamma), höchstens 30 % entfernt
+  const pick=(L,up)=>{ let b=null; for(const o of L){ if(Math.abs(o.k/S0-1)>0.3) continue; if(up){ if(o.k>=S0 && o.gc>0 && (!b||o.gc>b.gc)) b=o; } else if(o.k<=S0 && o.gp<0 && (!b||o.gp<b.gp)) b=o; } return b; };
+  let A0=null, hvl0=null;
+  if(rows0.length){ A0=chainAn(rows0,S0,mult); const iv0=atmIvOf(rows0,S0), T0=Math.max(0,rows0[0].expTs-t0)/YEAR, em0=iv0&&T0? S0*iv0*Math.sqrt(T0) : null, w=Math.min(0.25,Math.max(0.02,em0?4*em0/S0:0.05));
+    hvl0=flipOf(chainProf(rows0,S0,mult,t0,w,121),S0); }
+  const CR=pick(A.L,1), PS=pick(A.L,0), CR0=A0?pick(A0.L,1):null, PS0=A0?pick(A0.L,0):null, cr=CR?CR.k:null, ps=PS?PS.k:null, tot=o=>Math.abs(o.gc)+Math.abs(o.gp);
+  // GEX 1–10: die zehn Strikes mit dem meisten Gamma (Calls + Puts) innerhalb der erwarteten Tagesspanne, ohne Call Resistance und Put Support
+  let cand=[]; for(const f of [1,1.5,2,3]){ const lo=sd? S0*Math.exp(-sd*f) : S0*(1-0.03*f), hi=sd? S0*Math.exp(sd*f) : S0*(1+0.03*f);
+    cand=A.L.filter(o=>o.k>=lo && o.k<=hi && o.k!==cr && o.k!==ps && tot(o)>0); if(cand.length>=10) break; }
+  const gex=cand.sort((a,b)=>tot(b)-tot(a)).slice(0,10).map((o,i)=>({n:i+1, k:o.k, g:tot(o)}));
+  return {A, A0, hvl, hvl0, cr, ps, crG:CR?CR.gc:null, psG:PS?PS.gp:null,
+    cr0:CR0?CR0.k:null, ps0:PS0?PS0.k:null, gw0:A0&&A0.mj?A0.mj.k:null, cr0G:CR0?CR0.gc:null, ps0G:PS0?PS0.gp:null, gw0G:A0&&A0.mj?A0.mj.g:null,
+    dMax:sd? S0*Math.exp(sd) : null, dMin:sd? S0*Math.exp(-sd) : null, sd, gex}; }
+function dmLevels(M){ const L=[], add=(n,k,c,d,g,grp,gross)=>{ if(k!=null && isFinite(k)) L.push({n,k,c,d,g,grp,gross}); };
+  add("Call Resistance",M.cr,"pos","Decke: meistes Call-Gamma über dem Kurs, bremst Anstiege",M.crG,"core");
+  add("Put Support",M.ps,"neg","Boden: meistes Put-Gamma unter dem Kurs, fängt Abverkäufe auf",M.psG,"core");
+  add("HVL (Flip)",M.hvl,"warn","Gamma-Flip: darüber eher ruhig, darunter volatiler",null,"core");
+  add("Call Resistance 0DTE",M.cr0,"pos","Intraday-Decke aus dem nächsten Verfall",M.cr0G,"0dte");
+  add("Put Support 0DTE",M.ps0,"neg","Intraday-Boden aus dem nächsten Verfall",M.ps0G,"0dte");
+  add("HVL 0DTE",M.hvl0,"warn","Flip des nächsten Verfalls",null,"0dte");
+  add("Gamma Wall 0DTE",M.gw0,"maj","meistes Gamma im nächsten Verfall, zieht den Kurs oft bis zum Verfall an",M.gw0G,"0dte",1);
+  add("1D Max",M.dMax,"","obere Grenze der erwarteten Tagesspanne (1σ)",null,"1d");
+  add("1D Min",M.dMin,"","untere Grenze der erwarteten Tagesspanne (1σ)",null,"1d");
+  for(const x of M.gex) add("GEX "+x.n,x.k,"","Reaktionszone, Rang "+x.n+" nach Gamma",x.g,"gex",1);
+  return L; }
+const dmCol = c => css(c==="pos"?"--pos":c==="neg"?"--neg":c==="warn"?"--warn":c==="maj"?"--major":"--muted");
+// Tabelle (nach Kurs sortiert, mit Spot-Zeile); r = Umrechnung in BTC (nur IBIT)
+function dmTable(L, S0, r, pfx){ const rows=[...L].sort((a,b)=>b.k-a.k); let spotDone=false; const out=[];
+  const spotRow=()=>`<tr style="background:${rgba3(css("--accent"),.1)}"><td class="l" style="font-weight:700;color:var(--accent)">Spot</td><td>${pfx(S0)}</td><td>–</td><td>–</td>${r?`<td>$${fmtNum(S0*r)}</td>`:""}<td class="l"></td></tr>`;
+  for(const l of rows){ if(!spotDone && l.k<S0){ out.push(spotRow()); spotDone=true; }
+    const col=l.c==="maj"?"maj":l.c; out.push(`<tr><td class="l ${col}"${/^(Call Resistance|Put Support|HVL \(Flip\))$/.test(l.n)?' style="font-weight:700"':""}>${l.n}</td><td>${pfx(l.k)}</td><td>${pct3((l.k/S0-1)*100,2)}</td><td>${l.g==null?"–":l.gross? fmtUsd(l.g)+" brutto" : fmtSigned(l.g)}</td>${r?`<td>$${fmtNum(l.k*r)}</td>`:""}<td class="l" style="color:var(--muted)">${l.d}</td></tr>`); }
+  if(!spotDone) out.push(spotRow());
+  return tbl3(["Level","Kurs","vs. Spot","GEX"].concat(r?["≈ BTC"]:[],["Bedeutung"]), out, "free"); }
+
+S.gmCore??=1; S.gm0??=1; S.gmGex??=1; S.gm1d??=1;
+const GM = {t:0, M:null, key:"", hs:""};
+const lbRows = lb => lb.map(b=>({k:b.strike, cp:b.cp, expTs:b.expTs, exp:b.exp, oi:b.open_interest||0, vol:b.volume||0, iv:b.sig, gamma:b.g.gamma, delta:b.g.delta, px:(b.mark_price||0)*b.F, venue:b.venue}));
+V3.gexmodel = P2("GEX Daily Model","Levels für den Tag aus allen Verfällen und dem nächsten Verfall",'<div class="cards" id="gm-cards"></div><div class="form">'+tfBar3("gm")+tog3("gmCore","Kern")+tog3("gm0","0DTE")+tog3("gmGex","GEX 1–10")+tog3("gm1d","1D-Spanne")+resetBtn3("gm")+ckSetBtn("gm")+'</div><div class="chart" id="c-gm" style="height:min(72vh,640px)"></div>'
+  +'<div class="note">Call Resistance = Strike über dem Kurs mit dem meisten Call-Gamma, Put Support = Strike unter dem Kurs mit dem meisten Put-Gamma (alle Verfälle). HVL = Gamma-Flip. Die 0DTE-Levels kommen nur aus dem nächsten Verfall und gelten als Intraday-Decke und -Boden. 1D Max/Min = erwartete Tagesspanne (1σ aus der ATM-IV des Verfalls nach etwa einem Tag). GEX 1–10 = die zehn Strikes mit dem meisten Gamma (Calls und Puts) innerhalb der Tagesspanne (bei zu wenigen Strikes etwas weiter), ohne Call Resistance und Put Support. Bedienung wie bei TradingView.</div>',"wide")
+  + P2("Level-Tabelle","nach Kurs sortiert, mit Abstand zum Spot",'<div id="gm-t"></div>',"wide");
+R3.gexmodel = (lb, lv) => {
+  if(!lb.length || !spot) return; const now=Date.now();
+  if(!GM.M || now-GM.t>5000 || GM.key!==S.cur){ const rows=lbRows(lb), e0=expiries(lb).find(e=>expTsOf(e)>now), rows0=rows.filter(r=>r.exp===e0), e1=nearestExpTo(lb,1), iv1=e1?atmIv(lb,e1):null;
+    GM.M=dailyModel(rows,rows0,spot,1,now,iv1? iv1/100*Math.sqrt(1/365) : null); GM.t=now; GM.key=S.cur; }
+  const M=GM.M, L=dmLevels(M), pS=v=>"$"+fmtNum(v), vs=x=>x==null?"":sp(pct3((x/spot-1)*100,2)+" vom Spot");
+  $("gm-cards").innerHTML = cardH("Call Resistance",M.cr!=null?pS(M.cr):"–",vs(M.cr),"pos")+cardH("Put Support",M.ps!=null?pS(M.ps):"–",vs(M.ps),"neg")+cardH("HVL (Flip)",M.hvl!=null?pS(M.hvl):"–",M.hvl!=null?vs(M.hvl):sp("kein Wechsel im Bereich"),"warn")
+    +cardH("Intraday-Decke",M.cr0!=null?pS(M.cr0):"–",sp("Call Resistance 0DTE"),"pos")+cardH("Intraday-Boden",M.ps0!=null?pS(M.ps0):"–",sp("Put Support 0DTE"),"neg")+cardH("Gamma Wall 0DTE",M.gw0!=null?pS(M.gw0):"–",vs(M.gw0),"maj")
+    +cardH("1D-Spanne",M.dMax!=null?fmtNum(M.dMin)+" – "+fmtNum(M.dMax):"–",M.sd?sp("±"+(M.sd*100).toFixed(2)+" % (1σ)"):"","")+cardH("GEX 1",M.gex[0]?pS(M.gex[0].k):"–",M.gex[0]?vs(M.gex[0].k):"","");
+  const on={core:+S.gmCore, "0dte":+S.gm0, gex:+S.gmGex, "1d":+S.gm1d}, acc=css("--accent");
+  const lvls=L.filter(l=>on[l.grp]).map(l=>[l.n, l.k, l.grp==="gex"? rgba3(acc,.8) : dmCol(l.c), l.grp!=="core"]);
+  const tf=tfOf("gm","15"), x=CND[S.cur+tf]; loadTF(tf); if(x) liveTF(x,tf);
+  if(x && x.t.length) ckDraw("c-gm","gm",x,tf,{levels:lvls, prof:keyLevels(lb,lv).g, vp:true, vol:true});
+  const hs=[GM.t,S.cur,document.documentElement.dataset.skin].join("|"); if(GM.hs!==hs){ GM.hs=hs; $("gm-t").innerHTML=dmTable(L,spot,null,pS); }
+};
+// IBIT-Levels (falls eingeschaltet) auch im Daily-Model-Chart
+const _ckDrawGM = ckDraw; ckDraw = function(elId,key,x,tf,o2){ if(key==="gm" && S.cur==="BTC" && +S.cbIb){ const L=ibitLines(); if(L.length) o2=Object.assign({},o2,{levels:((o2&&o2.levels)||[]).concat(L)}); } return _ckDrawGM(elId,key,x,tf,o2); };
+
+/* ---------- GEX Daily Model auch für CBOE-Werte ---------- */
+V3.cboe += P2("GEX Daily Model",'<span id="cb-dms">alle Verfälle, Intraday-Levels aus dem nächsten Verfall</span>','<div id="cb-dm"></div><div class="note">Call Resistance = Strike über dem Kurs mit dem meisten Call-Gamma, Put Support = Strike unter dem Kurs mit dem meisten Put-Gamma (alle Verfälle). HVL = Gamma-Flip. 0DTE-Levels = Intraday-Decke und -Boden aus dem nächsten Verfall. 1D Max/Min = erwartete Tagesspanne aus der IV30 (1σ, 252 Handelstage). GEX 1–10 = die zehn Strikes mit dem meisten Gamma innerhalb der Tagesspanne, ohne Call Resistance und Put Support.</div>',"wide");
+const CBDM = {hs:""};
+const _R3cboeDM = R3.cboe; R3.cboe = (...a) => { _R3cboeDM(...a); const sym=S.cbS, d=CB.d[sym], el=$("cb-dm"); if(!el) return; if(!d){ if(el.innerHTML) el.innerHTML=""; CBDM.hs=""; return; }
+  const now=Date.now(), r=sym==="IBIT"? cbRatio(d) : null, hs=[sym,d.v,r?r.toFixed(2):0,document.documentElement.dataset.skin].join("|"); if(CBDM.hs===hs) return; CBDM.hs=hs;
+  const dates=cbDates(d,now); if(!dates.length){ el.innerHTML=""; return; }
+  const M=memoZ("cbdm|"+sym+"|"+d.v+"|"+dates.length, ()=>{ const ok=new Set(); for(const g of dates) for(const k of g.keys) ok.add(k);
+    const rows=d.rows.filter(q=>ok.has(q.e)), rows0=d.rows.filter(q=>dates[0].keys.has(q.e)); return dailyModel(rows,rows0,d.spot,100,Math.min(d.t,now),d.iv30? d.iv30/100*Math.sqrt(1/252) : null); });
+  el.innerHTML = dmTable(dmLevels(M), d.spot, r, pf); };
+document.head.insertAdjacentHTML("beforeend",`<style>#nd-tr .form{border-top:1px solid var(--line)}</style>`);
+
 /* ====================== Session 3: Werkzeuge, Strategie, Quant ====================== */
 const dLb = () => liveFrom(books.deribit);
 const expSel = (id,lb,key,def=7) => { const ex=expiries(lb); if(!S[key]||!ex.includes(S[key])) S[key]=nearestExpTo(lb,def)||ex[0]; fillOne(id,ex,S[key]); return S[key]; };
@@ -5277,7 +5442,7 @@ R3.quant = (lb,lv,list) => { trainQ(); const o=base(), R=QM.res;
 const DOCS=[["Implizite Volatilität (IV)","Die Erwartung des Marktes, wie stark sich der Kurs bewegt, als Prozent pro Jahr. 60 % IV ≈ ±3,5 % pro Woche. Hohe IV = teure Optionen."],["ATM IV, DVOL, TQI Vol-Index","ATM IV ist die IV am Geld. DVOL ist Deribits 30-Tage-Index (wie der VIX). Der TQI Vol-Index berechnet dasselbe modellfrei aus der ganzen Kette."],
   ["IV Rank / Perzentil","Wo die IV im Vergleich zum letzten Jahr steht. 0 % = historisch günstig, 100 % = historisch teuer."],["VRP","Volatility Risk Premium = IV minus realisierte Vola. Positiv = Optionen teuer, Verkäufer im Vorteil."],
   ["Gamma Exposure (GEX)","Wie stark Dealer beim Hedgen kaufen oder verkaufen müssen. Positiver GEX: Dealer long Gamma, sie kaufen Dips und verkaufen Rallys (bremst). Negativer GEX: sie verstärken Bewegungen."],
-  ["Call Wall / Put Wall / Flip","Call Wall = größter positiver GEX (Widerstand). Put Wall = größter negativer GEX (Unterstützung). Flip = wo Netto-GEX null kreuzt; darunter wird es meist volatiler."],["0DTE","Optionen, die am nächsten Verfall auslaufen. Bei Deribit & Co. verfallen täglich um 08:00 UTC Optionen, bei SPX, SPY, QQQ und IBIT an jedem US-Handelstag. 0DTE-Gamma wirkt stark, aber nur kurz: Walls und Max Pain ziehen den Kurs oft bis zum Verfall an (Pinning), danach ist der Effekt weg."],["CBOE-Daten","Optionsketten der CBOE für US-Werte (IBIT, SPX, SPY, QQQ, NDX, IWM, MSTR, COIN), 15 Minuten verzögert. Ein GitHub-Job lädt sie während der US-Handelszeit etwa alle 15 bis 30 Minuten. Ein Kontrakt = 100 Aktien. IBIT-Levels werden mit dem BTC-Kurs zur Zeit des IBIT-Kurses in BTC umgerechnet."],["Major Wall","Der Strike mit dem meisten Gamma insgesamt, also Calls und Puts zusammen über alle Verfälle. Dort sichern Dealer am meisten ab. Der Preis wird oft dorthin gezogen oder bleibt dort hängen. In den Charts ist sie die dicke Linie in der Highlight-Farbe des Templates."],
+  ["Call Wall / Put Wall / Flip","Call Wall = größter positiver GEX (Widerstand). Put Wall = größter negativer GEX (Unterstützung). Flip = wo Netto-GEX null kreuzt; darunter wird es meist volatiler."],["Net Drift","Netto-Prämie von Calls und Puts (gekauft minus verkauft, Aggressor-Seite), über den Tag aufsummiert, wie bei Quant Data. Steigt die Call-Linie und fällt die Put-Linie, ist der Flow bullisch. Kreuzen sich die Linien, dreht oft die Stimmung. Kombi-Trades mit mehreren Beinen zählen nicht, weil ihre Richtung unklar ist."],["GEX Daily Model","Tages-Levels aus dem Gamma: Call Resistance (meistes Call-Gamma über dem Kurs, Decke), Put Support (meistes Put-Gamma unter dem Kurs, Boden), HVL (Gamma-Flip), dazu Decke, Boden, Flip und Gamma Wall des nächsten Verfalls (0DTE), die erwartete Tagesspanne (1D Max/Min) und GEX 1–10, die zehn stärksten übrigen Gamma-Strikes als Reaktionszonen."],["0DTE","Optionen, die am nächsten Verfall auslaufen. Bei Deribit & Co. verfallen täglich um 08:00 UTC Optionen, bei SPX, SPY, QQQ und IBIT an jedem US-Handelstag. 0DTE-Gamma wirkt stark, aber nur kurz: Walls und Max Pain ziehen den Kurs oft bis zum Verfall an (Pinning), danach ist der Effekt weg."],["CBOE-Daten","Optionsketten der CBOE für US-Werte (IBIT, SPX, SPY, QQQ, NDX, IWM, MSTR, COIN), 15 Minuten verzögert. Ein GitHub-Job lädt sie während der US-Handelszeit etwa alle 15 bis 30 Minuten. Ein Kontrakt = 100 Aktien. IBIT-Levels werden mit dem BTC-Kurs zur Zeit des IBIT-Kurses in BTC umgerechnet."],["Major Wall","Der Strike mit dem meisten Gamma insgesamt, also Calls und Puts zusammen über alle Verfälle. Dort sichern Dealer am meisten ab. Der Preis wird oft dorthin gezogen oder bleibt dort hängen. In den Charts ist sie die dicke Linie in der Highlight-Farbe des Templates."],
   ["Vanna, Charm, Vomma, Speed, Zomma, Color","Vanna: Delta-Änderung bei IV-Bewegung. Charm: täglicher Delta-Verfall. Vomma: Vega-Änderung bei IV-Bewegung. Speed: Gamma-Änderung bei Spot-Bewegung. Zomma: Gamma-Änderung bei IV-Bewegung. Color: täglicher Gamma-Verfall."],
   ["Skew / Risk Reversal","25Δ RR = Call-IV minus Put-IV bei 25 Delta. Negativ = Puts teurer (Absicherung, Angst), positiv = Calls teurer (FOMO)."],["Term Structure","ATM IV über die Laufzeiten. Contango (steigend) ist normal, Backwardation (fallend) zeigt akuten kurzfristigen Stress."],
   ["Max Pain","Strike, an dem Optionskäufer beim Verfall am meisten verlieren. Wirkt nahe am Verfall oft wie ein Magnet."],["Open Interest","Anzahl offener Kontrakte. Steigendes OI = neues Geld, fallendes OI = Positionen werden geschlossen."],
@@ -5292,7 +5457,7 @@ NB3.add("docs"); R3.docs=()=>{};
 
 /* ====================== Navigation & Start ====================== */
 nav3("Dashboard",[["stats","Stats"],["spot","Spot je Börse"],["news","News"],["sources","Datenquellen"]]);
-nav3("Flow",[["tide","Market Tide & NOPE"],["premium","Premium-Matrix"],["screener","Options-Screener"]]); (()=>{ const g=NAV2.find(x=>x.g==="Flow"); g.items.unshift(["netflow","Premium Net Flow"]); })();
+nav3("Flow",[["tide","Market Tide & NOPE"],["premium","Premium-Matrix"],["screener","Options-Screener"]]); (()=>{ const g=NAV2.find(x=>x.g==="Flow"); g.items.unshift(["netflow","Net Drift"]); })();
 nav3("Greeks",[["higher","Höhere Greeks"]],"gexp");
 IC.gamma='<path d="M5 4h12"/><path d="M8 4v16"/><path d="M14 20c0-6 2-9 5-11"/>'; IC.quant='<path d="M4 19V5"/><path d="M4 19h16"/><path d="M7 15l4-5 3 3 5-7"/><circle cx="19" cy="6" r="1.5"/>';
 (()=>{ const gr=NAV2.find(x=>x.g==="Greeks"); gr.items=gr.items.filter(([k])=>!["exposure","dealer","xheat"].includes(k));
@@ -5317,6 +5482,7 @@ IC.zdte='<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2"/><path d="M9.5 2
 nav3("Dashboard",[["briefing","Marktbericht"],["alts","Altcoin-Optionen"]],"stats");
 nav3("Gamma",[["flowgex","Flow-GEX"]],"dealer");
 nav3("Gamma",[["imap","Interval Map"]],"xheat");
+nav3("Gamma",[["gexmodel","GEX Daily Model"]],"keylv");
 nav3("Volatilität",[["fixstrike","Fixed-Strike-IV"]],"skew");
 nav3("Futures",[["liqmap","Liquidations-Heatmap"]],"liq");
 (()=>{ const q=NAV2.find(x=>x.g==="Quant"); if(q){ const i=q.items.findIndex(([k])=>k==="sim"); q.items.splice(i+1,0,["models","Vola-Modelle"],["seasonal","Saisonalität"],["correl","Korrelation"]); } })();
