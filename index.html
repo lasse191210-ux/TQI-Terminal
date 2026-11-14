@@ -17,7 +17,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.5.0/echarts.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/echarts-gl@2.0.9/dist/echarts-gl.min.js" onload="window.__gl=1" onerror="window.__gl=0"></script>
-<script>/* I18N-BEGIN */window.TQI_I18N_V="20261114-004509";
+<script>/* I18N-BEGIN */window.TQI_I18N_V="20261114-005924";
 /* TQI Sprach-Engine: Deutsch ist Standard. Andere Sprachen übersetzen Texte, Attribute und Chart-Beschriftungen zur Laufzeit. */
 (function(){
   var LANGS=[["de","Deutsch"],["en","English"],["es","Español"],["fr","Français"]];
@@ -2784,7 +2784,7 @@ window.addEventListener("beforeunload", saveX);
     const hgt=Math.min(4,Math.abs(v)*4), w=100/N; out+=`<rect x="${i*w+w*0.18}" y="${v>=0?4-hgt:4}" width="${w*0.64}" height="${hgt}" fill="var(${v>=0?"--pos":"--neg"})"/>`; }
   el.innerHTML=out; })();
 /* S3-BEGIN */
-const TQI_BUILD="20261114-004509";
+const TQI_BUILD="20261114-005924";
 /* ====================== Session 3: Infrastruktur ====================== */
 const V3 = {}, R3 = {}, NB3 = new Set();   // Seiten-HTML, Renderer, Seiten ohne Optionskette
 // Legenden- und Tooltip-Marker in der Linienfarbe zeichnen (sonst Palettenfarbe)
@@ -3478,7 +3478,12 @@ function ckDraw(elId,key,x,tf,o2={}){
   const series=[]; let heatIdx=-1;
   if(o2.heat && o2.heat.data.length){ const H=o2.heat; heatIdx=series.length;
     series.push({id:"heat",type:"custom",name:"GEX",clip:true,z:1,silent:true,encode:{x:0,y:1},data:H.data,
-      renderItem:(p,api)=>{ const t=api.value(0), k=api.value(1), w=api.value(3); const a=api.coord([t,k+H.dk/2]), b=api.coord([t+w,k-H.dk/2]); return {type:"rect",shape:{x:a[0],y:a[1],width:Math.max(1,b[0]-a[0]),height:Math.max(1,b[1]-a[1])},style:{fill:api.visual("color")}}; }}); }
+      renderItem: H.soft? (()=>{ const PC=css("--pos"), NC=css("--neg"), cut=H.cut||0, op=H.op||0.9, mx=H.mx||1;
+          // weiche Bänder wie bei einer GEX-Heatmap: Stärke = Deckkraft, Ränder laufen aus
+          return (p,api)=>{ const t=api.value(0), k=api.value(1), v=api.value(2), w=api.value(3), r=Math.abs(v)/mx; if(r<=cut) return null; const al=Math.min(1,(r-cut)/Math.max(0.01,1-cut))*op, col=v>=0?PC:NC;
+            const a=api.coord([t,k+H.dk*0.5]), b=api.coord([t+w,k-H.dk*0.5]);
+            return {type:"rect",shape:{x:a[0],y:a[1],width:Math.max(1,b[0]-a[0]+0.6),height:Math.max(2,b[1]-a[1])},style:{fill:new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:rgba3(col,0)},{offset:0.3,color:rgba3(col,al*0.75)},{offset:0.5,color:rgba3(col,al)},{offset:0.7,color:rgba3(col,al*0.75)},{offset:1,color:rgba3(col,0)}])}}; }; })()
+        : (p,api)=>{ const t=api.value(0), k=api.value(1), w=api.value(3); const a=api.coord([t,k+H.dk/2]), b=api.coord([t+w,k-H.dk/2]); return {type:"rect",shape:{x:a[0],y:a[1],width:Math.max(1,b[0]-a[0]),height:Math.max(1,b[1]-a[1])},style:{fill:api.visual("color")}}; }}); }
   const lvm=new Map(); for(const l of (o2.levels||[])){ if(!l[1]||!+cf[lvKind(l[0])]) continue; const k=Math.round(l[1]*100); if(lvm.has(k)) lvm.get(k)[0]+=" · "+l[0]; else lvm.set(k,[l[0],l[1],l[2],l[3]]); }
   const lbg=rgba3(css("--panel"),.86), lbl=(o)=>Object.assign({backgroundColor:lbg,padding:[1,4],borderRadius:2,fontSize:10,fontFamily:"IBM Plex Mono"},o);
   const thrL=(z.hi-z.lo)/Math.max(200,c.getHeight()-60)*15, POSL=["insideStartTop","insideStartBottom","insideMiddleTop","insideMiddleBottom"], lvs=[...lvm.values()].sort((a,b)=>a[1]-b[1]); let ci=0;
@@ -3512,7 +3517,7 @@ function ckDraw(elId,key,x,tf,o2={}){
         if(api.value(3)&&+C2.gexLbl) kids.push({type:"text",style:{text:fmtUsd(v),x:cs.x+cs.width-len-4,y,align:"right",verticalAlign:"middle",fill:v>=0?css("--pos"):css("--neg"),font:"600 10px IBM Plex Mono, monospace"}});
         return {type:"group",children:kids}; }}); }
   const opt={backgroundColor:"transparent",animation:false,textStyle:o.textStyle,
-    grid:{left:10,right:74,top:o2.heat?34:14,bottom:26},
+    grid:{left:10,right:74,top:o2.heat&&!o2.heat.soft?34:14,bottom:26},
     tooltip:{...o.tooltip,trigger:"axis",axisPointer:{type:+cf.cross?"cross":"line",label:{backgroundColor:css("--panel-2"),color:fg,fontFamily:"IBM Plex Mono",fontSize:10.5,formatter:p=>p.axisDimension==="y"?fmtNum(p.value,p.value<100?2:0):fmtDT(p.value)}},
       formatter:ps=>{ const p=(ps||[]).find(q=>q.seriesId==="cdl"); if(!p) return ""; const t=typeof p.axisValue==="number"?p.axisValue:(p.value||[])[0], i=x.t.indexOf(t); if(i<0) return fmtDT(t); const op=x.o[i], cl=x.c[i], lo=x.l[i], hi=x.h[i], ch2=op?(cl/op-1)*100:0;
         return `<b>${fmtDT(t)}</b><br>O ${fmtNum(op)} &nbsp;H ${fmtNum(hi)}<br>L ${fmtNum(lo)} &nbsp;C <b style="color:${cl>=op?up:dn}">${fmtNum(cl)}</b> (${ch2>=0?"+":""}${ch2.toFixed(2)} %)`+(x.v[i]?`<br>Volumen ${fmtNum(x.v[i],1)}`:""); }},
@@ -3520,7 +3525,7 @@ function ckDraw(elId,key,x,tf,o2={}){
     yAxis:[{type:"value",position:"right",min:z.lo,max:z.hi,axisLine:{show:false},axisTick:{show:false},axisLabel:{color:mut,fontSize:10.5,formatter:v=>fmtNum(v,v<100?2:0)},splitLine:{show:!!+cf.grid,lineStyle:{color:line,opacity:.45}}},
       {type:"value",show:false,min:0,max:f.vm*100/Math.max(5,+cf.volH),axisPointer:{show:false}}],
     series};
-  if(heatIdx>=0){ const H=o2.heat; opt.visualMap={show:true,orient:"horizontal",left:12,top:4,itemHeight:120,itemWidth:9,min:H.pos?0:(-H.mx||-1),max:H.mx||1,dimension:2,seriesIndex:heatIdx,calculable:false,text:[(H.lbl?H.lbl+" ":"")+(H.rel?"+max":H.pos?fmtNum(H.mx,0):fmtUsd(H.mx)),H.pos?"0":H.rel?"−max":fmtUsd(-H.mx)],textStyle:{color:mut,fontSize:10},
+  if(heatIdx>=0 && !o2.heat.soft){ const H=o2.heat; opt.visualMap={show:true,orient:"horizontal",left:12,top:4,itemHeight:120,itemWidth:9,min:H.pos?0:(-H.mx||-1),max:H.mx||1,dimension:2,seriesIndex:heatIdx,calculable:false,text:[(H.lbl?H.lbl+" ":"")+(H.rel?"+max":H.pos?fmtNum(H.mx,0):fmtUsd(H.mx)),H.pos?"0":H.rel?"−max":fmtUsd(-H.mx)],textStyle:{color:mut,fontSize:10},
     inRange:{color:(()=>{ const lt=document.documentElement.hasAttribute("data-light"), hi=lt?.78:.6, lo=lt?.26:.16, P=css("--pos"), N=css("--neg"); return H.pos?[rgba3(acc,0),rgba3(acc,lo+.06),rgba3(acc,hi)]:[rgba3(N,hi),rgba3(N,lo),rgba3(css("--panel-2")||"#000",0),rgba3(P,lo),rgba3(P,hi)]; })()}}; }
   c.setOption(opt,true); CKX[key]=Object.assign(CKX[key]||{},{x,ms,tf,o2,grid:opt.grid,mk});
   ckInit(c,key,opt.grid);
@@ -5148,7 +5153,7 @@ function dailyModel(rowsAll, rows0, S0, mult, t0, sd){
   // GEX 1–10: die zehn Strikes mit dem meisten Gamma (Calls + Puts) innerhalb der erwarteten Tagesspanne, ohne Call Resistance und Put Support
   let cand=[]; for(const f of [1,1.5,2,3]){ const lo=sd? S0*Math.exp(-sd*f) : S0*(1-0.03*f), hi=sd? S0*Math.exp(sd*f) : S0*(1+0.03*f);
     cand=A.L.filter(o=>o.k>=lo && o.k<=hi && o.k!==cr && o.k!==ps && tot(o)>0); if(cand.length>=10) break; }
-  const gex=cand.sort((a,b)=>tot(b)-tot(a)).slice(0,10).map((o,i)=>({n:i+1, k:o.k, g:tot(o)}));
+  const gex=cand.sort((a,b)=>tot(b)-tot(a)).slice(0,10).map((o,i)=>({n:i+1, k:o.k, g:tot(o), net:o.gc+o.gp}));
   return {A, A0, hvl, hvl0, cr, ps, crG:CR?CR.gc:null, psG:PS?PS.gp:null,
     cr0:CR0?CR0.k:null, ps0:PS0?PS0.k:null, gw0:A0&&A0.mj?A0.mj.k:null, cr0G:CR0?CR0.gc:null, ps0G:PS0?PS0.gp:null, gw0G:A0&&A0.mj?A0.mj.g:null,
     dMax:sd? S0*Math.exp(sd) : null, dMin:sd? S0*Math.exp(-sd) : null, sd, gex}; }
@@ -5162,7 +5167,7 @@ function dmLevels(M){ const L=[], add=(n,k,c,d,g,grp,gross)=>{ if(k!=null && isF
   add("Gamma Wall 0DTE",M.gw0,"maj","meistes Gamma im nächsten Verfall, zieht den Kurs oft bis zum Verfall an",M.gw0G,"0dte",1);
   add("1D Max",M.dMax,"","obere Grenze der erwarteten Tagesspanne (1σ)",null,"1d");
   add("1D Min",M.dMin,"","untere Grenze der erwarteten Tagesspanne (1σ)",null,"1d");
-  for(const x of M.gex) add("GEX "+x.n,x.k,"","Reaktionszone, Rang "+x.n+" nach Gamma",x.g,"gex",1);
+  for(const x of M.gex){ add("GEX "+x.n,x.k,"","Reaktionszone, Rang "+x.n+" nach Gamma",x.g,"gex",1); L[L.length-1].tri=(x.net>=0?"▼":"▲").repeat(x.n<=3?3:x.n<=6?2:1); }
   return L; }
 const dmCol = c => css(c==="pos"?"--pos":c==="neg"?"--neg":c==="warn"?"--warn":c==="maj"?"--major":"--muted");
 // Tabelle (nach Kurs sortiert, mit Spot-Zeile); r = Umrechnung in BTC (nur IBIT)
@@ -5173,11 +5178,42 @@ function dmTable(L, S0, r, pfx){ const rows=[...L].sort((a,b)=>b.k-a.k); let spo
   if(!spotDone) out.push(spotRow());
   return tbl3(["Level","Kurs","vs. Spot","GEX"].concat(r?["≈ BTC"]:[],["Bedeutung"]), out, "free"); }
 
+/* ---------- GEX-Heatmap im Kerzen-Chart (weiche Bänder wie bei Deepcharts) ----------
+   GEX je Strike und Kerze, berechnet aus dem aktuellen Open Interest beim damaligen Kurs und der damaligen Restlaufzeit
+   (Dealer long Calls, short Puts). Stärke = Deckkraft, relativ zum stärksten Wert im sichtbaren Bereich, schwache Werte unter der Schwelle ausgeblendet. */
+S.ghOn??=0; S.ghExp??="0"; S.ghCut??=30;
+const GH_FORM = '<div class="form"><span class="lbl3">GEX-Heatmap</span>'+seg3("k3","ghOn",[[1,"An"],[0,"Aus"]])+'<span class="lbl3">Verfall</span>'+seg3("k3","ghExp",[["0","0DTE"],["1","≤1 T"],["7","≤7 T"],["31","≤31 T"],["91","≤91 T"],["all","Alle"]])+'<span class="lbl3">Schwelle</span>'+seg3("k3","ghCut",[[10,"10 %"],[30,"30 %"],[50,"50 %"]])+'</div>';
+const GH = {k:"", h:null};
+function ghHeat(key, x, tf){
+  const lb=liveBook(); if(!lb.length || !spot || !x || !x.t.length) return null;
+  const now=Date.now(), z=ZS[key], n=x.t.length, ms=TFMS3[tf], s0=z? z.s : x.t[Math.max(0,n-110)], s1=z? z.e : x.t[n-1]+ms;
+  let lo=z&&z.hi>z.lo? z.lo : Math.min(...x.l.slice(-110)), hi=z&&z.hi>z.lo? z.hi : Math.max(...x.h.slice(-110)); const pad=(hi-lo)*0.15; lo-=pad; hi+=pad;
+  const ex=expiries(lb).filter(e=>expTsOf(e)>now), e0=ex[0], lim={"0":0,"1":1,"7":7,"31":31,"91":91}[String(S.ghExp)];
+  const key2=[S.cur,key,tf,Math.floor(s0/ms),Math.floor(s1/ms),String(S.ghExp),Math.round(lo),Math.round(hi),Math.floor(now/15000),+S.ghCut,VLIST.map(v=>S.venues[v]?1:0).join("")].join("|"); if(GH.k===key2) return GH.h;
+  // Optionen im Verfallsfenster, je Strike/Verfall/Typ zusammengefasst (über alle Börsen)
+  const g=new Map();
+  for(const b of lb){ if(lim===0? b.exp!==e0 : lim!=null && (b.expTs-now)/DAY>lim+0.01) continue; if(b.strike<lo || b.strike>hi || !(b.open_interest>0) || !(b.sig>0)) continue;
+    const id=b.strike+"|"+b.expTs+"|"+b.cp; let o=g.get(id); if(!o){ o={K:b.strike,expTs:b.expTs,s:b.cp==="C"?1:-1,oi:0,sw:0,fr:0}; g.set(id,o); } o.oi+=b.open_interest; o.sw+=b.sig*b.open_interest; o.fr+=(b.F/spot)*b.open_interest; }
+  const G=[...g.values()].map(o=>({K:o.K,expTs:o.expTs,s:o.s,oi:o.oi,sig:o.sw/o.oi,fr:o.fr/o.oi})); if(!G.length){ GH.k=key2; GH.h=null; return null; }
+  // Zeilenhöhe: häufigster Strike-Abstand
+  const ks=[...new Set(G.map(o=>o.K))].sort((a,b)=>a-b), cnt=new Map(); for(let i=1;i<ks.length;i++){ const d=+(ks[i]-ks[i-1]).toFixed(6); cnt.set(d,(cnt.get(d)||0)+1); }
+  let dk=0, bc=0; for(const [d,c] of cnt) if(c>bc || (c===bc && d<dk)){ dk=d; bc=c; } if(!dk) dk=spot*0.005;
+  // Kerzen im sichtbaren Bereich (bei sehr vielen Werten jede zweite)
+  let idx=[]; for(let i=0;i<n;i++) if(x.t[i]+ms>=s0 && x.t[i]<=s1) idx.push(i); const step=idx.length*G.length>1.2e6? Math.ceil(idx.length*G.length/1.2e6) : 1;
+  const data=[]; let mx=0;
+  for(let j=0;j<idx.length;j+=step){ const i=idx[j], t=x.t[i], te=t+ms*step, P=x.c[i], row=new Map();
+    for(const o of G){ const T=(o.expTs-te)/YEAR; if(T<=0) continue; const F=P*o.fr, sT=o.sig*Math.sqrt(Math.max(T,0.25/(365*24))), d1=(Math.log(F/o.K)+o.sig*o.sig*T/2)/sT; if(d1<-8||d1>8) continue;
+      const v=o.s*npdf(d1)/(F*sT)*o.oi*F*F*0.01, k=Math.round(o.K/dk)*dk; row.set(k,(row.get(k)||0)+v); }
+    for(const [k,v] of row){ if(!v) continue; data.push([t,k,v,ms*step]); const a=Math.abs(v); if(a>mx) mx=a; } }
+  GH.k=key2; GH.h=data.length? {data,dk,mx,soft:true,cut:(+S.ghCut||30)/100,op:0.9} : null; return GH.h; }
+const _ckDrawGH = ckDraw; ckDraw = function(elId,key,x,tf,o2){ if((key==="kl"||key==="gm") && +S.ghOn){ const h=ghHeat(key,x,tf); if(h) o2=Object.assign({},o2,{heat:h}); } return _ckDrawGH(elId,key,x,tf,o2); };
+V3.keylv = V3.keylv.replace(ckSetBtn("kl")+'</div>', ckSetBtn("kl")+'</div>'+GH_FORM);
+
 S.gmCore??=1; S.gm0??=1; S.gmGex??=1; S.gm1d??=1;
 const GM = {t:0, M:null, key:"", hs:""};
 const lbRows = lb => lb.map(b=>({k:b.strike, cp:b.cp, expTs:b.expTs, exp:b.exp, oi:b.open_interest||0, vol:b.volume||0, iv:b.sig, gamma:b.g.gamma, delta:b.g.delta, px:(b.mark_price||0)*b.F, venue:b.venue}));
-V3.gexmodel = P2("GEX Daily Model","Levels für den Tag aus allen Verfällen und dem nächsten Verfall",'<div class="cards" id="gm-cards"></div><div class="form">'+tfBar3("gm")+tog3("gmCore","Kern")+tog3("gm0","0DTE")+tog3("gmGex","GEX 1–10")+tog3("gm1d","1D-Spanne")+resetBtn3("gm")+ckSetBtn("gm")+'</div><div class="chart" id="c-gm" style="height:min(72vh,640px)"></div>'
-  +'<div class="note">Call Resistance = Strike über dem Kurs mit dem meisten Call-Gamma, Put Support = Strike unter dem Kurs mit dem meisten Put-Gamma (alle Verfälle). HVL = Gamma-Flip. Die 0DTE-Levels kommen nur aus dem nächsten Verfall und gelten als Intraday-Decke und -Boden. 1D Max/Min = erwartete Tagesspanne (1σ aus der ATM-IV des Verfalls nach etwa einem Tag). GEX 1–10 = die zehn Strikes mit dem meisten Gamma (Calls und Puts) innerhalb der Tagesspanne (bei zu wenigen Strikes etwas weiter), ohne Call Resistance und Put Support. Bedienung wie bei TradingView.</div>',"wide")
+V3.gexmodel = P2("GEX Daily Model","Levels für den Tag aus allen Verfällen und dem nächsten Verfall",'<div class="cards" id="gm-cards"></div><div class="form">'+tfBar3("gm")+tog3("gmCore","Kern")+tog3("gm0","0DTE")+tog3("gmGex","GEX 1–10")+tog3("gm1d","1D-Spanne")+resetBtn3("gm")+ckSetBtn("gm")+'</div>'+GH_FORM+'<div class="chart" id="c-gm" style="height:min(72vh,640px)"></div>'
+  +'<div class="note">Call Resistance = Strike über dem Kurs mit dem meisten Call-Gamma, Put Support = Strike unter dem Kurs mit dem meisten Put-Gamma (alle Verfälle). HVL = Gamma-Flip. Die 0DTE-Levels kommen nur aus dem nächsten Verfall und gelten als Intraday-Decke und -Boden. 1D Max/Min = erwartete Tagesspanne (1σ aus der ATM-IV des Verfalls nach etwa einem Tag). GEX 1–10 = die zehn Strikes mit dem meisten Gamma (Calls und Puts) innerhalb der Tagesspanne (bei zu wenigen Strikes etwas weiter), ohne Call Resistance und Put Support. Dreiecke = Rang (▼ positives, ▲ negatives Gamma). GEX-Heatmap = weiche Bänder je Strike und Kerze, berechnet aus dem aktuellen Open Interest beim jeweiligen Kurs: je kräftiger, desto mehr Gamma, die Schwelle blendet schwache Bänder aus. Bedienung wie bei TradingView.</div>',"wide")
   + P2("Level-Tabelle","nach Kurs sortiert, mit Abstand zum Spot",'<div id="gm-t"></div>',"wide");
 R3.gexmodel = (lb, lv) => {
   if(!lb.length || !spot) return; const now=Date.now();
@@ -5188,7 +5224,7 @@ R3.gexmodel = (lb, lv) => {
     +cardH("Intraday-Decke",M.cr0!=null?pS(M.cr0):"–",sp("Call Resistance 0DTE"),"pos")+cardH("Intraday-Boden",M.ps0!=null?pS(M.ps0):"–",sp("Put Support 0DTE"),"neg")+cardH("Gamma Wall 0DTE",M.gw0!=null?pS(M.gw0):"–",vs(M.gw0),"maj")
     +cardH("1D-Spanne",M.dMax!=null?fmtNum(M.dMin)+" – "+fmtNum(M.dMax):"–",M.sd?sp("±"+(M.sd*100).toFixed(2)+" % (1σ)"):"","")+cardH("GEX 1",M.gex[0]?pS(M.gex[0].k):"–",M.gex[0]?vs(M.gex[0].k):"","");
   const on={core:+S.gmCore, "0dte":+S.gm0, gex:+S.gmGex, "1d":+S.gm1d}, acc=css("--accent");
-  const lvls=L.filter(l=>on[l.grp]).map(l=>[l.n, l.k, l.grp==="gex"? rgba3(acc,.8) : dmCol(l.c), l.grp!=="core"]);
+  const lvls=L.filter(l=>on[l.grp]).map(l=>[l.n+(l.tri?" "+l.tri:""), l.k, l.grp==="gex"? (l.tri&&l.tri[0]==="▲"? rgba3(css("--neg"),.85) : rgba3(css("--pos"),.85)) : dmCol(l.c), l.grp!=="core"]);
   const tf=tfOf("gm","15"), x=CND[S.cur+tf]; loadTF(tf); if(x) liveTF(x,tf);
   if(x && x.t.length) ckDraw("c-gm","gm",x,tf,{levels:lvls, prof:keyLevels(lb,lv).g, vp:true, vol:true});
   const hs=[GM.t,S.cur,document.documentElement.dataset.skin].join("|"); if(GM.hs!==hs){ GM.hs=hs; $("gm-t").innerHTML=dmTable(L,spot,null,pS); }
@@ -5442,7 +5478,7 @@ R3.quant = (lb,lv,list) => { trainQ(); const o=base(), R=QM.res;
 const DOCS=[["Implizite Volatilität (IV)","Die Erwartung des Marktes, wie stark sich der Kurs bewegt, als Prozent pro Jahr. 60 % IV ≈ ±3,5 % pro Woche. Hohe IV = teure Optionen."],["ATM IV, DVOL, TQI Vol-Index","ATM IV ist die IV am Geld. DVOL ist Deribits 30-Tage-Index (wie der VIX). Der TQI Vol-Index berechnet dasselbe modellfrei aus der ganzen Kette."],
   ["IV Rank / Perzentil","Wo die IV im Vergleich zum letzten Jahr steht. 0 % = historisch günstig, 100 % = historisch teuer."],["VRP","Volatility Risk Premium = IV minus realisierte Vola. Positiv = Optionen teuer, Verkäufer im Vorteil."],
   ["Gamma Exposure (GEX)","Wie stark Dealer beim Hedgen kaufen oder verkaufen müssen. Positiver GEX: Dealer long Gamma, sie kaufen Dips und verkaufen Rallys (bremst). Negativer GEX: sie verstärken Bewegungen."],
-  ["Call Wall / Put Wall / Flip","Call Wall = größter positiver GEX (Widerstand). Put Wall = größter negativer GEX (Unterstützung). Flip = wo Netto-GEX null kreuzt; darunter wird es meist volatiler."],["Net Drift","Netto-Prämie von Calls und Puts (gekauft minus verkauft, Aggressor-Seite), über den Tag aufsummiert, wie bei Quant Data. Steigt die Call-Linie und fällt die Put-Linie, ist der Flow bullisch. Kreuzen sich die Linien, dreht oft die Stimmung. Kombi-Trades mit mehreren Beinen zählen nicht, weil ihre Richtung unklar ist."],["GEX Daily Model","Tages-Levels aus dem Gamma: Call Resistance (meistes Call-Gamma über dem Kurs, Decke), Put Support (meistes Put-Gamma unter dem Kurs, Boden), HVL (Gamma-Flip), dazu Decke, Boden, Flip und Gamma Wall des nächsten Verfalls (0DTE), die erwartete Tagesspanne (1D Max/Min) und GEX 1–10, die zehn stärksten übrigen Gamma-Strikes als Reaktionszonen."],["0DTE","Optionen, die am nächsten Verfall auslaufen. Bei Deribit & Co. verfallen täglich um 08:00 UTC Optionen, bei SPX, SPY, QQQ und IBIT an jedem US-Handelstag. 0DTE-Gamma wirkt stark, aber nur kurz: Walls und Max Pain ziehen den Kurs oft bis zum Verfall an (Pinning), danach ist der Effekt weg."],["CBOE-Daten","Optionsketten der CBOE für US-Werte (IBIT, SPX, SPY, QQQ, NDX, IWM, MSTR, COIN), 15 Minuten verzögert. Ein GitHub-Job lädt sie während der US-Handelszeit etwa alle 15 bis 30 Minuten. Ein Kontrakt = 100 Aktien. IBIT-Levels werden mit dem BTC-Kurs zur Zeit des IBIT-Kurses in BTC umgerechnet."],["Major Wall","Der Strike mit dem meisten Gamma insgesamt, also Calls und Puts zusammen über alle Verfälle. Dort sichern Dealer am meisten ab. Der Preis wird oft dorthin gezogen oder bleibt dort hängen. In den Charts ist sie die dicke Linie in der Highlight-Farbe des Templates."],
+  ["Call Wall / Put Wall / Flip","Call Wall = größter positiver GEX (Widerstand). Put Wall = größter negativer GEX (Unterstützung). Flip = wo Netto-GEX null kreuzt; darunter wird es meist volatiler."],["GEX-Heatmap","Weiche Farbbänder im Kerzen-Chart: für jeden Strike und jede Kerze die GEX, berechnet aus dem aktuellen Open Interest beim damaligen Kurs und der damaligen Restlaufzeit. Je kräftiger das Band, desto mehr Gamma. Positiv (Calls) bremst den Kurs eher, negativ (Puts) beschleunigt ihn. Einschalten auf Key Levels und im GEX Daily Model, Verfall wählbar von 0DTE bis alle, die Schwelle blendet schwache Bänder aus."],["Net Drift","Netto-Prämie von Calls und Puts (gekauft minus verkauft, Aggressor-Seite), über den Tag aufsummiert, wie bei Quant Data. Steigt die Call-Linie und fällt die Put-Linie, ist der Flow bullisch. Kreuzen sich die Linien, dreht oft die Stimmung. Kombi-Trades mit mehreren Beinen zählen nicht, weil ihre Richtung unklar ist."],["GEX Daily Model","Tages-Levels aus dem Gamma: Call Resistance (meistes Call-Gamma über dem Kurs, Decke), Put Support (meistes Put-Gamma unter dem Kurs, Boden), HVL (Gamma-Flip), dazu Decke, Boden, Flip und Gamma Wall des nächsten Verfalls (0DTE), die erwartete Tagesspanne (1D Max/Min) und GEX 1–10, die zehn stärksten übrigen Gamma-Strikes als Reaktionszonen."],["0DTE","Optionen, die am nächsten Verfall auslaufen. Bei Deribit & Co. verfallen täglich um 08:00 UTC Optionen, bei SPX, SPY, QQQ und IBIT an jedem US-Handelstag. 0DTE-Gamma wirkt stark, aber nur kurz: Walls und Max Pain ziehen den Kurs oft bis zum Verfall an (Pinning), danach ist der Effekt weg."],["CBOE-Daten","Optionsketten der CBOE für US-Werte (IBIT, SPX, SPY, QQQ, NDX, IWM, MSTR, COIN), 15 Minuten verzögert. Ein GitHub-Job lädt sie während der US-Handelszeit etwa alle 15 bis 30 Minuten. Ein Kontrakt = 100 Aktien. IBIT-Levels werden mit dem BTC-Kurs zur Zeit des IBIT-Kurses in BTC umgerechnet."],["Major Wall","Der Strike mit dem meisten Gamma insgesamt, also Calls und Puts zusammen über alle Verfälle. Dort sichern Dealer am meisten ab. Der Preis wird oft dorthin gezogen oder bleibt dort hängen. In den Charts ist sie die dicke Linie in der Highlight-Farbe des Templates."],
   ["Vanna, Charm, Vomma, Speed, Zomma, Color","Vanna: Delta-Änderung bei IV-Bewegung. Charm: täglicher Delta-Verfall. Vomma: Vega-Änderung bei IV-Bewegung. Speed: Gamma-Änderung bei Spot-Bewegung. Zomma: Gamma-Änderung bei IV-Bewegung. Color: täglicher Gamma-Verfall."],
   ["Skew / Risk Reversal","25Δ RR = Call-IV minus Put-IV bei 25 Delta. Negativ = Puts teurer (Absicherung, Angst), positiv = Calls teurer (FOMO)."],["Term Structure","ATM IV über die Laufzeiten. Contango (steigend) ist normal, Backwardation (fallend) zeigt akuten kurzfristigen Stress."],
   ["Max Pain","Strike, an dem Optionskäufer beim Verfall am meisten verlieren. Wirkt nahe am Verfall oft wie ein Magnet."],["Open Interest","Anzahl offener Kontrakte. Steigendes OI = neues Geld, fallendes OI = Positionen werden geschlossen."],
