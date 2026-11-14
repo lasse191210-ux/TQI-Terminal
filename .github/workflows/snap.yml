@@ -1,0 +1,17 @@
+name: TQI-Schnappschuss
+on:
+  push:
+    branches: [tqi-snap]
+permissions:
+  contents: write
+jobs:
+  snap:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 snap.py
+      - env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd out && git init -q && git checkout -q -b tqi-snap-data && git add . && git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -qm "Schnappschuss" && git push -qf "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" tqi-snap-data
