@@ -17,7 +17,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.5.0/echarts.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/echarts-gl@2.0.9/dist/echarts-gl.min.js" onload="window.__gl=1" onerror="window.__gl=0"></script>
-<script>/* I18N-BEGIN */window.TQI_I18N_V="20261119-001722";
+<script>/* I18N-BEGIN */window.TQI_I18N_V="20261119-003439";
 /* TQI Sprach-Engine: Deutsch ist Standard. Andere Sprachen übersetzen Texte, Attribute und Chart-Beschriftungen zur Laufzeit. */
 (function(){
   var LANGS=[["de","Deutsch"],["en","English"],["es","Español"],["fr","Français"]];
@@ -2784,7 +2784,7 @@ window.addEventListener("beforeunload", saveX);
     const hgt=Math.min(4,Math.abs(v)*4), w=100/N; out+=`<rect x="${i*w+w*0.18}" y="${v>=0?4-hgt:4}" width="${w*0.64}" height="${hgt}" fill="var(${v>=0?"--pos":"--neg"})"/>`; }
   el.innerHTML=out; })();
 /* S3-BEGIN */
-const TQI_BUILD="20261119-001722";
+const TQI_BUILD="20261119-003439";
 /* ====================== Session 3: Infrastruktur ====================== */
 const V3 = {}, R3 = {}, NB3 = new Set();   // Seiten-HTML, Renderer, Seiten ohne Optionskette
 // Legenden- und Tooltip-Marker in der Linienfarbe zeichnen (sonst Palettenfarbe)
@@ -3473,13 +3473,13 @@ function ckDraw(elId,key,x,tf,o2={}){
   const c=ch(elId); if(!c||!x||!x.t.length) return null; const o=base(), ms=TFMS3[tf], n=x.t.length, lastT=x.t[n-1], cf=ckCfg();
   let z=ZS[key]; if(!z||z.tf!==tf||z.cur!==S.cur){ z=ZS[key]={tf,cur:S.cur,s:x.t[Math.max(0,n-(o2.show||110))],e:lastT+ms*6,lastT,auto:true}; }
   else if(lastT>z.lastT){ if(z.e>=z.lastT-ms*0.5){ const d=lastT-z.lastT; z.s+=d; z.e+=d; } z.lastT=lastT; }
-  const f=ckFit(x,z.s,z.e,ms), up=cf.up||css("--bull"), dn=cf.dn||css("--bear"), acc=css("--accent"), fg=css("--fg"), mut=css("--muted"), line=css("--line"), warn=css("--warn"), last=x.c[n-1];
+  const f=ckFit(x,z.s,z.e,ms), up=o2.up||cf.up||css("--bull"), dn=o2.dn||cf.dn||css("--bear"), acc=css("--accent"), fg=css("--fg"), mut=css("--muted"), line=css("--line"), warn=css("--warn"), last=x.c[n-1];
   if(z.auto!==false||!(z.hi>z.lo)){ z.auto=true; z.lo=f.lo; z.hi=f.hi; }
   const bw=ckBW(c.getWidth()-84,z.s,z.e,ms);
   const series=[]; let heatIdx=-1;
   if(o2.heat && o2.heat.data.length){ const H=o2.heat; heatIdx=series.length;
     series.push({id:"heat",type:"custom",name:"GEX",clip:true,z:1,silent:true,encode:{x:0,y:1},data:H.data,
-      renderItem: H.soft? (()=>{ const hexL=c=>{ const m=/^#?([0-9a-f]{6})$/i.exec(String(c).trim()); if(!m) return 1; const n=parseInt(m[1],16); return ((n>>16&255)*.299+(n>>8&255)*.587+(n&255)*.114)/255; };
+      renderItem: H.qd? qdRender(H) : H.soft? (()=>{ const hexL=c=>{ const m=/^#?([0-9a-f]{6})$/i.exec(String(c).trim()); if(!m) return 1; const n=parseInt(m[1],16); return ((n>>16&255)*.299+(n>>8&255)*.587+(n&255)*.114)/255; };
           // sehr dunkles Minus auf hellem Hintergrund (Paper) würde wie Schmutz wirken: dort die Major-Farbe nehmen
           const PC=css("--pos"), N0=css("--neg"), NC=document.documentElement.hasAttribute("data-light") && hexL(N0)<0.25? (css("--major")||N0) : N0, cut=H.cut||0, op=H.op||0.9, mx=H.mx||1;
           // weiche Bänder wie bei einer GEX-Heatmap: Stärke = Deckkraft, Ränder laufen aus
@@ -5289,7 +5289,7 @@ function chpHeat(x, tf){
   for(const b of lb){ if(lim===0? b.exp!==e0 : lim!=null && (b.expTs-now)/DAY>lim+0.01) continue; if(b.strike<spot*0.6 || b.strike>spot*1.6 || !(b.open_interest>0) || !(b.sig>0)) continue;
     const id=b.strike+"|"+b.expTs+"|"+b.cp; let o=m.get(id); if(!o){ o={K:b.strike,expTs:b.expTs,s:b.cp==="C"?1:-1,c:b.cp==="C",oi:0,sw:0,fr:0}; m.set(id,o); } o.oi+=b.open_interest; o.sw+=b.sig*b.open_interest; o.fr+=(b.F/spot)*b.open_interest; }
   const G=[...m.values()].map(o=>({K:o.K,expTs:o.expTs,s:o.s,c:o.c,oi:o.oi,sig:o.sw/o.oi,fr:o.fr/o.oi})); if(!G.length){ CHP.k=key; CHP.h=null; return null; }
-  const NR=64, dk=(hi-lo)/NR, P=[]; for(let r=0;r<NR;r++) P.push(lo+dk*(r+0.5));
+  const NR=96, dk=(hi-lo)/NR, P=[]; for(let r=0;r<NR;r++) P.push(lo+dk*(r+0.5));
   let idx=[]; for(let i=0;i<n;i++) if(x.t[i]+ms>=s0 && x.t[i]<=s1) idx.push(i); const step=Math.max(1,Math.ceil(idx.length/150));
   const cols=[];
   for(let j=0;j<idx.length;j+=step){ const t=x.t[idx[j]], te=t+ms*step*0.5, row=new Float64Array(NR);
@@ -5300,13 +5300,47 @@ function chpHeat(x, tf){
     cols.push([t,row]); }
   // weich zeichnen: 1-2-1 über Zeit und Kurs
   const sm=cols.map(([t,row],j)=>{ const a=cols[j-1]?cols[j-1][1]:row, b=cols[j+1]?cols[j+1][1]:row, o=new Float64Array(NR); for(let r=0;r<NR;r++) o[r]=(2*row[r]+a[r]+b[r])/4; return [t,o]; });
-  const data=[]; let mx=0;
-  for(const [t,row] of sm) for(let r=0;r<NR;r++){ const v=(2*row[r]+(row[r-1]??row[r])+(row[r+1]??row[r]))/4; if(!v) continue; data.push([t,P[r],v,ms*step]); const a=Math.abs(v); if(a>mx) mx=a; }
-  CHP.k=key; CHP.h=data.length? {data,dk,mx,field:true,soft:true,cut:0.03,op:0.78} : null; return CHP.h; }
+  // Gitter glätten (auch über den Kurs), dann je Zelle die Nachbarwerte für die Konturlinien mitgeben
+  const sp=row=>{ const o=new Float64Array(NR); for(let r=0;r<NR;r++) o[r]=(2*row[r]+(row[r-1]??row[r])+(row[r+1]??row[r]))/4; return o; };
+  const G2=sm.map(([t,row])=>[t,sp(sp(sp(row)))]);
+  const data=[]; let mxP=0, mxN=0;
+  for(let c=0;c<G2.length;c++){ const [t,row]=G2[c], nx=G2[c+1];
+    for(let r=0;r<NR;r++){ const v=row[r]; if(v>mxP) mxP=v; if(-v>mxN) mxN=-v;
+      data.push([t,P[r],v,ms*step, nx?nx[1][r]:NaN, r+1<NR?row[r+1]:NaN, nx&&r+1<NR?nx[1][r+1]:NaN, nx?nx[0]:NaN, r>0?row[r-1]:v]); } }
+  // Vorzeichenwechsel (Nulllinie) jetzt, ±25 % um den Kurs – auch wenn er außerhalb des Bildes liegt
+  const ZN=201, zp=[], zv=new Float64Array(ZN), te=Date.now();
+  for(let r=0;r<ZN;r++) zp.push(spot*(0.75+0.5*r/(ZN-1)));
+  for(const o of G){ const T=(o.expTs-te)/YEAR; if(T<=0) continue; const Te=Math.max(T,0.5/(365*24)), sT=o.sig*Math.sqrt(Te), lk=Math.log(o.K);
+    for(let r=0;r<ZN;r++){ const F=zp[r]*o.fr, d1=(Math.log(F)-lk+o.sig*o.sig*Te/2)/sT; if(d1<-6||d1>6) continue; const pd=npdf(d1), d2=d1-sT;
+      zv[r]+= g==="gex"? o.s*pd/(F*sT)*o.oi*F*F*0.01 : g==="vex"? o.s*(-pd*d2/o.sig)*o.oi*F*0.01 : g==="dex"? (o.c? ncdf(d1) : ncdf(d1)-1)*o.oi*F : o.s*pd*d2/(2*Te)/365*o.oi*F; } }
+  let zero=null; for(let r=1;r<ZN;r++) if(zv[r-1] && zv[r] && (zv[r-1]<0)!==(zv[r]<0)){ const x=zp[r-1]+(zp[r]-zp[r-1])*(-zv[r-1])/(zv[r]-zv[r-1]); if(zero==null||Math.abs(x-spot)<Math.abs(zero-spot)) zero=x; }
+  CHP.k=key; CHP.h=data.length? {data,dk,mx:Math.max(mxP,mxN),mxP,mxN,qd:true,soft:true,zero,lo,hi} : null; return CHP.h; }
 
-function chpLegend(h){ const el=$("chp-leg"); if(!el) return; if(!h){ el.innerHTML=""; return; } const L=CH_LBL[S.chG]||CH_LBL.chex;
-  const N0=css("--neg"), m=/^#?([0-9a-f]{6})$/i.exec(N0.trim()), dk=m&&((parseInt(m[1],16)>>16&255)*.299+(parseInt(m[1],16)>>8&255)*.587+(parseInt(m[1],16)&255)*.114)/255<0.25, NC=document.documentElement.hasAttribute("data-light")&&dk? (css("--major")||N0) : N0;
-  el.innerHTML=`<span>${L[1]} ${fmtUsd(-h.mx)}</span><i style="background:linear-gradient(90deg,${NC},${rgba3(NC,0)} 48%,${rgba3(css("--pos"),0)} 52%,${css("--pos")})"></i><span>${fmtUsd(h.mx)}</span><small>${L[2]}</small><small>Kursniveau × Zeit</small>`; }
+/* Farbskala wie bei Quant Data: Minus = Rot/Pink, Plus = Violett, nahe null = Hintergrund.
+   Plus und Minus haben je eine eigene Skala (wie die Farbleiste bei Quant Data), damit beide Seiten sichtbar sind. */
+function qdStops(){ const light=document.documentElement.hasAttribute("data-light"), bg=css("--panel")||(light?"#ffffff":"#0b0b10");
+  return light? {bg, neg:[[0,bg],[0.25,"#fbd3e2"],[0.55,"#f0457a"],[0.8,"#c81e5b"],[1,"#881337"]], pos:[[0,bg],[0.25,"#e4dcfd"],[0.55,"#9a6cf7"],[0.8,"#6d28d9"],[1,"#3b0f80"]], line:"rgba(0,0,0,.16)", zero:"rgba(0,0,0,.8)"}
+    : {bg, neg:[[0,bg],[0.18,"#3b0b1d"],[0.5,"#9e123f"],[0.8,"#e3175c"],[1,"#ff6a95"]], pos:[[0,bg],[0.18,"#1e0c3e"],[0.5,"#5b21b6"],[0.8,"#8b5cf6"],[1,"#cbb8ff"]], line:"rgba(255,255,255,.22)", zero:"rgba(255,255,255,.9)"}; }
+function qdMix(stops,r){ const h=c=>{ const m=/^#?([0-9a-f]{6})$/i.exec(String(c).trim()); const n=m?parseInt(m[1],16):0; return [n>>16&255,n>>8&255,n&255]; };
+  r=Math.max(0,Math.min(1,r)); for(let i=1;i<stops.length;i++) if(r<=stops[i][0]){ const [a0,c0]=stops[i-1], [a1,c1]=stops[i], f=(r-a0)/(a1-a0||1), x=h(c0), y=h(c1); return `rgb(${x.map((q,j)=>Math.round(q+(y[j]-q)*f)).join(",")})`; }
+  return stops[stops.length-1][1]; }
+function qdRender(H){ const St=qdStops(), lv=[0.2,0.4,0.6,0.8], LV=[0,...lv.map(f=>f*H.mxP),...lv.map(f=>-f*H.mxN)].filter((v,i)=>i===0||v);
+  const col=v=>v>=0? qdMix(St.pos,Math.pow(v/(H.mxP||1),0.9)) : qdMix(St.neg,Math.pow(-v/(H.mxN||1),0.9));
+  return (p,api)=>{ const t=api.value(0), k=api.value(1), v=api.value(2), w=api.value(3), a=api.coord([t,k+H.dk*0.5]), b=api.coord([t+w,k-H.dk*0.5]);
+    const vU0=api.value(5), vD0=api.value(8), top=isFinite(vU0)?(v+vU0)/2:v, bot=isFinite(vD0)?(v+vD0)/2:v;
+    const kids=[{type:"rect",shape:{x:a[0]-0.6,y:a[1]-0.6,width:Math.max(1,b[0]-a[0]+1.2),height:Math.max(1,b[1]-a[1]+1.2)},z2:0,style:{fill:new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:col(top)},{offset:0.5,color:col(v)},{offset:1,color:col(bot)}])}}];
+    // Konturlinien (Marching Squares zwischen den Zellmitten)
+    const vR=api.value(4), vU=api.value(5), vRU=api.value(6), tR=api.value(7);
+    if(isFinite(vR)&&isFinite(vU)&&isFinite(vRU)&&isFinite(tR)){ const x0=t+w/2, x1=tR+w/2, y0=k, y1=k+H.dk, c00=v, c10=vR, c01=vU, c11=vRU;
+      for(const L of LV){ const pts=[], e=(va,vb,pa,pb)=>{ if((va>L)!==(vb>L)){ const f=(L-va)/(vb-va); pts.push([pa[0]+(pb[0]-pa[0])*f, pa[1]+(pb[1]-pa[1])*f]); } };
+        e(c00,c10,[x0,y0],[x1,y0]); e(c10,c11,[x1,y0],[x1,y1]); e(c01,c11,[x0,y1],[x1,y1]); e(c00,c01,[x0,y0],[x0,y1]);
+        for(let i=0;i+1<pts.length;i+=2){ const A=api.coord(pts[i]), B=api.coord(pts[i+1]); kids.push({type:"line",z2:20,silent:true,shape:{x1:A[0],y1:A[1],x2:B[0],y2:B[1]},style:{stroke:L===0?St.zero:St.line,lineWidth:L===0?1.6:0.7,lineDash:L===0?[5,3]:null}}); } } }
+    return {type:"group",children:kids}; }; }
+
+function chpLegend(h){ const el=$("chp-leg"); if(!el) return; if(!h){ el.innerHTML=""; return; } const L=CH_LBL[S.chG]||CH_LBL.chex, St=qdStops();
+  const g=[...St.neg.slice().reverse().map(([o,c])=>`${c} ${(50-o*50).toFixed(0)}%`),...St.pos.map(([o,c])=>`${c} ${(50+o*50).toFixed(0)}%`)].join(",");
+  const chex=S.chG==="chex";
+  el.innerHTML=`<span class="n"><span>Minus</span> ${fmtUsd(-h.mxN)}${chex?" <span>· Dealer kaufen</span>":""}</span><i style="background:linear-gradient(90deg,${g})"></i><span class="p"><span>Plus</span> ${fmtUsd(h.mxP)}${chex?" <span>· Dealer verkaufen</span>":""}</span><small>${L[1]}</small><small>${L[2]}</small><small>gestrichelt = Nulllinie</small>${!h.mxP||!h.mxN? `<b class="z"><span>${!h.mxP?"Im Bild nur Minus":"Im Bild nur Plus"}</span> · ${h.zero!=null?`<span>Vorzeichenwechsel bei</span> $${fmtNum(h.zero)} (<span>${pct3((h.zero/spot-1)*100,2)} vom Spot</span>)`:"<span>kein Vorzeichenwechsel innerhalb ±25 %</span>"}</b>`:""}`; }
 
 function chhModel(lb, g, nExp, rng){
   const now=Date.now(), exps=expiries(lb).filter(e=>expTsOf(e)>now).slice(0,nExp), es=new Set(exps), lo=spot*(1-rng/100), hi=spot*(1+rng/100);
@@ -5351,7 +5385,7 @@ function chhTable(M, scale){
 R3.charmheat = (lb, lv) => {
   if(!lb.length || !spot) return; const now=Date.now(), g=S.chG, L=CH_LBL[g]||CH_LBL.chex;
   const tf=tfOf("ch","15"), x=CND[S.cur+tf]; loadTF(tf); if(x) liveTF(x,tf);
-  if(x && x.t.length){ const h=+S.chpOn? chpHeat(x,tf) : null; chpLegend(h); ckDraw("c-chp","ch",x,tf,{heat:h||undefined, prof:keyLevels(lb,lv).g, vp:false, vol:false}); }
+  if(x && x.t.length){ const h=+S.chpOn? chpHeat(x,tf) : null; chpLegend(h); const lt=document.documentElement.hasAttribute("data-light"); ckDraw("c-chp","ch",x,tf,{heat:h||undefined, prof:keyLevels(lb,lv).g, vp:false, vol:false, up:h?(lt?"#ffffff":"#f2f2f5"):undefined, dn:h?(lt?"#111111":"#7a7a86"):undefined}); }
   $("chp-note").textContent = "Für jede Kerze und jedes Kursniveau: Summe der "+L[0]+"-Exposure aller Optionen, wenn der Kurs dort stünde (Open Interest und IV vom aktuellen Stand, Restlaufzeit von damals). "+(g==="chex"?"Plus = Dealer müssen mit der Zeit verkaufen, Minus = kaufen. Charm wächst zum Verfall hin, deshalb werden die Felder nach rechts kräftiger. ":"")+"Balken links = GEX je Strike.";
   const key=[S.cur,g,S.chN,S.chR].join("|");
   if(!CHH.M || now-CHH.t>5000 || CHH.key!==key){ CHH.M=chhModel(lb,g,+S.chN,+S.chR); CHH.t=now; CHH.key=key; CHH.hs=""; }
@@ -5376,7 +5410,7 @@ document.head.insertAdjacentHTML("beforeend",`<style>
 .chh tr.chh-atm td.l{color:var(--accent)}
 .chh tr.chh-spot td{background:var(--accent)!important;color:var(--bg);font-weight:700;padding:1px 6px;font-size:10px;letter-spacing:.04em}
 .chh tr.chh-sum td{font-weight:700;border-top:2px solid var(--fg);background:var(--panel-2)}
-.chh-leg{display:flex;align-items:center;gap:8px;font:11px 'IBM Plex Mono',monospace;color:var(--muted);padding:4px 14px}.chh-leg i{display:block;width:180px;height:9px;border-radius:2px;border:1px solid var(--line)}.chh-leg small{margin-left:6px}
+.chh-leg{display:flex;align-items:center;gap:8px;font:11px 'IBM Plex Mono',monospace;color:var(--muted);padding:4px 14px}.chh-leg{flex-wrap:wrap}.chh-leg .n{color:#e3175c;font-weight:600}.chh-leg .p{color:#8b5cf6;font-weight:600}.chh-leg .z{color:var(--fg);font-weight:600;flex-basis:100%}.chh-leg i{display:block;width:260px;height:10px;border-radius:2px;border:1px solid var(--line)}.chh-leg small{margin-left:6px}
 .chh{max-height:min(78vh,900px);overflow:auto}
 </style>`);
 
