@@ -17,7 +17,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.5.0/echarts.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/echarts-gl@2.0.9/dist/echarts-gl.min.js" onload="window.__gl=1" onerror="window.__gl=0"></script>
-<script>/* I18N-BEGIN */window.TQI_I18N_V="20261114-005924";
+<script>/* I18N-BEGIN */window.TQI_I18N_V="20261119-001722";
 /* TQI Sprach-Engine: Deutsch ist Standard. Andere Sprachen übersetzen Texte, Attribute und Chart-Beschriftungen zur Laufzeit. */
 (function(){
   var LANGS=[["de","Deutsch"],["en","English"],["es","Español"],["fr","Français"]];
@@ -2784,7 +2784,7 @@ window.addEventListener("beforeunload", saveX);
     const hgt=Math.min(4,Math.abs(v)*4), w=100/N; out+=`<rect x="${i*w+w*0.18}" y="${v>=0?4-hgt:4}" width="${w*0.64}" height="${hgt}" fill="var(${v>=0?"--pos":"--neg"})"/>`; }
   el.innerHTML=out; })();
 /* S3-BEGIN */
-const TQI_BUILD="20261114-005924";
+const TQI_BUILD="20261119-001722";
 /* ====================== Session 3: Infrastruktur ====================== */
 const V3 = {}, R3 = {}, NB3 = new Set();   // Seiten-HTML, Renderer, Seiten ohne Optionskette
 // Legenden- und Tooltip-Marker in der Linienfarbe zeichnen (sonst Palettenfarbe)
@@ -3401,6 +3401,7 @@ R3.tqivix = (lb) => { const v=tqiVix(lb), last=TVX[TVX.length-1], ch1=TVX.find(x
 const TF3=[["1","1m"],["5","5m"],["15","15m"],["30","30m"],["60","1h"],["240","4h"],["1D","1D"]];
 const TFMS3={"1":60e3,"5":3e5,"15":9e5,"30":18e5,"60":36e5,"240":144e5,"1D":864e5};
 const CND={}, ZS={}, CKX={};
+const hexRGB=c=>{ const m=/^#?([0-9a-f]{6})$/i.exec(String(c||"").trim()); if(!m) return null; const n=parseInt(m[1],16); return [n>>16&255,n>>8&255,n&255]; };
 const rgba3=(c,a)=>{ c=String(c||"").trim(); let m=/^#([0-9a-f]{3})$/i.exec(c); if(m) c="#"+m[1].split("").map(x=>x+x).join(""); m=/^#([0-9a-f]{6})$/i.exec(c); if(!m) return c; const n=parseInt(m[1],16); return `rgba(${n>>16&255},${n>>8&255},${n&255},${a})`; };
 const tfOf=(key,def)=>{ const v=String(S["tf_"+key]??def); return TFMS3[v]?v:def; };
 const tfBar3=(key)=>seg3("k3","tf_"+key,TF3);
@@ -3478,11 +3479,14 @@ function ckDraw(elId,key,x,tf,o2={}){
   const series=[]; let heatIdx=-1;
   if(o2.heat && o2.heat.data.length){ const H=o2.heat; heatIdx=series.length;
     series.push({id:"heat",type:"custom",name:"GEX",clip:true,z:1,silent:true,encode:{x:0,y:1},data:H.data,
-      renderItem: H.soft? (()=>{ const PC=css("--pos"), NC=css("--neg"), cut=H.cut||0, op=H.op||0.9, mx=H.mx||1;
+      renderItem: H.soft? (()=>{ const hexL=c=>{ const m=/^#?([0-9a-f]{6})$/i.exec(String(c).trim()); if(!m) return 1; const n=parseInt(m[1],16); return ((n>>16&255)*.299+(n>>8&255)*.587+(n&255)*.114)/255; };
+          // sehr dunkles Minus auf hellem Hintergrund (Paper) würde wie Schmutz wirken: dort die Major-Farbe nehmen
+          const PC=css("--pos"), N0=css("--neg"), NC=document.documentElement.hasAttribute("data-light") && hexL(N0)<0.25? (css("--major")||N0) : N0, cut=H.cut||0, op=H.op||0.9, mx=H.mx||1;
           // weiche Bänder wie bei einer GEX-Heatmap: Stärke = Deckkraft, Ränder laufen aus
           return (p,api)=>{ const t=api.value(0), k=api.value(1), v=api.value(2), w=api.value(3), r=Math.abs(v)/mx; if(r<=cut) return null; const al=Math.min(1,(r-cut)/Math.max(0.01,1-cut))*op, col=v>=0?PC:NC;
+            if(H.field){ const a=api.coord([t,k+H.dk*0.5]), b=api.coord([t+w,k-H.dk*0.5]), q=Math.pow(al/op,0.85)*op, c1=hexRGB(col), c0=hexRGB(css("--panel"))||[255,255,255], fill=c1? `rgb(${c1.map((x,i)=>Math.round(x*q+c0[i]*(1-q))).join(",")})` : rgba3(col,q); return {type:"rect",shape:{x:a[0]-0.6,y:a[1]-0.6,width:Math.max(1,b[0]-a[0]+1.2),height:Math.max(1,b[1]-a[1]+1.2)},style:{fill,stroke:null}}; }
             const a=api.coord([t,k+H.dk*0.5]), b=api.coord([t+w,k-H.dk*0.5]);
-            return {type:"rect",shape:{x:a[0],y:a[1],width:Math.max(1,b[0]-a[0]+0.6),height:Math.max(2,b[1]-a[1])},style:{fill:new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:rgba3(col,0)},{offset:0.3,color:rgba3(col,al*0.75)},{offset:0.5,color:rgba3(col,al)},{offset:0.7,color:rgba3(col,al*0.75)},{offset:1,color:rgba3(col,0)}])}}; }; })()
+            return {type:"rect",shape:{x:a[0]-0.75,y:a[1],width:Math.max(1,b[0]-a[0]+1.5),height:Math.max(2,b[1]-a[1])},style:{fill:new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:rgba3(col,0)},{offset:0.3,color:rgba3(col,al*0.75)},{offset:0.5,color:rgba3(col,al)},{offset:0.7,color:rgba3(col,al*0.75)},{offset:1,color:rgba3(col,0)}])}}; }; })()
         : (p,api)=>{ const t=api.value(0), k=api.value(1), w=api.value(3); const a=api.coord([t,k+H.dk/2]), b=api.coord([t+w,k-H.dk/2]); return {type:"rect",shape:{x:a[0],y:a[1],width:Math.max(1,b[0]-a[0]),height:Math.max(1,b[1]-a[1])},style:{fill:api.visual("color")}}; }}); }
   const lvm=new Map(); for(const l of (o2.levels||[])){ if(!l[1]||!+cf[lvKind(l[0])]) continue; const k=Math.round(l[1]*100); if(lvm.has(k)) lvm.get(k)[0]+=" · "+l[0]; else lvm.set(k,[l[0],l[1],l[2],l[3]]); }
   const lbg=rgba3(css("--panel"),.86), lbl=(o)=>Object.assign({backgroundColor:lbg,padding:[1,4],borderRadius:2,fontSize:10,fontFamily:"IBM Plex Mono"},o);
@@ -5054,12 +5058,12 @@ document.head.insertAdjacentHTML("beforeend",`<style>.zdf{display:flex;flex-wrap
    GEX Daily Model: Call Resistance, Put Support, HVL, 0DTE-Decke/-Boden, HVL 0DTE, Gamma Wall 0DTE, 1D Max/Min und GEX 1–10. */
 
 /* ---------- Net Drift ---------- */
-S.ndView??="drift"; S.ndExp??="all"; S.ndMon??="all"; S.ndCombo??=0; S.ndCvd??=0;
+S.ndView??="drift"; S.ndExp??="all"; S.ndMon??="all"; S.ndCombo??=0; S.ndCvd??=0; S.ndVcum??="cum";
 const ND = {sel:null, list:[], ms:3e5, cvd:{k:"", t:[], v:[], at:0, busy:0}, zr:0};
 V3.netflow = P2("Net Drift","Netto-Prämie von Calls und Puts über das Zeitfenster, wie bei Quant Data",
   '<div class="form">'+seg3("k3","pnfInt",[[1,"1m"],[5,"5m"],[15,"15m"],[30,"30m"],[60,"1h"]])+seg3("k3","ndView",[["drift","Net Drift"],["flow","Net Flow"]])+seg3("k3","pnfMode",[["prem","Premium"],["vol","Kontrakte"]])+seg3("k3","pnfShow",[["both","Calls + Puts"],["net","Netto"]])+'</div>'
   +'<div class="form"><span class="lbl3">Verfall</span>'+seg3("k3","ndExp",[["all","Alle"],["0","0DTE"],["7","bis 7 T"],["30","bis 30 T"]])+'<span class="lbl3">Moneyness</span>'+seg3("k3","ndMon",[["all","Alle"],["otm","OTM"],["itm","ITM"]])
-  +'<span class="lbl3">Kombi-Trades</span>'+seg3("k3","ndCombo",[[0,"ohne"],[1,"mit"]])+'<span class="lbl3">CVD</span>'+seg3("k3","ndCvd",[[1,"An"],[0,"Aus"]])+'</div>'
+  +'<span class="lbl3">Kombi-Trades</span>'+seg3("k3","ndCombo",[[0,"ohne"],[1,"mit"]])+'<span class="lbl3">CVD</span>'+seg3("k3","ndCvd",[[1,"An"],[0,"Aus"]])+'<span class="lbl3">Volumen unten</span>'+seg3("k3","ndVcum",[["cum","kumuliert"],["bar","je Intervall"]])+'</div>'
   +'<div class="cards" id="c-nd-cards"></div><div class="chart" id="c-nd" style="height:min(76vh,680px)"></div><div id="nd-tr"></div>'
   +'<div class="note" id="nd-note"></div>',"wide");
 // Filter wie bei Quant Data: ohne Kombis, Restlaufzeit zum Zeitpunkt des Trades, Moneyness zum Indexkurs des Trades
@@ -5104,14 +5108,18 @@ function renderND(list){
       {name:"Kreuzung",type:"scatter",data:cross.map(([k,y,u])=>({value:[k,y],itemStyle:{color:u?PC:NC,borderColor:css("--panel"),borderWidth:1.5}})),symbolSize:9,z:6}); }
   top[0].markLine={symbol:"none",silent:true,data:[{yAxis:0,label:{show:false},lineStyle:{color:mut,type:"solid",width:1,opacity:.6}}]};
   const sers=[...top,{name:S.cur+" Kurs",type:"line",yAxisIndex:1,data:X,showSymbol:false,lineStyle:{color:mut,width:1.2},itemStyle:{color:mut}},
-    {name:"Netto-Volumen",type:"bar",xAxisIndex:1,yAxisIndex:2,itemStyle:{color:PC},data:V.map(([k,v])=>({value:[k,v],itemStyle:{color:v>=0?PC:NC}})),barMaxWidth:8}];
+    ...(S.ndVcum==="bar"? [{name:"Netto-Volumen",type:"bar",xAxisIndex:1,yAxisIndex:2,itemStyle:{color:PC},data:V.map(([k,v])=>({value:[k,v],itemStyle:{color:v>=0?PC:NC}})),barMaxWidth:8}]
+      : (()=>{ let a=0; const cum=V.map(([k,v])=>[k,a+=v]), ar=col=>({color:new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:rgba3(col,.55)},{offset:1,color:rgba3(col,.25)}])});
+        // wie bei Quant Data: kumuliertes Netto-Volumen (Calls − Puts) als Fläche, rot unter null, Plus-Farbe darüber
+        return [{name:"Netto-Volumen",type:"line",xAxisIndex:1,yAxisIndex:2,data:cum.map(([k,v])=>[k,Math.max(v,0),v]),showSymbol:false,lineStyle:{color:PC,width:1.6},itemStyle:{color:PC},areaStyle:{...ar(PC),origin:"auto"}},
+          {name:"Netto-Volumen",type:"line",xAxisIndex:1,yAxisIndex:2,data:cum.map(([k,v])=>[k,Math.min(v,0),v]),showSymbol:false,lineStyle:{color:NC,width:1.6},itemStyle:{color:NC},areaStyle:{...ar(NC),origin:"auto"}}]; })())];
   if(cvdOn) sers.push({name:"CVD",type:"line",xAxisIndex:1,yAxisIndex:3,data:ND.cvd.t.map((t,i)=>[t,ND.cvd.v[i]]),showSymbol:false,lineStyle:{color:css("--warn"),width:1.4},itemStyle:{color:css("--warn")}});
-  const legend=sers.filter(s=>s.name!=="Kreuzung").map(s=>s.name);
+  const legend=[...new Set(sers.filter(s=>s.name!=="Kreuzung").map(s=>s.name))];
   c.setOption({backgroundColor:"transparent",animation:false,textStyle:o.textStyle,axisPointer:{link:[{xAxisIndex:"all"}]},
     legend:{top:4,left:"center",itemWidth:12,itemHeight:8,textStyle:{color:mut,fontSize:11},data:legend},
     grid:[{left:66,right:66,top:34,height:"60%"},{left:66,right:66,top:"74%",bottom:28}],
     tooltip:{...o.tooltip,trigger:"axis",axisPointer:{type:"cross",label:{show:false}},formatter:ps=>{ if(!ps||!ps.length) return ""; const t=ps[0].value[0]; let h=`${fmtDT(t)} – ${new Date(t+ms).toLocaleTimeString(LOC,{hour:"2-digit",minute:"2-digit"})}`;
-      for(const p of ps){ if(p.seriesName==="Kreuzung") continue; const v=p.value[1]; h+=`<br>${p.marker}${p.seriesName}: <b>${p.seriesName===S.cur+" Kurs"?"$"+fmtNum(v):p.seriesName==="Netto-Volumen"||p.seriesName==="CVD"?(v>0?"+":"")+fmtNum(v,Math.abs(v)<10?1:0)+" "+S.cur:sgn3(v,f)}</b>`; }
+      const seen=new Set(); for(const p of ps){ if(p.seriesName==="Kreuzung"||seen.has(p.seriesName)) continue; seen.add(p.seriesName); const v=p.value.length>2? p.value[2] : p.value[1]; h+=`<br>${p.marker}${p.seriesName}: <b>${p.seriesName===S.cur+" Kurs"?"$"+fmtNum(v):p.seriesName==="Netto-Volumen"||p.seriesName==="CVD"?(v>0?"+":"")+fmtNum(v,Math.abs(v)<10?1:0)+" "+S.cur:sgn3(v,f)}</b>`; }
       return h+"<br><span style='opacity:.7'>Klick zeigt die Trades</span>"; }},
     xAxis:[{type:"time",gridIndex:0,axisLine:{lineStyle:{color:ln}},axisTick:{show:false},axisLabel:{show:false},splitLine:{show:false}},
       {type:"time",gridIndex:1,axisLine:{lineStyle:{color:ln}},axisTick:{show:false},axisLabel:{...axl,hideOverlap:true},splitLine:{show:false}}],
@@ -5124,7 +5132,7 @@ function renderND(list){
   if(!c.__nd){ c.__nd=1; c.getZr().on("click",e=>{ const pt=[e.offsetX,e.offsetY], g=c.containPixel({gridIndex:0},pt)?0:c.containPixel({gridIndex:1},pt)?1:-1; if(g<0) return;
     const ts=c.convertFromPixel({xAxisIndex:g},pt[0]); if(!isFinite(ts)) return; ND.sel=Math.floor(ts/ND.ms)*ND.ms; ndTrades(); }); }
   ndTrades();
-  const n=$("nd-note"); if(n){ const h=`<span>${flowV?"Net Flow = Netto-Prämie von Calls und Puts je Intervall (gekauft minus verkauft, Aggressor-Seite). Große Balken zeigen Spitzen im Flow.":"Net Drift = Netto-Prämie von Calls und Puts (gekauft minus verkauft, Aggressor-Seite), über das Zeitfenster aufsummiert. Steigt die Call-Linie und fällt die Put-Linie, dominiert bullischer Flow. Punkte = Kreuzung der beiden Linien."}</span> <span>Kombi-Trades mit mehreren Beinen sind standardmäßig ausgeschlossen, weil ihre Richtung unklar ist. Unten: Netto-Volumen je Intervall (Call-Kontrakte minus Put-Kontrakte, jeweils gekauft minus verkauft) und auf Wunsch CVD des Binance-Perps. Zeitfenster, Filter und Börsen oben gelten mit.</span>`;
+  const n=$("nd-note"); if(n){ const h=`<span>${flowV?"Net Flow = Netto-Prämie von Calls und Puts je Intervall (gekauft minus verkauft, Aggressor-Seite). Große Balken zeigen Spitzen im Flow.":"Net Drift = Netto-Prämie von Calls und Puts (gekauft minus verkauft, Aggressor-Seite), über das Zeitfenster aufsummiert. Steigt die Call-Linie und fällt die Put-Linie, dominiert bullischer Flow. Punkte = Kreuzung der beiden Linien."}</span> <span>Kombi-Trades mit mehreren Beinen sind standardmäßig ausgeschlossen, weil ihre Richtung unklar ist. Unten: Netto-Volumen (Call-Kontrakte minus Put-Kontrakte, jeweils gekauft minus verkauft)${S.ndVcum==="bar"?" je Intervall":", kumuliert über das Zeitfenster wie bei Quant Data, Fläche unter null in der Minus-Farbe"} und auf Wunsch CVD des Binance-Perps. Zeitfenster, Filter und Börsen oben gelten mit.</span>`;
     if(n.__h!==h){ n.__h=h; n.innerHTML=h; } }
 }
 // Trades des angeklickten Intervalls
@@ -5200,11 +5208,14 @@ function ghHeat(key, x, tf){
   let dk=0, bc=0; for(const [d,c] of cnt) if(c>bc || (c===bc && d<dk)){ dk=d; bc=c; } if(!dk) dk=spot*0.005;
   // Kerzen im sichtbaren Bereich (bei sehr vielen Werten jede zweite)
   let idx=[]; for(let i=0;i<n;i++) if(x.t[i]+ms>=s0 && x.t[i]<=s1) idx.push(i); const step=idx.length*G.length>1.2e6? Math.ceil(idx.length*G.length/1.2e6) : 1;
-  const data=[]; let mx=0;
+  const data=[], rows=[]; let mx=0;
   for(let j=0;j<idx.length;j+=step){ const i=idx[j], t=x.t[i], te=t+ms*step, P=x.c[i], row=new Map();
     for(const o of G){ const T=(o.expTs-te)/YEAR; if(T<=0) continue; const F=P*o.fr, sT=o.sig*Math.sqrt(Math.max(T,0.25/(365*24))), d1=(Math.log(F/o.K)+o.sig*o.sig*T/2)/sT; if(d1<-8||d1>8) continue;
       const v=o.s*npdf(d1)/(F*sT)*o.oi*F*F*0.01, k=Math.round(o.K/dk)*dk; row.set(k,(row.get(k)||0)+v); }
-    for(const [k,v] of row){ if(!v) continue; data.push([t,k,v,ms*step]); const a=Math.abs(v); if(a>mx) mx=a; } }
+    rows.push([t,row]); }
+  // leicht über die Zeit glätten (1-2-1), damit die Bänder weich ineinander übergehen
+  for(let j=0;j<rows.length;j++){ const [t,row]=rows[j], pr=rows[j-1]&&rows[j-1][1], nx=rows[j+1]&&rows[j+1][1];
+    for(const [k,v0] of row){ const v=(2*v0+(pr&&pr.has(k)?pr.get(k):v0)+(nx&&nx.has(k)?nx.get(k):v0))/4; if(!v) continue; data.push([t,k,v,ms*step]); const a=Math.abs(v); if(a>mx) mx=a; } }
   GH.k=key2; GH.h=data.length? {data,dk,mx,soft:true,cut:(+S.ghCut||30)/100,op:0.9} : null; return GH.h; }
 const _ckDrawGH = ckDraw; ckDraw = function(elId,key,x,tf,o2){ if((key==="kl"||key==="gm") && +S.ghOn){ const h=ghHeat(key,x,tf); if(h) o2=Object.assign({},o2,{heat:h}); } return _ckDrawGH(elId,key,x,tf,o2); };
 V3.keylv = V3.keylv.replace(ckSetBtn("kl")+'</div>', ckSetBtn("kl")+'</div>'+GH_FORM);
@@ -5242,6 +5253,132 @@ const _R3cboeDM = R3.cboe; R3.cboe = (...a) => { _R3cboeDM(...a); const sym=S.cb
     const rows=d.rows.filter(q=>ok.has(q.e)), rows0=d.rows.filter(q=>dates[0].keys.has(q.e)); return dailyModel(rows,rows0,d.spot,100,Math.min(d.t,now),d.iv30? d.iv30/100*Math.sqrt(1/252) : null); });
   el.innerHTML = dmTable(dmLevels(M), d.spot, r, pf); };
 document.head.insertAdjacentHTML("beforeend",`<style>#nd-tr .form{border-top:1px solid var(--line)}</style>`);
+
+/* ====================== Charm-Heatmap (wie Quant Data) ======================
+   Tabelle Strike × Verfall mit der Charm-Exposure (CHEX = $ Delta-Drift je Tag, Dealer-Konvention: long Calls, short Puts).
+   Gleiche Rechnung wie überall im Terminal: exposureOf(b,"chex") = Vorzeichen × Charm × OI × Forward.
+   Wählbar auch GEX, VEX und DEX. Spot-Zeile markiert, größter Knoten (King Node) umrandet, Netto-Spalte und Summenzeile. */
+S.chG??="chex"; S.chN??=8; S.chR??=10; S.chSc??="exp";
+const CHH = {t:0, hs:"", M:null};
+const CH_LBL = {chex:["Charm","CHEX","$ Delta-Drift je Tag"], gex:["Gamma","GEX","$ je 1 % Spot"], vex:["Vanna","VEX","$ Delta je Vola-Punkt"], dex:["Delta","DEX","$ Delta"]};
+S.chpExp??="1"; S.chpOn??=1;
+const GSEL='<span class="lbl3">Greek</span>'+seg3("k3","chG",[["chex","Charm"],["gex","Gamma"],["vex","Vanna"],["dex","Delta"]]);
+V3.charmheat = P2("Charm Pressure","Charm-Exposure je Kursniveau über die Zeit, wie die Charm-Heatmap bei Quant Data",
+  '<div class="cards" id="chh-cards"></div>'
+  +'<div class="form">'+GSEL+'<span class="lbl3">Verfall</span>'+seg3("k3","chpExp",[["0","0DTE"],["1","≤1 T"],["7","≤7 T"],["31","≤31 T"],["all","Alle"]])+tog3("chpOn","Heatmap")+'</div>'
+  +'<div class="form">'+tfBar3("ch")+resetBtn3("ch")+ckSetBtn("ch")+'</div>'
+  +'<div class="chh-leg" id="chp-leg"></div><div class="chart" id="c-chp" style="height:min(74vh,680px)"></div>'
+  +'<div class="note" id="chp-note"></div>',"wide")
+  + P2("Charm-Heatmap","Charm-Exposure je Strike und Verfall",
+  '<div class="form">'+GSEL+'<span class="lbl3">Verfälle</span>'+seg3("k3","chN",[[4,"4"],[8,"8"],[12,"12"],[99,"Alle"]])
+  +'<span class="lbl3">Bereich</span>'+seg3("k3","chR",[[5,"±5 %"],[10,"±10 %"],[20,"±20 %"],[35,"±35 %"]])
+  +'<span class="lbl3">Farbe</span>'+seg3("k3","chSc",[["exp","je Verfall"],["all","gesamt"]])+'</div>'
+  +'<div id="chh-t"></div>'
+  +'<div class="note" id="chh-note"></div>',"wide");
+
+/* Charm Pressure: für jede Kerze (Restlaufzeit von damals) und jedes Kursniveau P die Summe der Exposure aller Optionen,
+   wenn der Kurs bei P stünde. Open Interest und IV vom aktuellen Stand. Ergibt ein weiches Feld wie bei Quant Data/SpotGamma. */
+const CHP = {k:"", h:null};
+function chpHeat(x, tf){
+  const lb=liveBook(); if(!lb.length || !spot || !x || !x.t.length) return null;
+  const now=Date.now(), z=ZS.ch, n=x.t.length, ms=TFMS3[tf], s0=z? z.s : x.t[Math.max(0,n-110)], s1=z? z.e : x.t[n-1]+ms, g=S.chG;
+  let lo=z&&z.hi>z.lo? z.lo : Math.min(...x.l.slice(-110)), hi=z&&z.hi>z.lo? z.hi : Math.max(...x.h.slice(-110)); const pad=(hi-lo)*0.25; lo-=pad; hi+=pad;
+  const ex=expiries(lb).filter(e=>expTsOf(e)>now), e0=ex[0]; let lim={"0":0,"1":1,"7":7,"31":31}[String(S.chpExp)]; if(lim!=null && e0 && (expTsOf(e0)-now)/DAY>lim) lim=0;
+  const key=[S.cur,tf,g,Math.floor(s0/ms),Math.floor(s1/ms),String(S.chpExp),Math.round(lo),Math.round(hi),Math.floor(now/20000),VLIST.map(v=>S.venues[v]?1:0).join("")].join("|"); if(CHP.k===key) return CHP.h;
+  const m=new Map();
+  for(const b of lb){ if(lim===0? b.exp!==e0 : lim!=null && (b.expTs-now)/DAY>lim+0.01) continue; if(b.strike<spot*0.6 || b.strike>spot*1.6 || !(b.open_interest>0) || !(b.sig>0)) continue;
+    const id=b.strike+"|"+b.expTs+"|"+b.cp; let o=m.get(id); if(!o){ o={K:b.strike,expTs:b.expTs,s:b.cp==="C"?1:-1,c:b.cp==="C",oi:0,sw:0,fr:0}; m.set(id,o); } o.oi+=b.open_interest; o.sw+=b.sig*b.open_interest; o.fr+=(b.F/spot)*b.open_interest; }
+  const G=[...m.values()].map(o=>({K:o.K,expTs:o.expTs,s:o.s,c:o.c,oi:o.oi,sig:o.sw/o.oi,fr:o.fr/o.oi})); if(!G.length){ CHP.k=key; CHP.h=null; return null; }
+  const NR=64, dk=(hi-lo)/NR, P=[]; for(let r=0;r<NR;r++) P.push(lo+dk*(r+0.5));
+  let idx=[]; for(let i=0;i<n;i++) if(x.t[i]+ms>=s0 && x.t[i]<=s1) idx.push(i); const step=Math.max(1,Math.ceil(idx.length/150));
+  const cols=[];
+  for(let j=0;j<idx.length;j+=step){ const t=x.t[idx[j]], te=t+ms*step*0.5, row=new Float64Array(NR);
+    for(const o of G){ const T=(o.expTs-te)/YEAR; if(T<=0) continue; const Te=Math.max(T,0.5/(365*24)), sT=o.sig*Math.sqrt(Te), lk=Math.log(o.K);
+      for(let r=0;r<NR;r++){ const F=P[r]*o.fr, d1=(Math.log(F)-lk+o.sig*o.sig*Te/2)/sT; if(d1<-6||d1>6){ if(g==="dex"&&d1>6) row[r]+=(o.c?1:0)*o.oi*F; else if(g==="dex") row[r]+=(o.c?0:-1)*o.oi*F; continue; }
+        const pd=npdf(d1), d2=d1-sT;
+        row[r]+= g==="gex"? o.s*pd/(F*sT)*o.oi*F*F*0.01 : g==="vex"? o.s*(-pd*d2/o.sig)*o.oi*F*0.01 : g==="dex"? (o.c? ncdf(d1) : ncdf(d1)-1)*o.oi*F : o.s*pd*d2/(2*Te)/365*o.oi*F; } }
+    cols.push([t,row]); }
+  // weich zeichnen: 1-2-1 über Zeit und Kurs
+  const sm=cols.map(([t,row],j)=>{ const a=cols[j-1]?cols[j-1][1]:row, b=cols[j+1]?cols[j+1][1]:row, o=new Float64Array(NR); for(let r=0;r<NR;r++) o[r]=(2*row[r]+a[r]+b[r])/4; return [t,o]; });
+  const data=[]; let mx=0;
+  for(const [t,row] of sm) for(let r=0;r<NR;r++){ const v=(2*row[r]+(row[r-1]??row[r])+(row[r+1]??row[r]))/4; if(!v) continue; data.push([t,P[r],v,ms*step]); const a=Math.abs(v); if(a>mx) mx=a; }
+  CHP.k=key; CHP.h=data.length? {data,dk,mx,field:true,soft:true,cut:0.03,op:0.78} : null; return CHP.h; }
+
+function chpLegend(h){ const el=$("chp-leg"); if(!el) return; if(!h){ el.innerHTML=""; return; } const L=CH_LBL[S.chG]||CH_LBL.chex;
+  const N0=css("--neg"), m=/^#?([0-9a-f]{6})$/i.exec(N0.trim()), dk=m&&((parseInt(m[1],16)>>16&255)*.299+(parseInt(m[1],16)>>8&255)*.587+(parseInt(m[1],16)&255)*.114)/255<0.25, NC=document.documentElement.hasAttribute("data-light")&&dk? (css("--major")||N0) : N0;
+  el.innerHTML=`<span>${L[1]} ${fmtUsd(-h.mx)}</span><i style="background:linear-gradient(90deg,${NC},${rgba3(NC,0)} 48%,${rgba3(css("--pos"),0)} 52%,${css("--pos")})"></i><span>${fmtUsd(h.mx)}</span><small>${L[2]}</small><small>Kursniveau × Zeit</small>`; }
+
+function chhModel(lb, g, nExp, rng){
+  const now=Date.now(), exps=expiries(lb).filter(e=>expTsOf(e)>now).slice(0,nExp), es=new Set(exps), lo=spot*(1-rng/100), hi=spot*(1+rng/100);
+  const cell=new Map(), ksSet=new Set(), byExp=new Map(exps.map(e=>[e,0])), byK=new Map();
+  for(const b of lb){ if(!es.has(b.exp) || b.strike<lo || b.strike>hi || !b.open_interest) continue; const v=exposureOf(b,g); if(!isFinite(v)) continue;
+    const key=b.exp+"|"+b.strike; cell.set(key,(cell.get(key)||0)+v); ksSet.add(b.strike); byExp.set(b.exp,byExp.get(b.exp)+v); byK.set(b.strike,(byK.get(b.strike)||0)+v); }
+  const ks=[...ksSet].sort((a,b)=>b-a); let king=null, kmax=0, pmax=null, nmax=null;
+  for(const [key,v] of cell){ if(Math.abs(v)>kmax){ kmax=Math.abs(v); king=key; } }
+  for(const [k,v] of byK){ if(v>0 && (!pmax||v>pmax.v)) pmax={k,v}; if(v<0 && (!nmax||v<nmax.v)) nmax={k,v}; }
+  const tot=[...byExp.values()].reduce((a,b)=>a+b,0);
+  // Netto-CHEX über alle Verfälle (unabhängig vom Filter) für die Karte
+  let all=0; for(const b of lb){ if(expTsOf(b.exp)>now && b.open_interest){ const v=exposureOf(b,g); if(isFinite(v)) all+=v; } }
+  return {exps, ks, cell, byExp, byK, king, kmax, pmax, nmax, tot, all, g};
+}
+
+function chhTable(M, scale){
+  const pos=css("--pos"), neg=css("--neg"), acc=css("--accent");
+  const fmt=v=>{ if(v==null) return ""; const s=fmtUsd(v).replace("$",""); return s==="0"||s==="-0"?"":s; };
+  const colMax=new Map(M.exps.map(e=>[e,0])); let gMax=0;
+  for(const [key,v] of M.cell){ const e=key.slice(0,key.lastIndexOf("|")); colMax.set(e,Math.max(colMax.get(e),Math.abs(v))); gMax=Math.max(gMax,Math.abs(v)); }
+  const nMax=Math.max(1,...[...M.byK.values()].map(Math.abs));
+  const hx=c=>{ const m=/^#?([0-9a-f]{6})$/i.exec(String(c||"").trim()); if(!m) return null; const n=parseInt(m[1],16); return [n>>16&255,n>>8&255,n&255]; }, pb=hx(css("--panel"))||[255,255,255];
+  const lum=c=>{ const f=x=>{ x/=255; return x<=0.03928? x/12.92 : Math.pow((x+0.055)/1.055,2.4); }; return 0.2126*f(c[0])+0.7152*f(c[1])+0.0722*f(c[2]); };
+  const bg=(v,mx)=>{ if(!v||!mx) return ""; const a=0.06+0.82*Math.sqrt(Math.min(1,Math.abs(v)/mx)), c=v>0?pos:neg, rgb=hx(c);
+    let tc=""; if(rgb){ const m=rgb.map((x,i)=>x*a+pb[i]*(1-a)), L=lum(m); tc= L<0.22? "color:#fff;" : "color:#111;"; }
+    return `background:${rgba3(c,a.toFixed(3))};${tc}`; };
+  const nearK = M.ks.length? M.ks.reduce((a,b)=>Math.abs(b-spot)<Math.abs(a-spot)?b:a) : null;
+  const head='<tr><th class="l">Strike</th>'+M.exps.map(e=>`<th>${e}<br><small>${Math.max(0,dte(e)).toFixed(dte(e)<1?2:0)} T</small></th>`).join("")+'<th class="chh-n">Netto</th></tr>';
+  let rows="", spotDone=false;
+  for(const k of M.ks){
+    if(!spotDone && k<spot){ rows+=`<tr class="chh-spot"><td class="l" colspan="${M.exps.length+2}">Spot ${fmtNum(spot)}</td></tr>`; spotDone=true; }
+    const cells=M.exps.map(e=>{ const key=e+"|"+k, v=M.cell.get(key), mx=scale==="all"?gMax:colMax.get(e);
+      return `<td style="${bg(v,mx)}${key===M.king?`outline:3px double ${acc};outline-offset:-3px;font-weight:700;box-shadow:inset 0 0 0 4px var(--panel);`:""}" title="${e} · ${fmtNum(k)}: ${v!=null?fmtUsd(v):"–"}">${fmt(v)}</td>`; }).join("");
+    const n=M.byK.get(k)||0;
+    rows+=`<tr${k===nearK?' class="chh-atm"':""}><td class="l">${fmtNum(k)}</td>${cells}<td class="chh-n" style="${bg(n,nMax)}">${fmt(n)}</td></tr>`;
+  }
+  if(!spotDone && M.ks.length) rows+=`<tr class="chh-spot"><td class="l" colspan="${M.exps.length+2}">Spot ${fmtNum(spot)}</td></tr>`;
+  const sum='<tr class="chh-sum"><td class="l">Summe</td>'+M.exps.map(e=>`<td>${fmt(M.byExp.get(e))}</td>`).join("")+`<td class="chh-n">${fmt(M.tot)}</td></tr>`;
+  return `<div class="tw chh"><table><thead>${head}</thead><tbody>${rows}${sum}</tbody></table></div>`;
+}
+
+R3.charmheat = (lb, lv) => {
+  if(!lb.length || !spot) return; const now=Date.now(), g=S.chG, L=CH_LBL[g]||CH_LBL.chex;
+  const tf=tfOf("ch","15"), x=CND[S.cur+tf]; loadTF(tf); if(x) liveTF(x,tf);
+  if(x && x.t.length){ const h=+S.chpOn? chpHeat(x,tf) : null; chpLegend(h); ckDraw("c-chp","ch",x,tf,{heat:h||undefined, prof:keyLevels(lb,lv).g, vp:false, vol:false}); }
+  $("chp-note").textContent = "Für jede Kerze und jedes Kursniveau: Summe der "+L[0]+"-Exposure aller Optionen, wenn der Kurs dort stünde (Open Interest und IV vom aktuellen Stand, Restlaufzeit von damals). "+(g==="chex"?"Plus = Dealer müssen mit der Zeit verkaufen, Minus = kaufen. Charm wächst zum Verfall hin, deshalb werden die Felder nach rechts kräftiger. ":"")+"Balken links = GEX je Strike.";
+  const key=[S.cur,g,S.chN,S.chR].join("|");
+  if(!CHH.M || now-CHH.t>5000 || CHH.key!==key){ CHH.M=chhModel(lb,g,+S.chN,+S.chR); CHH.t=now; CHH.key=key; CHH.hs=""; }
+  const M=CHH.M, hs=[CHH.t,key,S.chSc,document.documentElement.dataset.skin,Math.round(spot/50)].join("|"); if(CHH.hs===hs) return; CHH.hs=hs;
+  const cl=v=>v>0?"pos":v<0?"neg":"", e0=M.exps[0], v0=e0?M.byExp.get(e0):null, ki=M.king? M.king.split("|") : null;
+  $("chh-cards").innerHTML = cardH("Netto-"+L[1]+" (alle Verfälle)",fmtUsd(M.all),L[2],cl(M.all))
+    + cardH("Netto-"+L[1]+" nächster Verfall",v0!=null?fmtUsd(v0):"–",e0||"",cl(v0))
+    + cardH("King Node",ki?"$"+fmtNum(+ki[1]):"–",ki?ki[0]+" · "+fmtUsd(M.cell.get(M.king)):"","maj")
+    + cardH("Größter Plus-Strike",M.pmax?"$"+fmtNum(M.pmax.k):"–",M.pmax?fmtUsd(M.pmax.v)+" · "+sp(pct3((M.pmax.k/spot-1)*100,2)+" vom Spot"):"","pos")
+    + cardH("Größter Minus-Strike",M.nmax?"$"+fmtNum(M.nmax.k):"–",M.nmax?fmtUsd(M.nmax.v)+" · "+sp(pct3((M.nmax.k/spot-1)*100,2)+" vom Spot"):"","neg");
+  $("chh-t").innerHTML = M.ks.length? chhTable(M,S.chSc) : '<div class="note">Keine Strikes im gewählten Bereich.</div>';
+  $("chh-note").textContent = g==="chex"
+    ? "Charm = wie stark sich das Delta der Dealer allein durch den Zeitverfall ändert, in $ Delta je Tag (Dealer-Konvention: long Calls, short Puts). Plus heißt, das Dealer-Delta steigt mit der Zeit, sie müssen zum Ausgleich verkaufen. Minus heißt, sie müssen kaufen. Charm wird zum Verfall hin stärker, deshalb dominieren die nahen Verfälle. King Node = Zelle mit dem größten Betrag. Die Zeile Spot zeigt, wo der Kurs gerade steht."
+    : L[0]+"-Exposure ("+L[1]+", "+L[2]+") je Strike und Verfall, Dealer-Konvention: long Calls, short Puts. King Node = Zelle mit dem größten Betrag. Farbe je Verfall oder über die ganze Tabelle skaliert.";
+};
+document.head.insertAdjacentHTML("beforeend",`<style>
+.chh table{min-width:0;width:100%;border-collapse:collapse}
+.chh th,.chh td{font-family:"IBM Plex Mono",monospace;font-size:11px;padding:3px 6px;text-align:right;white-space:nowrap;border:1px solid var(--line)}
+.chh th{position:sticky;top:0;background:var(--panel);z-index:1;font-weight:600;line-height:1.2}.chh th small{color:var(--muted);font-weight:400}
+.chh td.l,.chh th.l{text-align:left;position:sticky;left:0;background:var(--panel);z-index:2;font-weight:600}
+.chh .chh-n{border-left:2px solid var(--fg)}
+.chh tr.chh-atm td.l{color:var(--accent)}
+.chh tr.chh-spot td{background:var(--accent)!important;color:var(--bg);font-weight:700;padding:1px 6px;font-size:10px;letter-spacing:.04em}
+.chh tr.chh-sum td{font-weight:700;border-top:2px solid var(--fg);background:var(--panel-2)}
+.chh-leg{display:flex;align-items:center;gap:8px;font:11px 'IBM Plex Mono',monospace;color:var(--muted);padding:4px 14px}.chh-leg i{display:block;width:180px;height:9px;border-radius:2px;border:1px solid var(--line)}.chh-leg small{margin-left:6px}
+.chh{max-height:min(78vh,900px);overflow:auto}
+</style>`);
 
 /* ====================== Session 3: Werkzeuge, Strategie, Quant ====================== */
 const dLb = () => liveFrom(books.deribit);
@@ -5478,7 +5615,7 @@ R3.quant = (lb,lv,list) => { trainQ(); const o=base(), R=QM.res;
 const DOCS=[["Implizite Volatilität (IV)","Die Erwartung des Marktes, wie stark sich der Kurs bewegt, als Prozent pro Jahr. 60 % IV ≈ ±3,5 % pro Woche. Hohe IV = teure Optionen."],["ATM IV, DVOL, TQI Vol-Index","ATM IV ist die IV am Geld. DVOL ist Deribits 30-Tage-Index (wie der VIX). Der TQI Vol-Index berechnet dasselbe modellfrei aus der ganzen Kette."],
   ["IV Rank / Perzentil","Wo die IV im Vergleich zum letzten Jahr steht. 0 % = historisch günstig, 100 % = historisch teuer."],["VRP","Volatility Risk Premium = IV minus realisierte Vola. Positiv = Optionen teuer, Verkäufer im Vorteil."],
   ["Gamma Exposure (GEX)","Wie stark Dealer beim Hedgen kaufen oder verkaufen müssen. Positiver GEX: Dealer long Gamma, sie kaufen Dips und verkaufen Rallys (bremst). Negativer GEX: sie verstärken Bewegungen."],
-  ["Call Wall / Put Wall / Flip","Call Wall = größter positiver GEX (Widerstand). Put Wall = größter negativer GEX (Unterstützung). Flip = wo Netto-GEX null kreuzt; darunter wird es meist volatiler."],["GEX-Heatmap","Weiche Farbbänder im Kerzen-Chart: für jeden Strike und jede Kerze die GEX, berechnet aus dem aktuellen Open Interest beim damaligen Kurs und der damaligen Restlaufzeit. Je kräftiger das Band, desto mehr Gamma. Positiv (Calls) bremst den Kurs eher, negativ (Puts) beschleunigt ihn. Einschalten auf Key Levels und im GEX Daily Model, Verfall wählbar von 0DTE bis alle, die Schwelle blendet schwache Bänder aus."],["Net Drift","Netto-Prämie von Calls und Puts (gekauft minus verkauft, Aggressor-Seite), über den Tag aufsummiert, wie bei Quant Data. Steigt die Call-Linie und fällt die Put-Linie, ist der Flow bullisch. Kreuzen sich die Linien, dreht oft die Stimmung. Kombi-Trades mit mehreren Beinen zählen nicht, weil ihre Richtung unklar ist."],["GEX Daily Model","Tages-Levels aus dem Gamma: Call Resistance (meistes Call-Gamma über dem Kurs, Decke), Put Support (meistes Put-Gamma unter dem Kurs, Boden), HVL (Gamma-Flip), dazu Decke, Boden, Flip und Gamma Wall des nächsten Verfalls (0DTE), die erwartete Tagesspanne (1D Max/Min) und GEX 1–10, die zehn stärksten übrigen Gamma-Strikes als Reaktionszonen."],["0DTE","Optionen, die am nächsten Verfall auslaufen. Bei Deribit & Co. verfallen täglich um 08:00 UTC Optionen, bei SPX, SPY, QQQ und IBIT an jedem US-Handelstag. 0DTE-Gamma wirkt stark, aber nur kurz: Walls und Max Pain ziehen den Kurs oft bis zum Verfall an (Pinning), danach ist der Effekt weg."],["CBOE-Daten","Optionsketten der CBOE für US-Werte (IBIT, SPX, SPY, QQQ, NDX, IWM, MSTR, COIN), 15 Minuten verzögert. Ein GitHub-Job lädt sie während der US-Handelszeit etwa alle 15 bis 30 Minuten. Ein Kontrakt = 100 Aktien. IBIT-Levels werden mit dem BTC-Kurs zur Zeit des IBIT-Kurses in BTC umgerechnet."],["Major Wall","Der Strike mit dem meisten Gamma insgesamt, also Calls und Puts zusammen über alle Verfälle. Dort sichern Dealer am meisten ab. Der Preis wird oft dorthin gezogen oder bleibt dort hängen. In den Charts ist sie die dicke Linie in der Highlight-Farbe des Templates."],
+  ["Call Wall / Put Wall / Flip","Call Wall = größter positiver GEX (Widerstand). Put Wall = größter negativer GEX (Unterstützung). Flip = wo Netto-GEX null kreuzt; darunter wird es meist volatiler."],["Charm-Heatmap","Tabelle Strike × Verfall mit der Charm-Exposure (CHEX), wie bei Quant Data. Charm = tägliche Delta-Änderung durch den Zeitverfall, in $ Delta je Tag, Dealer-Konvention (long Calls, short Puts): Vorzeichen × Charm × Open Interest × Forward. Plus = Dealer müssen mit der Zeit verkaufen, Minus = kaufen. Umschaltbar auf GEX, VEX und DEX. King Node = Zelle mit dem größten Betrag, die Spot-Zeile zeigt den aktuellen Kurs, Netto-Spalte und Summenzeile summieren je Strike und je Verfall."],["GEX-Heatmap","Weiche Farbbänder im Kerzen-Chart: für jeden Strike und jede Kerze die GEX, berechnet aus dem aktuellen Open Interest beim damaligen Kurs und der damaligen Restlaufzeit. Je kräftiger das Band, desto mehr Gamma. Positiv (Calls) bremst den Kurs eher, negativ (Puts) beschleunigt ihn. Einschalten auf Key Levels und im GEX Daily Model, Verfall wählbar von 0DTE bis alle, die Schwelle blendet schwache Bänder aus."],["Net Drift","Netto-Prämie von Calls und Puts (gekauft minus verkauft, Aggressor-Seite), über den Tag aufsummiert, wie bei Quant Data. Steigt die Call-Linie und fällt die Put-Linie, ist der Flow bullisch. Kreuzen sich die Linien, dreht oft die Stimmung. Kombi-Trades mit mehreren Beinen zählen nicht, weil ihre Richtung unklar ist."],["GEX Daily Model","Tages-Levels aus dem Gamma: Call Resistance (meistes Call-Gamma über dem Kurs, Decke), Put Support (meistes Put-Gamma unter dem Kurs, Boden), HVL (Gamma-Flip), dazu Decke, Boden, Flip und Gamma Wall des nächsten Verfalls (0DTE), die erwartete Tagesspanne (1D Max/Min) und GEX 1–10, die zehn stärksten übrigen Gamma-Strikes als Reaktionszonen."],["0DTE","Optionen, die am nächsten Verfall auslaufen. Bei Deribit & Co. verfallen täglich um 08:00 UTC Optionen, bei SPX, SPY, QQQ und IBIT an jedem US-Handelstag. 0DTE-Gamma wirkt stark, aber nur kurz: Walls und Max Pain ziehen den Kurs oft bis zum Verfall an (Pinning), danach ist der Effekt weg."],["CBOE-Daten","Optionsketten der CBOE für US-Werte (IBIT, SPX, SPY, QQQ, NDX, IWM, MSTR, COIN), 15 Minuten verzögert. Ein GitHub-Job lädt sie während der US-Handelszeit etwa alle 15 bis 30 Minuten. Ein Kontrakt = 100 Aktien. IBIT-Levels werden mit dem BTC-Kurs zur Zeit des IBIT-Kurses in BTC umgerechnet."],["Major Wall","Der Strike mit dem meisten Gamma insgesamt, also Calls und Puts zusammen über alle Verfälle. Dort sichern Dealer am meisten ab. Der Preis wird oft dorthin gezogen oder bleibt dort hängen. In den Charts ist sie die dicke Linie in der Highlight-Farbe des Templates."],
   ["Vanna, Charm, Vomma, Speed, Zomma, Color","Vanna: Delta-Änderung bei IV-Bewegung. Charm: täglicher Delta-Verfall. Vomma: Vega-Änderung bei IV-Bewegung. Speed: Gamma-Änderung bei Spot-Bewegung. Zomma: Gamma-Änderung bei IV-Bewegung. Color: täglicher Gamma-Verfall."],
   ["Skew / Risk Reversal","25Δ RR = Call-IV minus Put-IV bei 25 Delta. Negativ = Puts teurer (Absicherung, Angst), positiv = Calls teurer (FOMO)."],["Term Structure","ATM IV über die Laufzeiten. Contango (steigend) ist normal, Backwardation (fallend) zeigt akuten kurzfristigen Stress."],
   ["Max Pain","Strike, an dem Optionskäufer beim Verfall am meisten verlieren. Wirkt nahe am Verfall oft wie ein Magnet."],["Open Interest","Anzahl offener Kontrakte. Steigendes OI = neues Geld, fallendes OI = Positionen werden geschlossen."],
@@ -5519,6 +5656,7 @@ nav3("Dashboard",[["briefing","Marktbericht"],["alts","Altcoin-Optionen"]],"stat
 nav3("Gamma",[["flowgex","Flow-GEX"]],"dealer");
 nav3("Gamma",[["imap","Interval Map"]],"xheat");
 nav3("Gamma",[["gexmodel","GEX Daily Model"]],"keylv");
+nav3("Gamma",[["charmheat","Charm-Heatmap"]],"gexmodel");
 nav3("Volatilität",[["fixstrike","Fixed-Strike-IV"]],"skew");
 nav3("Futures",[["liqmap","Liquidations-Heatmap"]],"liq");
 (()=>{ const q=NAV2.find(x=>x.g==="Quant"); if(q){ const i=q.items.findIndex(([k])=>k==="sim"); q.items.splice(i+1,0,["models","Vola-Modelle"],["seasonal","Saisonalität"],["correl","Korrelation"]); } })();
