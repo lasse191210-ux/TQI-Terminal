@@ -17,7 +17,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.5.0/echarts.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/echarts-gl@2.0.9/dist/echarts-gl.min.js" onload="window.__gl=1" onerror="window.__gl=0"></script>
-<script>/* I18N-BEGIN */window.TQI_I18N_V="20261119-003439";
+<script>/* I18N-BEGIN */window.TQI_I18N_V="20261119-101258";
 /* TQI Sprach-Engine: Deutsch ist Standard. Andere Sprachen übersetzen Texte, Attribute und Chart-Beschriftungen zur Laufzeit. */
 (function(){
   var LANGS=[["de","Deutsch"],["en","English"],["es","Español"],["fr","Français"]];
@@ -2784,7 +2784,7 @@ window.addEventListener("beforeunload", saveX);
     const hgt=Math.min(4,Math.abs(v)*4), w=100/N; out+=`<rect x="${i*w+w*0.18}" y="${v>=0?4-hgt:4}" width="${w*0.64}" height="${hgt}" fill="var(${v>=0?"--pos":"--neg"})"/>`; }
   el.innerHTML=out; })();
 /* S3-BEGIN */
-const TQI_BUILD="20261119-003439";
+const TQI_BUILD="20261119-101258";
 /* ====================== Session 3: Infrastruktur ====================== */
 const V3 = {}, R3 = {}, NB3 = new Set();   // Seiten-HTML, Renderer, Seiten ohne Optionskette
 // Legenden- und Tooltip-Marker in der Linienfarbe zeichnen (sonst Palettenfarbe)
@@ -5414,6 +5414,93 @@ document.head.insertAdjacentHTML("beforeend",`<style>
 .chh{max-height:min(78vh,900px);overflow:auto}
 </style>`);
 
+/* ====================== Net VIX und Convexity (wie die ATAS-Indikatoren) ======================
+   Net VIX  = DVOL (implizite 30-Tage-Vola, der "VIX" für BTC/ETH) minus realisierte 30-Tage-Vola.
+              Plus = Optionen teuer (eher Ruhe), Minus = Optionen billig (es bewegt sich mehr als eingepreist).
+   Convexity = Netto-GEX, wenn der Kurs auf dem jeweiligen Niveau stünde (GEX-Kurve über den Kurs),
+              dazu Steigung und Krümmung am Spot und eine Tabelle "was passiert bei ±x %". */
+
+/* ---------- Net VIX ---------- */
+S.nvRv??=30; S.nvRange??=365;
+V3.netvix = P2("Net VIX","DVOL minus realisierte Vola, wie der ATAS-Indikator TQI Net VIX",
+  '<div class="cards" id="nv-cards"></div>'
+  +'<div class="form"><span class="lbl3">Realisierte Vola</span>'+seg3("k3","nvRv",[[7,"7 T"],[14,"14 T"],[30,"30 T"],[60,"60 T"]])
+  +'<span class="lbl3">Zeitraum</span>'+seg3("k3","nvRange",[[90,"3 M"],[180,"6 M"],[365,"1 J"]])+'</div>'
+  +'<div class="chart" id="c-nv" style="height:min(66vh,560px)"></div>'
+  +'<div class="note" id="nv-note"></div>',"wide");
+const NV = {hs:""};
+R3.netvix = (lb) => {
+  const w=+S.nvRv||30, y0=Date.now()-(+S.nvRange||365)*DAY;
+  if(!dvolHist.length || closesD.c.length<w+2){ $("nv-cards").innerHTML=cardH("Net VIX","–","lädt DVOL und Tageskerzen …",""); return; }
+  const hs=[S.cur,w,S.nvRange,dvolHist.length,closesD.c.length,dvol,document.documentElement.dataset.skin].join("|"); if(NV.hs===hs) return; NV.hs=hs;
+  const rv=rvWindow(w), m=new Map(rv.map(x=>[Math.round(x[0]/DAY),x[1]]));
+  const rows=dvolHist.map(d=>{ const r=m.get(Math.round(d[0]/DAY)); return r!=null? [d[0],d[1],r,d[1]-r] : null; }).filter(Boolean);
+  const vis=rows.filter(r=>r[0]>=y0), rvNow=rv.length?rv[rv.length-1][1]:null, dvNow=dvol??(vis.length?vis[vis.length-1][1]:null), net=dvNow!=null&&rvNow!=null? dvNow-rvNow : null;
+  const all=rows.map(r=>r[3]), pct=net!=null&&all.length? all.filter(v=>v<net).length/all.length*100 : null, last30=rows.slice(-30), avg=last30.length? last30.reduce((a,r)=>a+r[3],0)/last30.length : null;
+  const sg=v=>v==null?"–":(v>0?"+":"")+v.toFixed(1), PC=css("--pos"), NC=css("--neg");
+  $("nv-cards").innerHTML = cardH("Net VIX jetzt",sg(net),net==null?"":net>0?sp("Optionen teuer · eher Ruhe"):sp("Optionen billig · eher Bewegung"),net==null?"":net>0?"pos":"neg")
+    + cardH("DVOL",dvNow!=null?dvNow.toFixed(1):"–",sp("implizite Vola 30 T"),"")
+    + cardH("Realisierte Vola",rvNow!=null?rvNow.toFixed(1):"–",sp("Close-Close, "+w+" Tage"),"")
+    + cardH("Ø Net VIX 30 Tage",sg(avg),sp("Durchschnitt der letzten 30 Tage"),avg==null?"":avg>0?"pos":"neg")
+    + cardH("Perzentil",pct!=null?pct.toFixed(0)+" %":"–",sp("Net VIX im Vergleich zum letzten Jahr"),"");
+  const c=ch("c-nv"); if(!c) return; const o=base(), mut=css("--muted");
+  c.setOption({backgroundColor:"transparent",animation:false,textStyle:o.textStyle,legend:{top:4,left:"center",itemWidth:12,itemHeight:8,textStyle:{color:mut,fontSize:11},data:["Net VIX","DVOL","Realisierte Vola"]},
+    tooltip:{...o.tooltip,trigger:"axis",valueFormatter:v=>typeof v==="number"?v.toFixed(1):v},axisPointer:{link:[{xAxisIndex:"all"}]},
+    grid:[{left:56,right:20,top:34,height:"46%"},{left:56,right:20,top:"62%",bottom:28}],
+    xAxis:[ax(o,{type:"time",gridIndex:0,axisLabel:{show:false},splitLine:{show:false}}),ax(o,{type:"time",gridIndex:1,splitLine:{show:false}})],
+    yAxis:[ax(o,{type:"value",gridIndex:0,scale:true,name:"Vola"}),ax(o,{type:"value",gridIndex:1,name:"Net VIX"})],
+    dataZoom:[{type:"inside",xAxisIndex:[0,1]}],
+    series:[{name:"DVOL",type:"line",data:vis.map(r=>[r[0],r[1]]),showSymbol:false,lineStyle:{color:css("--accent"),width:2},itemStyle:{color:css("--accent")}},
+      {name:"Realisierte Vola",type:"line",data:vis.map(r=>[r[0],+r[2].toFixed(2)]),showSymbol:false,lineStyle:{color:css("--fg"),width:1.4,type:"dashed"},itemStyle:{color:css("--fg")}},
+      {name:"Net VIX",type:"bar",xAxisIndex:1,yAxisIndex:1,data:vis.map(r=>({value:[r[0],+r[3].toFixed(2)],itemStyle:{color:r[3]>=0?PC:NC}})),barMaxWidth:5,itemStyle:{color:PC},
+        markLine:{symbol:"none",silent:true,data:[{yAxis:0,label:{show:false},lineStyle:{color:mut,width:1}}]}}]},true);
+  $("nv-note").textContent="Net VIX = DVOL minus realisierte Vola (Close-Close, annualisiert). Plus = der Markt preist mehr Bewegung ein, als gerade passiert: Optionen sind teuer, oft folgt Ruhe. Minus = es bewegt sich mehr als eingepreist: Optionen sind billig, oft in Trendphasen oder vor großen Bewegungen. Gleiche Rechnung wie der ATAS-Indikator TQI Net VIX.";
+};
+
+/* ---------- Convexity ---------- */
+S.cvExp??="all"; S.cvR??=15;
+V3.convexity = P2("Convexity","Netto-GEX, wenn der Kurs auf dem jeweiligen Niveau stünde (GEX-Kurve), wie der ATAS-Indikator TQI Convexity",
+  '<div class="cards" id="cv-cards"></div>'
+  +'<div class="form"><span class="lbl3">Verfall</span>'+seg3("k3","cvExp",[["0","0DTE"],["7","≤7 T"],["31","≤31 T"],["all","Alle"]])
+  +'<span class="lbl3">Bereich</span>'+seg3("k3","cvR",[[5,"±5 %"],[10,"±10 %"],[15,"±15 %"],[25,"±25 %"]])+'</div>'
+  +'<div class="chart" id="c-cv" style="height:min(62vh,520px)"></div>'
+  +'<div class="note" id="cv-note"></div>',"wide")
+  + P2("Szenarien","Netto-GEX bei Kursbewegung",'<div id="cv-t"></div>',"wide");
+const CV = {t:0, key:"", hs:""};
+R3.convexity = (lb, lv) => {
+  if(!lb.length || !spot) return; const now=Date.now(), key=[S.cur,S.cvExp,S.cvR].join("|");
+  if(!CV.P || now-CV.t>5000 || CV.key!==key){
+    const ex=expiries(lb).filter(e=>expTsOf(e)>now), e0=ex[0], lim={"0":0,"7":7,"31":31}[String(S.cvExp)];
+    const L=lb.filter(b=> lim===0? b.exp===e0 : lim==null? true : (b.expTs-now)/DAY<=lim+0.01 || b.exp===e0), r=(+S.cvR||15)/100;
+    const P=gammaProfile(L,1-r,1+r,161);
+    CV.P=P; CV.L=L; CV.t=now; CV.key=key; CV.hs="";
+  }
+  const P=CV.P, hs=[CV.t,key,document.documentElement.dataset.skin].join("|"); if(CV.hs===hs) return; CV.hs=hs;
+  const flip=gammaFlip(P), at=x=>{ for(let i=1;i<P.length;i++) if(P[i][0]>=x){ const a=P[i-1], b=P[i], f=(x-a[0])/(b[0]-a[0]); return a[1]+(b[1]-a[1])*f; } return P[P.length-1][1]; };
+  const g0=at(spot), gU=at(spot*1.01), gD=at(spot*0.99), slope=(gU-gD)/2, curv=gU-2*g0+gD;
+  const pS=v=>"$"+fmtNum(v), vs=x=>x==null?"":sp(pct3((x/spot-1)*100,2)+" vom Spot");
+  $("cv-cards").innerHTML = cardH("Netto-GEX am Spot",fmtUsd(g0),g0>=0?sp("positives Gamma · bremst"):sp("negatives Gamma · beschleunigt"),g0>=0?"pos":"neg")
+    + cardH("Gamma-Flip",flip!=null?pS(flip):"–",flip!=null?vs(flip):sp("kein Wechsel im Bereich"),"warn")
+    + cardH("Steigung je 1 %",fmtUsd(slope),slope>=0?sp("GEX steigt mit dem Kurs"):sp("GEX fällt mit dem Kurs"),slope>=0?"pos":"neg")
+    + cardH("Krümmung",fmtUsd(curv),curv>=0?sp("Bewegungen machen die GEX positiver"):sp("Bewegungen machen die GEX negativer"),curv>=0?"pos":"neg");
+  const c=ch("c-cv"); if(!c) return; const o=base(), PC=css("--pos"), NC=css("--neg"), mut=css("--muted"), acc=css("--accent"), wrn=css("--warn");
+  const pos=[], neg=[]; P.forEach(([x,v],i)=>{ if(i){ const [x0,v0]=P[i-1]; if((v0<0)!==(v<0)){ const xz=x0+(x-x0)*(-v0)/(v-v0); pos.push([xz,0]); neg.push([xz,0]); if(v<0) pos.push([xz,null]); else neg.push([xz,null]); } } if(v>=0) pos.push([x,v]); else neg.push([x,v]); });
+  const grd=col=>new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:rgba3(col,.45)},{offset:1,color:rgba3(col,.08)}]);
+  const ml=[{xAxis:spot,label:{formatter:"Spot "+fmtNum(spot),color:acc,position:"insideEndTop",fontSize:10},lineStyle:{color:acc,type:"solid",width:1.4}}];
+  if(flip!=null) ml.push({xAxis:flip,label:{formatter:"Flip "+fmtNum(flip),color:wrn,position:"insideEndBottom",fontSize:10},lineStyle:{color:wrn,type:"dashed",width:1.4}});
+  c.setOption({backgroundColor:"transparent",animation:false,textStyle:o.textStyle,legend:{show:false},
+    tooltip:{...o.tooltip,trigger:"axis",formatter:ps=>{ const x=ps[0].value[0]; return `Kurs ${fmtNum(x)} (${pct3((x/spot-1)*100,2)})<br>Netto-GEX: <b>${fmtUsd(at(x))}</b>`; }},
+    grid:{left:70,right:24,top:20,bottom:36},
+    xAxis:ax(o,{type:"value",min:P[0][0],max:P[P.length-1][0],splitLine:{show:false},axisLabel:{formatter:v=>fmtNum(v)}}),
+    yAxis:ax(o,{type:"value",axisLabel:{formatter:fmtUsd}}),
+    series:[{name:"Plus",type:"line",data:pos,showSymbol:false,lineStyle:{color:PC,width:2},areaStyle:{color:grd(PC)},markLine:{symbol:"none",silent:true,data:ml}},
+      {name:"Minus",type:"line",data:neg,showSymbol:false,lineStyle:{color:NC,width:2},areaStyle:{color:grd(NC),origin:"auto"}}]},true);
+  const moves=[-10,-5,-3,-2,-1,0,1,2,3,5,10].filter(m=>Math.abs(m)<=+S.cvR);
+  $("cv-t").innerHTML = tbl3(["Bewegung","Kurs","Netto-GEX","Änderung","Regime"], moves.map(mv=>{ const x=spot*(1+mv/100), g=at(x), d=g-g0;
+    return `<tr${mv===0?' class="chh-atm"':""}><td class="l">${mv>0?"+":""}${mv} %</td><td>${fmtNum(x)}</td><td class="${g>=0?"pos":"neg"}">${fmtUsd(g)}</td><td>${mv===0?"–":fmtUsd(d)}</td><td>${g>=0?sp("positives Gamma"):sp("negatives Gamma")}</td></tr>`; }), "zdt");
+  $("cv-note").textContent="Convexity = Netto-GEX der Dealer, wenn der Kurs auf dem jeweiligen Niveau stünde (Open Interest und IV vom aktuellen Stand). Plus-Fläche = positives Gamma: Dealer handeln gegen die Bewegung, der Kurs wird gebremst. Minus-Fläche = negatives Gamma: Dealer handeln mit der Bewegung, sie läuft weiter. Wo die Kurve die Null kreuzt, liegt der Gamma-Flip. Steigung = wie stark sich die GEX je 1 % Kursbewegung ändert. Krümmung = ob Bewegungen in beide Richtungen die GEX positiver (konvex) oder negativer (konkav) machen. Gleiche Rechnung wie der ATAS-Indikator TQI Convexity.";
+};
+
 /* ====================== Session 3: Werkzeuge, Strategie, Quant ====================== */
 const dLb = () => liveFrom(books.deribit);
 const expSel = (id,lb,key,def=7) => { const ex=expiries(lb); if(!S[key]||!ex.includes(S[key])) S[key]=nearestExpTo(lb,def)||ex[0]; fillOne(id,ex,S[key]); return S[key]; };
@@ -5649,7 +5736,7 @@ R3.quant = (lb,lv,list) => { trainQ(); const o=base(), R=QM.res;
 const DOCS=[["Implizite Volatilität (IV)","Die Erwartung des Marktes, wie stark sich der Kurs bewegt, als Prozent pro Jahr. 60 % IV ≈ ±3,5 % pro Woche. Hohe IV = teure Optionen."],["ATM IV, DVOL, TQI Vol-Index","ATM IV ist die IV am Geld. DVOL ist Deribits 30-Tage-Index (wie der VIX). Der TQI Vol-Index berechnet dasselbe modellfrei aus der ganzen Kette."],
   ["IV Rank / Perzentil","Wo die IV im Vergleich zum letzten Jahr steht. 0 % = historisch günstig, 100 % = historisch teuer."],["VRP","Volatility Risk Premium = IV minus realisierte Vola. Positiv = Optionen teuer, Verkäufer im Vorteil."],
   ["Gamma Exposure (GEX)","Wie stark Dealer beim Hedgen kaufen oder verkaufen müssen. Positiver GEX: Dealer long Gamma, sie kaufen Dips und verkaufen Rallys (bremst). Negativer GEX: sie verstärken Bewegungen."],
-  ["Call Wall / Put Wall / Flip","Call Wall = größter positiver GEX (Widerstand). Put Wall = größter negativer GEX (Unterstützung). Flip = wo Netto-GEX null kreuzt; darunter wird es meist volatiler."],["Charm-Heatmap","Tabelle Strike × Verfall mit der Charm-Exposure (CHEX), wie bei Quant Data. Charm = tägliche Delta-Änderung durch den Zeitverfall, in $ Delta je Tag, Dealer-Konvention (long Calls, short Puts): Vorzeichen × Charm × Open Interest × Forward. Plus = Dealer müssen mit der Zeit verkaufen, Minus = kaufen. Umschaltbar auf GEX, VEX und DEX. King Node = Zelle mit dem größten Betrag, die Spot-Zeile zeigt den aktuellen Kurs, Netto-Spalte und Summenzeile summieren je Strike und je Verfall."],["GEX-Heatmap","Weiche Farbbänder im Kerzen-Chart: für jeden Strike und jede Kerze die GEX, berechnet aus dem aktuellen Open Interest beim damaligen Kurs und der damaligen Restlaufzeit. Je kräftiger das Band, desto mehr Gamma. Positiv (Calls) bremst den Kurs eher, negativ (Puts) beschleunigt ihn. Einschalten auf Key Levels und im GEX Daily Model, Verfall wählbar von 0DTE bis alle, die Schwelle blendet schwache Bänder aus."],["Net Drift","Netto-Prämie von Calls und Puts (gekauft minus verkauft, Aggressor-Seite), über den Tag aufsummiert, wie bei Quant Data. Steigt die Call-Linie und fällt die Put-Linie, ist der Flow bullisch. Kreuzen sich die Linien, dreht oft die Stimmung. Kombi-Trades mit mehreren Beinen zählen nicht, weil ihre Richtung unklar ist."],["GEX Daily Model","Tages-Levels aus dem Gamma: Call Resistance (meistes Call-Gamma über dem Kurs, Decke), Put Support (meistes Put-Gamma unter dem Kurs, Boden), HVL (Gamma-Flip), dazu Decke, Boden, Flip und Gamma Wall des nächsten Verfalls (0DTE), die erwartete Tagesspanne (1D Max/Min) und GEX 1–10, die zehn stärksten übrigen Gamma-Strikes als Reaktionszonen."],["0DTE","Optionen, die am nächsten Verfall auslaufen. Bei Deribit & Co. verfallen täglich um 08:00 UTC Optionen, bei SPX, SPY, QQQ und IBIT an jedem US-Handelstag. 0DTE-Gamma wirkt stark, aber nur kurz: Walls und Max Pain ziehen den Kurs oft bis zum Verfall an (Pinning), danach ist der Effekt weg."],["CBOE-Daten","Optionsketten der CBOE für US-Werte (IBIT, SPX, SPY, QQQ, NDX, IWM, MSTR, COIN), 15 Minuten verzögert. Ein GitHub-Job lädt sie während der US-Handelszeit etwa alle 15 bis 30 Minuten. Ein Kontrakt = 100 Aktien. IBIT-Levels werden mit dem BTC-Kurs zur Zeit des IBIT-Kurses in BTC umgerechnet."],["Major Wall","Der Strike mit dem meisten Gamma insgesamt, also Calls und Puts zusammen über alle Verfälle. Dort sichern Dealer am meisten ab. Der Preis wird oft dorthin gezogen oder bleibt dort hängen. In den Charts ist sie die dicke Linie in der Highlight-Farbe des Templates."],
+  ["Call Wall / Put Wall / Flip","Call Wall = größter positiver GEX (Widerstand). Put Wall = größter negativer GEX (Unterstützung). Flip = wo Netto-GEX null kreuzt; darunter wird es meist volatiler."],["Net VIX","DVOL (implizite 30-Tage-Vola) minus realisierte Vola aus den Tageskerzen. Plus = Optionen teuer, der Markt preist mehr Bewegung ein, als passiert (oft folgt Ruhe). Minus = Optionen billig, es bewegt sich mehr als eingepreist. Fenster der realisierten Vola wählbar (7, 14, 30, 60 Tage). Gleiche Rechnung wie der ATAS-Indikator TQI Net VIX."],["Convexity","GEX-Kurve: Netto-GEX der Dealer, wenn der Kurs auf dem jeweiligen Niveau stünde. Plus-Fläche = positives Gamma (bremst), Minus-Fläche = negatives Gamma (beschleunigt), Nulldurchgang = Gamma-Flip. Dazu Steigung je 1 % und Krümmung am Spot sowie eine Szenario-Tabelle für ±1 bis ±10 %. Gleiche Rechnung wie der ATAS-Indikator TQI Convexity."],["Charm-Heatmap","Tabelle Strike × Verfall mit der Charm-Exposure (CHEX), wie bei Quant Data. Charm = tägliche Delta-Änderung durch den Zeitverfall, in $ Delta je Tag, Dealer-Konvention (long Calls, short Puts): Vorzeichen × Charm × Open Interest × Forward. Plus = Dealer müssen mit der Zeit verkaufen, Minus = kaufen. Umschaltbar auf GEX, VEX und DEX. King Node = Zelle mit dem größten Betrag, die Spot-Zeile zeigt den aktuellen Kurs, Netto-Spalte und Summenzeile summieren je Strike und je Verfall."],["GEX-Heatmap","Weiche Farbbänder im Kerzen-Chart: für jeden Strike und jede Kerze die GEX, berechnet aus dem aktuellen Open Interest beim damaligen Kurs und der damaligen Restlaufzeit. Je kräftiger das Band, desto mehr Gamma. Positiv (Calls) bremst den Kurs eher, negativ (Puts) beschleunigt ihn. Einschalten auf Key Levels und im GEX Daily Model, Verfall wählbar von 0DTE bis alle, die Schwelle blendet schwache Bänder aus."],["Net Drift","Netto-Prämie von Calls und Puts (gekauft minus verkauft, Aggressor-Seite), über den Tag aufsummiert, wie bei Quant Data. Steigt die Call-Linie und fällt die Put-Linie, ist der Flow bullisch. Kreuzen sich die Linien, dreht oft die Stimmung. Kombi-Trades mit mehreren Beinen zählen nicht, weil ihre Richtung unklar ist."],["GEX Daily Model","Tages-Levels aus dem Gamma: Call Resistance (meistes Call-Gamma über dem Kurs, Decke), Put Support (meistes Put-Gamma unter dem Kurs, Boden), HVL (Gamma-Flip), dazu Decke, Boden, Flip und Gamma Wall des nächsten Verfalls (0DTE), die erwartete Tagesspanne (1D Max/Min) und GEX 1–10, die zehn stärksten übrigen Gamma-Strikes als Reaktionszonen."],["0DTE","Optionen, die am nächsten Verfall auslaufen. Bei Deribit & Co. verfallen täglich um 08:00 UTC Optionen, bei SPX, SPY, QQQ und IBIT an jedem US-Handelstag. 0DTE-Gamma wirkt stark, aber nur kurz: Walls und Max Pain ziehen den Kurs oft bis zum Verfall an (Pinning), danach ist der Effekt weg."],["CBOE-Daten","Optionsketten der CBOE für US-Werte (IBIT, SPX, SPY, QQQ, NDX, IWM, MSTR, COIN), 15 Minuten verzögert. Ein GitHub-Job lädt sie während der US-Handelszeit etwa alle 15 bis 30 Minuten. Ein Kontrakt = 100 Aktien. IBIT-Levels werden mit dem BTC-Kurs zur Zeit des IBIT-Kurses in BTC umgerechnet."],["Major Wall","Der Strike mit dem meisten Gamma insgesamt, also Calls und Puts zusammen über alle Verfälle. Dort sichern Dealer am meisten ab. Der Preis wird oft dorthin gezogen oder bleibt dort hängen. In den Charts ist sie die dicke Linie in der Highlight-Farbe des Templates."],
   ["Vanna, Charm, Vomma, Speed, Zomma, Color","Vanna: Delta-Änderung bei IV-Bewegung. Charm: täglicher Delta-Verfall. Vomma: Vega-Änderung bei IV-Bewegung. Speed: Gamma-Änderung bei Spot-Bewegung. Zomma: Gamma-Änderung bei IV-Bewegung. Color: täglicher Gamma-Verfall."],
   ["Skew / Risk Reversal","25Δ RR = Call-IV minus Put-IV bei 25 Delta. Negativ = Puts teurer (Absicherung, Angst), positiv = Calls teurer (FOMO)."],["Term Structure","ATM IV über die Laufzeiten. Contango (steigend) ist normal, Backwardation (fallend) zeigt akuten kurzfristigen Stress."],
   ["Max Pain","Strike, an dem Optionskäufer beim Verfall am meisten verlieren. Wirkt nahe am Verfall oft wie ein Magnet."],["Open Interest","Anzahl offener Kontrakte. Steigendes OI = neues Geld, fallendes OI = Positionen werden geschlossen."],
@@ -5691,6 +5778,8 @@ nav3("Gamma",[["flowgex","Flow-GEX"]],"dealer");
 nav3("Gamma",[["imap","Interval Map"]],"xheat");
 nav3("Gamma",[["gexmodel","GEX Daily Model"]],"keylv");
 nav3("Gamma",[["charmheat","Charm-Heatmap"]],"gexmodel");
+nav3("Gamma",[["convexity","Convexity"]],"charmheat");
+nav3("Volatilität",[["netvix","Net VIX"]],"vrp");
 nav3("Volatilität",[["fixstrike","Fixed-Strike-IV"]],"skew");
 nav3("Futures",[["liqmap","Liquidations-Heatmap"]],"liq");
 (()=>{ const q=NAV2.find(x=>x.g==="Quant"); if(q){ const i=q.items.findIndex(([k])=>k==="sim"); q.items.splice(i+1,0,["models","Vola-Modelle"],["seasonal","Saisonalität"],["correl","Korrelation"]); } })();
