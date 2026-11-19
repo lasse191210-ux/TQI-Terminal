@@ -17,7 +17,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.5.0/echarts.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/echarts-gl@2.0.9/dist/echarts-gl.min.js" onload="window.__gl=1" onerror="window.__gl=0"></script>
-<script>/* I18N-BEGIN */window.TQI_I18N_V="20261119-104845";
+<script>/* I18N-BEGIN */window.TQI_I18N_V="20261119-122138";
 /* TQI Sprach-Engine: Deutsch ist Standard. Andere Sprachen übersetzen Texte, Attribute und Chart-Beschriftungen zur Laufzeit. */
 (function(){
   var LANGS=[["de","Deutsch"],["en","English"],["es","Español"],["fr","Français"]];
@@ -2784,7 +2784,7 @@ window.addEventListener("beforeunload", saveX);
     const hgt=Math.min(4,Math.abs(v)*4), w=100/N; out+=`<rect x="${i*w+w*0.18}" y="${v>=0?4-hgt:4}" width="${w*0.64}" height="${hgt}" fill="var(${v>=0?"--pos":"--neg"})"/>`; }
   el.innerHTML=out; })();
 /* S3-BEGIN */
-const TQI_BUILD="20261119-104845";
+const TQI_BUILD="20261119-122138";
 /* ====================== Session 3: Infrastruktur ====================== */
 const V3 = {}, R3 = {}, NB3 = new Set();   // Seiten-HTML, Renderer, Seiten ohne Optionskette
 // Legenden- und Tooltip-Marker in der Linienfarbe zeichnen (sonst Palettenfarbe)
@@ -5220,10 +5220,11 @@ function ghHeat(key, x, tf){
   GH.k=key2; GH.h=data.length? {data,dk,mx,soft:true,cut:(+S.ghCut||30)/100,op:0.9,t:now} : null; return ghView(GH.h,key); }
 /* nur den sichtbaren Ausschnitt an den Chart geben; Skala aus dem sichtbaren Bereich; gleiches Objekt, solange sich nichts ändert */
 const GHV = {};
-function ghView(H, key){ if(!H) return null; const z=ZS[key], s0=z? z.s : -Infinity, s1=z? z.e : Infinity, lo=z&&z.hi>z.lo? z.lo : -Infinity, hi=z&&z.hi>z.lo? z.hi : Infinity;
-  const vk=[H.t,Math.round(s0/6e4),Math.round(s1/6e4),Math.round(lo),Math.round(hi)].join("|"), c=GHV[key]; if(c && c.vk===vk && c.H===H) return c.h;
-  const data=H.data.filter(d=>d[0]+d[3]>=s0 && d[0]<=s1 && d[1]+H.dk>=lo && d[1]-H.dk<=hi); let mx=0; for(const d of data){ const a=Math.abs(d[2]); if(a>mx) mx=a; }
-  const h=data.length? Object.assign({},H,{data,mx:mx||H.mx}) : null; GHV[key]={vk,H,h}; return h; }
+function ghView(H, key){ if(!H) return null; const z=ZS[key], c=GHV[key], s0=z? z.s : -Infinity, s1=z? z.e : Infinity, lo=z&&z.hi>z.lo? z.lo : -Infinity, hi=z&&z.hi>z.lo? z.hi : Infinity;
+  if(c && c.H===H && s0>=c.r[0] && s1<=c.r[1] && lo>=c.r[2] && hi<=c.r[3] && (s1-s0)>=(c.w*0.4)) return c.h;
+  const w=isFinite(s1-s0)? s1-s0 : Infinity, hgt=isFinite(hi-lo)? hi-lo : Infinity, r=[s0-w, s1+w, lo-hgt, hi+hgt];
+  const data=H.data.filter(d=>d[0]+d[3]>=r[0] && d[0]<=r[1] && d[1]+H.dk>=r[2] && d[1]-H.dk<=r[3]); let mx=0; for(const d of data){ const a=Math.abs(d[2]); if(a>mx) mx=a; }
+  const h=data.length? Object.assign({},H,{data,mx:mx||H.mx}) : null; GHV[key]={H,r,w,h}; return h; }
 const _ckDrawGH = ckDraw; ckDraw = function(elId,key,x,tf,o2){ if((key==="kl"||key==="gm") && +S.ghOn){ const h=ghHeat(key,x,tf); if(h) o2=Object.assign({},o2,{heat:h}); } return _ckDrawGH(elId,key,x,tf,o2); };
 V3.keylv = V3.keylv.replace(ckSetBtn("kl")+'</div>', ckSetBtn("kl")+'</div>'+GH_FORM);
 
@@ -5328,12 +5329,16 @@ function chpField(x, tf, g, expSel){
   return CHP[key]={data,dk:step,zero,lo,hi,t:now}; }
 /* sichtbaren Ausschnitt herausfiltern; Skala (Max Plus/Minus) aus dem sichtbaren Bereich. Gleiche Eingabe = gleiches Objekt (kein Neuzeichnen). */
 const CHV = {};
+/* Ausschnitt mit großem Rand (je eine Fensterbreite/-höhe links, rechts, oben, unten). Solange der sichtbare Bereich
+   innerhalb dieses Rands bleibt, wird nichts neu gefiltert oder umgefärbt – beim Verschieben bleibt die Heatmap stehen. */
 function chpView(F, zkey){
-  if(!F) return null; const z=ZS[zkey], s0=z? z.s : -Infinity, s1=z? z.e : Infinity, lo=z&&z.hi>z.lo? z.lo : -Infinity, hi=z&&z.hi>z.lo? z.hi : Infinity;
-  const vk=[F.t,F.lo,F.hi,Math.round(s0/6e4),Math.round(s1/6e4),Math.round(lo),Math.round(hi)].join("|"); const c=CHV[zkey]; if(c && c.vk===vk && c.F===F) return c.h;
-  const data=F.data.filter(d=>d[0]+d[3]>=s0 && d[0]<=s1 && d[1]+F.dk>=lo && d[1]-F.dk<=hi); let mxP=0, mxN=0;
+  if(!F) return null; const z=ZS[zkey], c=CHV[zkey];
+  const s0=z? z.s : -Infinity, s1=z? z.e : Infinity, lo=z&&z.hi>z.lo? z.lo : -Infinity, hi=z&&z.hi>z.lo? z.hi : Infinity;
+  if(c && c.F===F && s0>=c.r[0] && s1<=c.r[1] && lo>=c.r[2] && hi<=c.r[3] && (s1-s0)>=(c.w*0.4)) return c.h;
+  const w=isFinite(s1-s0)? s1-s0 : Infinity, hgt=isFinite(hi-lo)? hi-lo : Infinity, r=[s0-w, s1+w, lo-hgt, hi+hgt];
+  const data=F.data.filter(d=>d[0]+d[3]>=r[0] && d[0]<=r[1] && d[1]+F.dk>=r[2] && d[1]-F.dk<=r[3]); let mxP=0, mxN=0;
   for(const d of data){ if(d[2]>mxP) mxP=d[2]; if(-d[2]>mxN) mxN=-d[2]; }
-  const h=data.length? {data,dk:F.dk,mx:Math.max(mxP,mxN),mxP,mxN,qd:true,soft:true,zero:F.zero,lo:F.lo,hi:F.hi} : null; CHV[zkey]={vk,F,h}; return h; }
+  const h=data.length? {data,dk:F.dk,mx:Math.max(mxP,mxN),mxP,mxN,qd:true,soft:true,zero:F.zero,lo:F.lo,hi:F.hi} : null; CHV[zkey]={F,r,w,h}; return h; }
 function chpHeat(x, tf){ return chpView(chpField(x,tf,S.chG,S.chpExp),"ch"); }
 
 /* Farbskala wie bei Quant Data: Minus = Rot/Pink, Plus = Violett, nahe null = Hintergrund.
