@@ -17,7 +17,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.5.0/echarts.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/echarts-gl@2.0.9/dist/echarts-gl.min.js" onload="window.__gl=1" onerror="window.__gl=0"></script>
-<script>/* I18N-BEGIN */window.TQI_I18N_V="20261119-122138";
+<script>/* I18N-BEGIN */window.TQI_I18N_V="20261120-082249";
 /* TQI Sprach-Engine: Deutsch ist Standard. Andere Sprachen übersetzen Texte, Attribute und Chart-Beschriftungen zur Laufzeit. */
 (function(){
   var LANGS=[["de","Deutsch"],["en","English"],["es","Español"],["fr","Français"]];
@@ -2784,7 +2784,7 @@ window.addEventListener("beforeunload", saveX);
     const hgt=Math.min(4,Math.abs(v)*4), w=100/N; out+=`<rect x="${i*w+w*0.18}" y="${v>=0?4-hgt:4}" width="${w*0.64}" height="${hgt}" fill="var(${v>=0?"--pos":"--neg"})"/>`; }
   el.innerHTML=out; })();
 /* S3-BEGIN */
-const TQI_BUILD="20261119-122138";
+const TQI_BUILD="20261120-082249";
 /* ====================== Session 3: Infrastruktur ====================== */
 const V3 = {}, R3 = {}, NB3 = new Set();   // Seiten-HTML, Renderer, Seiten ohne Optionskette
 // Legenden- und Tooltip-Marker in der Linienfarbe zeichnen (sonst Palettenfarbe)
@@ -5532,6 +5532,93 @@ R3.convexity = (lb, lv) => {
   $("cv-t").innerHTML = tbl3(["Bewegung","Kurs","Netto-GEX","Änderung","Regime"], moves.map(mv=>{ const x=spot*(1+mv/100), g=at(x), d=g-g0;
     return `<tr${mv===0?' class="chh-atm"':""}><td class="l">${mv>0?"+":""}${mv} %</td><td>${fmtNum(x)}</td><td class="${g>=0?"pos":"neg"}">${fmtUsd(g)}</td><td>${mv===0?"–":fmtUsd(d)}</td><td>${g>=0?sp("positives Gamma"):sp("negatives Gamma")}</td></tr>`; }), "zdt");
   $("cv-note").textContent="Convexity = Netto-GEX der Dealer, wenn der Kurs auf dem jeweiligen Niveau stünde (Open Interest und IV vom aktuellen Stand). Plus-Fläche = positives Gamma: Dealer handeln gegen die Bewegung, der Kurs wird gebremst. Minus-Fläche = negatives Gamma: Dealer handeln mit der Bewegung, sie läuft weiter. Wo die Kurve die Null kreuzt, liegt der Gamma-Flip. Steigung = wie stark sich die GEX je 1 % Kursbewegung ändert. Krümmung = ob Bewegungen in beide Richtungen die GEX positiver (konvex) oder negativer (konkav) machen. Gleiche Rechnung wie der ATAS-Indikator TQI Convexity.";
+};
+
+/* ====================== Skew Structure & Skew-Timeseries (tägliche Speicherung) ====================== */
+// Call-Delta-Achse wie bei Quant Data: 90 / 75 / 50 / 25 / 10. Call-Delta 90 entspricht dem 10Δ-Put (gleicher Strike-Bereich).
+const SKD = [[90,"P",0.10],[75,"P",0.25],[50,"A",0],[25,"C",0.25],[10,"C",0.10]];
+const SK_TEN = [10,30,90];
+const skDayKey = () => "skewd-"+S.cur;
+let skDays = [], skLoaded = "", skLastSave = 0;
+
+function skCurve(lb, days){
+  const e = nearestExpTo(lb, days); if(!e) return null;
+  const a = atmIv(lb, e); if(!a) return null;
+  const iv = SKD.map(([,cp,d]) => { if(cp==="A") return +a.toFixed(2); const w=wingsAt(lb,e,d); return w? +(cp==="C"?w.c:w.p).toFixed(2) : null; });
+  return { e, dte: dte(e), iv };
+}
+// Skew = 25Δ Put-IV minus 25Δ Call-IV (positiv = Puts teurer, negativ = Calls teurer)
+const skVal = c => c && c.iv[1]!=null && c.iv[3]!=null ? +(c.iv[1]-c.iv[3]).toFixed(2) : null;
+
+async function skLoad(){
+  if(skLoaded===S.cur) return; skLoaded=S.cur;
+  const a = await IDB.get(skDayKey()); skDays = Array.isArray(a)? a : [];
+  // Lücken der letzten Tage aus den 5-Minuten-Snapshots füllen (nur 30-Tage-Skew vorhanden)
+  if(typeof snaps!=="undefined") for(const s of snaps){ if(s.rr25==null) continue; const d=new Date(s.t).toISOString().slice(0,10);
+    if(!skDays.some(x=>x.d===d)) skDays.push({d,t:s.t,s:s.s,cur:{30:{iv:null,sk:-s.rr25}}}); else { const x=skDays.find(x=>x.d===d); if(x.seed && s.t>x.t){ x.t=s.t; x.s=s.s; x.cur[30].sk=-s.rr25; } } }
+  skDays.forEach(x=>{ if(x.cur && x.cur[30] && x.cur[30].iv==null) x.seed=1; });
+  skDays.sort((a,b)=>a.t-b.t); scheduleRender();
+}
+
+// einmal pro Minute: den Wert des heutigen Tages aktualisieren (letzter Stand des Tages bleibt stehen)
+function skRecord(){
+  if(!book.length || skLoaded!==S.cur) return; const now=Date.now(); if(now-skLastSave<60e3) return; skLastSave=now;
+  const lb=liveBook(), d=new Date(now).toISOString().slice(0,10), cur={};
+  for(const t of SK_TEN){ const c=skCurve(lb,t); if(c) cur[t]={e:c.e,iv:c.iv,sk:skVal(c)}; }
+  if(!Object.keys(cur).length) return;
+  const rec={d,t:now,s:Math.round(spot||0),cur}; const i=skDays.findIndex(x=>x.d===d);
+  if(i>=0) skDays[i]=rec; else skDays.push(rec);
+  if(skDays.length>3650) skDays=skDays.slice(-3650);
+  IDB.set(skDayKey(), skDays);
+}
+setInterval(()=>{ try{ skLoad(); skRecord(); }catch(e){} }, 15e3);
+
+V3.skew = P2("Skew Structure","IV je Call-Delta für 10, 30 und 90 Tage – Vergleich mit einem früheren Tag zeigt relativ teure und billige Strikes",
+  '<div class="form">'+seg3("k3","skTen",[[10,"10 DTE"],[30,"30 DTE"],[90,"90 DTE"],["all","Alle"]])+
+  '<label>Vergleich <select id="sk-cmp"></select></label></div><div class="chart tall" id="c-skstruct"></div><div class="note" id="sk-note"></div>',"wide")+
+  P2("Skew Timeseries","25Δ Put-IV minus Call-IV, ein Wert pro Tag. Positiv = Puts teurer als Calls, negativ = Calls teurer",
+  '<div class="form">'+seg3("k3","skTsTen",[[10,"10 DTE"],[30,"30 DTE"],[90,"90 DTE"]])+'</div><div class="chart tall" id="c-skts"></div><div class="note" id="sk-tsnote"></div>',"wide");
+
+document.addEventListener("change",e=>{ if(e.target && e.target.id==="sk-cmp"){ S.skCmp=e.target.value; save(); render(); } });
+
+R3.skew = (lb) => {
+  skLoad();
+  if(S.skTen==null) S.skTen=30; if(S.skTsTen==null) S.skTsTen=30; sync3();
+  const o=base(), xs=SKD.map(x=>String(x[0])), cols=[css("--accent"),css("--warn"),css("--bull")];
+  // Vergleichstage (ohne heute)
+  const today=new Date().toISOString().slice(0,10), past=skDays.filter(x=>x.d!==today && !x.seed).slice().reverse();
+  const sel=$("sk-cmp");
+  if(sel){ const opts=[["","kein Vergleich"],...past.map(x=>[x.d,x.d])], want=S.skCmp||"";
+    const html=opts.map(([v,l])=>`<option value="${v}"${v===want?" selected":""}>${l}</option>`).join(""); if(sel.innerHTML!==html) sel.innerHTML=html; }
+  const cmp=past.find(x=>x.d===S.skCmp);
+  const tens = S.skTen==="all"? SK_TEN : [+S.skTen];
+  const series=[];
+  tens.forEach((t,i)=>{ const c=skCurve(lb,t); if(!c) return; const col=tens.length>1? cols[i] : css("--bull");
+    series.push({name:`${t} DTE heute (${c.e})`,type:"line",data:c.iv,symbolSize:7,lineStyle:{color:col,width:2.2},itemStyle:{color:col}});
+    const p=cmp&&cmp.cur&&cmp.cur[t]; if(p&&p.iv) series.push({name:`${t} DTE ${cmp.d}`,type:"line",data:p.iv,symbolSize:6,lineStyle:{color:col,width:1.5,type:"dashed",opacity:.75},itemStyle:{color:col,opacity:.75}});
+  });
+  const c1=ch("c-skstruct");
+  if(c1) c1.setOption({...o,grid:{...o.grid,bottom:56},tooltip:{...o.tooltip,trigger:"axis",valueFormatter:v=>v==null?"–":v.toFixed(1)+" %"},
+    xAxis:ax(o,{type:"category",data:xs,name:"Call-Delta",nameLocation:"middle",nameGap:26,splitLine:{show:false}}),
+    yAxis:ax(o,{type:"value",scale:true,name:"Implizite Vola",axisLabel:{...o._axis.axisLabel,formatter:"{value}%"}}),series,
+    title:series.length?undefined:{text:"Keine Daten für diese Laufzeit",left:"center",top:"middle",textStyle:{color:css("--muted"),fontSize:12,fontWeight:400}}},true);
+  const n=$("sk-note");
+  if(n){ let txt="Links (Call-Delta 90/75) = Put-Seite, rechts (25/10) = Call-Seite. ";
+    if(cmp){ const t=tens[0], now=skCurve(lb,t), p=cmp.cur&&cmp.cur[t];
+      if(now&&p&&p.iv){ const d=now.iv.map((v,i)=>v!=null&&p.iv[i]!=null? v-p.iv[i] : null), mx=d.reduce((b,v,i)=>v!=null&&(b<0||v>d[b])?i:b,-1), mn=d.reduce((b,v,i)=>v!=null&&(b<0||v<d[b])?i:b,-1);
+        if(mx>=0) txt+=`Gegenüber ${cmp.d} am stärksten verteuert: Delta ${xs[mx]} (${d[mx]>0?"+":""}${d[mx].toFixed(1)} Pkt), am stärksten verbilligt: Delta ${xs[mn]} (${d[mn]>0?"+":""}${d[mn].toFixed(1)} Pkt).`; } }
+    else txt+= past.length? "Für den Vergleich oben einen Tag wählen." : "Vergleichstage entstehen automatisch: das Terminal speichert jeden Tag einen Stand, solange es offen ist.";
+    n.textContent=txt; }
+  // Timeseries
+  const tt=+S.skTsTen, pts=skDays.map(x=>x.cur&&x.cur[tt]&&x.cur[tt].sk!=null? [x.t,x.cur[tt].sk] : null).filter(Boolean);
+  const live=skVal(skCurve(lb,tt)); if(live!=null){ const last=pts.length?pts[pts.length-1][0]:0; if(new Date(last).toISOString().slice(0,10)===today) pts[pts.length-1]=[Date.now(),live]; else pts.push([Date.now(),live]); }
+  const c2=ch("c-skts");
+  if(c2) c2.setOption({...o,legend:{show:false},grid:{...o.grid,right:20},tooltip:{...o.tooltip,trigger:"axis",valueFormatter:v=>typeof v==="number"?(v>0?"+":"")+v.toFixed(2):v},
+    xAxis:ax(o,{type:"time",splitLine:{show:false}}),yAxis:ax(o,{type:"value",scale:true,name:"Skew"}),
+    series:[{name:"Skew",type:"line",data:pts,showSymbol:pts.length<40,symbolSize:5,lineStyle:{color:css("--bull"),width:2},itemStyle:{color:css("--bull")},areaStyle:{color:css("--bull"),opacity:.06},
+      markLine:{silent:true,symbol:"none",data:[{yAxis:0}],lineStyle:{color:css("--muted"),type:"dashed"},label:{show:false}}}],
+    title:pts.length<2?{text:"Sammle Tageswerte … (ein Punkt pro Tag, solange das Terminal offen ist)",left:"center",top:"middle",textStyle:{color:css("--muted"),fontSize:12,fontWeight:400}}:undefined},true);
+  const n2=$("sk-tsnote"); if(n2) n2.textContent = pts.length? `${pts.length} Tage gespeichert seit ${new Date(pts[0][0]).toISOString().slice(0,10)}. Heute: ${live!=null?(live>0?"+":"")+live.toFixed(2):"–"} (${live>0?"Puts teurer":"Calls teurer"}).` : "";
 };
 
 /* ====================== Session 3: Werkzeuge, Strategie, Quant ====================== */
