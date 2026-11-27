@@ -17,7 +17,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.5.0/echarts.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/echarts-gl@2.0.9/dist/echarts-gl.min.js" onload="window.__gl=1" onerror="window.__gl=0"></script>
-<script>/* I18N-BEGIN */window.TQI_I18N_V="20261127-200540";
+<script>/* I18N-BEGIN */window.TQI_I18N_V="20261127-201124";
 /* TQI Sprach-Engine: Deutsch ist Standard. Andere Sprachen übersetzen Texte, Attribute und Chart-Beschriftungen zur Laufzeit. */
 (function(){
   var LANGS=[["de","Deutsch"],["en","English"],["es","Español"],["fr","Français"]];
@@ -2784,7 +2784,7 @@ window.addEventListener("beforeunload", saveX);
     const hgt=Math.min(4,Math.abs(v)*4), w=100/N; out+=`<rect x="${i*w+w*0.18}" y="${v>=0?4-hgt:4}" width="${w*0.64}" height="${hgt}" fill="var(${v>=0?"--pos":"--neg"})"/>`; }
   el.innerHTML=out; })();
 /* S3-BEGIN */
-const TQI_BUILD="20261127-200540";
+const TQI_BUILD="20261127-201124";
 /* ====================== Session 3: Infrastruktur ====================== */
 const V3 = {}, R3 = {}, NB3 = new Set();   // Seiten-HTML, Renderer, Seiten ohne Optionskette
 // Legenden- und Tooltip-Marker in der Linienfarbe zeichnen (sonst Palettenfarbe)
@@ -5759,7 +5759,7 @@ nav3("Dashboard",[["desk","Desk (4 Fenster)"]],"dashboard");
   const html='<div class="sec" id="set-dkcol">Farben Plus / Minus</div><div class="row">'+dkColSeg()+'</div>';
   if(h) h.insertAdjacentHTML("afterend",html); else d.insertAdjacentHTML("afterbegin",html); })();
 // einmalig: Weiß/Grau als Standard (danach gilt die eigene Wahl)
-(()=>{ if(S.dkCol) return; S.dkCol="mono"; S.bull=DK_MONO.bull; S.bear=DK_MONO.bear; try{ save(); applyLook(); }catch(e){} })();
+(()=>{ if(S.dkCol) return; S.dkCol="mono"; S.bull=DK_MONO.bull; S.bear=DK_MONO.bear; try{ save(); }catch(e){} })();
 setInterval(()=>{ try{ dkColSync(); }catch(e){} }, 1500);
 
 /* ====================== Desk bearbeitbar, IV-Lage & Alarm, Greek-Cluster, ruhige Charts ====================== */
@@ -5870,11 +5870,12 @@ R3.gsurf = (lb) => { S.gsM??="gex"; S.gsCp??="C"; S.gsAx??="strike"; S.gsView??=
 nav3("Greeks",[["gsurf","Greek-Cluster"]],"heatmaps");
 
 // ---------- 5) Desk = bearbeitbares Dashboard (Panels hinzufügen, entfernen, verschieben) ----------
-PANELS.dkx = {n:"Exposure by Strike (Balken)",cat:"GEX",w:6,h:10,d:"GEX/DEX/Vanna/Charm je Strike, wählbarer Verfall (z. B. 0DTE)",o:[O_G,O_EXA],b:[["c","c-dkx"]],
+const O_NG={key:"exG",type:"seg",vals:[["gex","Net GEX"],["dex","Net DEX"],["vex","Net Vanna"],["chex","Net Charm"]]};
+PANELS.dkx = {n:"Net Exposure by Strike",cat:"GEX",w:6,h:10,d:"Net GEX, Net DEX, Net Vanna, Net Charm je Strike, wählbarer Verfall (z. B. 0DTE)",o:[O_NG,O_EXA],b:[["c","c-dkx"]],
   run:x=>{ const e=S.exExp, lb=e&&e!=="all"? x.lb.filter(b=>b.exp===e) : x.lb; dkBars("c-dkx", lb, S.exG||"gex"); }};
-PANELS.dk0 = {n:"0DTE GEX je Strike",cat:"GEX",w:6,h:10,d:"nur der nächste Verfall",o:[O_G],b:[["c","c-dk0"]],
+PANELS.dk0 = {n:"0DTE Net Exposure je Strike",cat:"GEX",w:6,h:10,d:"nur der nächste Verfall",o:[O_NG],b:[["c","c-dk0"]],
   run:x=>{ const e=frontExp(x.lb); dkBars("c-dk0", x.lb.filter(b=>b.exp===e), S.exG||"gex"); }};
-PANELS.dkheat = {n:"Net Heat Map (Werte)",cat:"GEX",w:6,h:10,d:"Strike × Verfall mit Werten in jeder Zelle",o:[O_G],b:[["c","c-dkheat"]],
+PANELS.dkheat = {n:"Net Heat Map (Werte)",cat:"GEX",w:6,h:10,d:"Strike × Verfall mit Werten in jeder Zelle",o:[O_NG],b:[["c","c-dkheat"]],
   run:x=>{ const exps=expiries(x.lb).slice(0,10), ks=[...new Set(x.lb.filter(b=>spot&&b.strike>=spot*0.94&&b.strike<=spot*1.06).map(b=>b.strike))].sort((a,b)=>a-b), g=S.exG||"gex", mm=new Map();
     x.lb.forEach(b=>{ const k=b.exp+"|"+b.strike; mm.set(k,(mm.get(k)||0)+exposureOf(b,g)); });
     gridHeat("c-dkheat", exps, ks, (e,k)=>{ const v=mm.get(e+"|"+k); return v||null; }, "div", fmtUsd, (DK_G.find(z=>z[0]===g)||["","GEX"])[1]); }};
@@ -5906,7 +5907,15 @@ setInterval(()=>{ const on = S.view==="custom" && (curDash()||{}).desk && innerW
 document.head.insertAdjacentHTML("beforeend",`<style>html.deskwide #kpis{display:none}html.deskwide .gp .ph{padding-top:4px;padding-bottom:4px;min-height:0}html.deskwide .gp .ph h2{font-size:12px}html.deskwide .gp .pseg button,html.deskwide .gp .pexp{font-size:11px;padding:2px 6px}</style>`);
 
 // ---------- 7) Restliches Blau weg: eigene Akzentfarbe / eigene Farben aus früheren Einstellungen zurücksetzen ----------
-(()=>{ if(S.carbon2) return; S.carbon2=1; if(S.skin==="carbon"){ delete S.accent; S.cust={}; try{ save(); applyLook(); }catch(e){} } })();
+(()=>{ if(S.carbon2) return; S.carbon2=1; if(S.skin==="carbon"){ delete S.accent; S.cust={}; try{ save(); }catch(e){} } })();
+
+// ---------- 8) Charm-/Gamma-Felder (Quant-Data-Farben) in Weiß/Schwarz ----------
+const _qdStops0=qdStops;
+qdStops=function(){ const mono = S.skin==="carbon" || S.dkCol==="mono" || S.dkCol==="neon"; if(!mono) return _qdStops0();
+  const bg=hex3(css("--panel"))||"#0b0b0b";
+  return {bg, pos:[[0,bg],[0.18,"#2e2e2e"],[0.5,"#8a8a8a"],[0.8,"#d9d9d9"],[1,"#ffffff"]], neg:[[0,bg],[0.18,"#1d1d1d"],[0.5,"#3d3d3d"],[0.8,"#5c5c5c"],[1,"#7a7a7a"]], line:"rgba(255,255,255,.28)", zero:"rgba(255,255,255,.95)"}; };
+document.head.insertAdjacentHTML("beforeend",`<style>html[data-skin="carbon"] #chp-leg .n{color:#9a9a9a!important}html[data-skin="carbon"] #chp-leg .p{color:#ffffff!important}</style>`);
+document.head.insertAdjacentHTML("beforeend",`<style>@media (max-width:900px){.grid12 .gp{min-height:430px}}</style>`);
 
 /* ====================== Session 3: Werkzeuge, Strategie, Quant ====================== */
 const dLb = () => liveFrom(books.deribit);
@@ -6291,6 +6300,9 @@ const _applyLook0=applyLook; applyLook=function(){ const r=document.documentElem
 
 // Schwarz/Weiß/Hellgrau ("carbon") einmalig als Standard setzen; danach gilt die eigene Auswahl in den Einstellungen
 (()=>{ if(S.carbonSet) return; S.carbonSet=1; S.skin="carbon"; try{ save(); applyLook(); }catch(e){} })();
+
+// Fix: das Template wurde auf dem Handy wieder auf "neon" (türkis) gesetzt, weil es zu früh geprüft wurde → einmalig zurück auf Schwarz/Weiß
+(()=>{ if(S.carbonFix3) return; S.carbonFix3=1; S.skin="carbon"; delete S.accent; S.cust={}; try{ save(); }catch(e){} })();
 
 /* S3-END */
 applyOrder(); applyLook();
