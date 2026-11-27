@@ -17,7 +17,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.5.0/echarts.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/echarts-gl@2.0.9/dist/echarts-gl.min.js" onload="window.__gl=1" onerror="window.__gl=0"></script>
-<script>/* I18N-BEGIN */window.TQI_I18N_V="20261127-122801";
+<script>/* I18N-BEGIN */window.TQI_I18N_V="20261127-192301";
 /* TQI Sprach-Engine: Deutsch ist Standard. Andere Sprachen übersetzen Texte, Attribute und Chart-Beschriftungen zur Laufzeit. */
 (function(){
   var LANGS=[["de","Deutsch"],["en","English"],["es","Español"],["fr","Français"]];
@@ -2784,7 +2784,7 @@ window.addEventListener("beforeunload", saveX);
     const hgt=Math.min(4,Math.abs(v)*4), w=100/N; out+=`<rect x="${i*w+w*0.18}" y="${v>=0?4-hgt:4}" width="${w*0.64}" height="${hgt}" fill="var(${v>=0?"--pos":"--neg"})"/>`; }
   el.innerHTML=out; })();
 /* S3-BEGIN */
-const TQI_BUILD="20261127-122801";
+const TQI_BUILD="20261127-192301";
 /* ====================== Session 3: Infrastruktur ====================== */
 const V3 = {}, R3 = {}, NB3 = new Set();   // Seiten-HTML, Renderer, Seiten ohne Optionskette
 // Legenden- und Tooltip-Marker in der Linienfarbe zeichnen (sonst Palettenfarbe)
@@ -5768,6 +5768,14 @@ R3.desk = (lb) => {
 };
 nav3("Dashboard",[["desk","Desk (4 Fenster)"]],"dashboard");
 document.head.insertAdjacentHTML("beforeend",`<style>#v-desk .chart{min-height:300px}#v-desk .panel .ph h2 small{display:none}@media(min-width:1100px){#v-desk .panel:not(.wide) .chart{height:min(42vh,440px)!important}}</style>`);
+
+// Farbwahl auch in den Einstellungen (gilt überall: Balken, Linien, Flow-Charts, Kennzahlen)
+(()=>{ const d=$("drawer"); if(!d||$("set-dkcol")) return; const h=d.querySelector("h3");
+  const html='<div class="sec" id="set-dkcol">Farben Plus / Minus</div><div class="row">'+dkColSeg()+'</div>';
+  if(h) h.insertAdjacentHTML("afterend",html); else d.insertAdjacentHTML("afterbegin",html); })();
+// einmalig: Weiß/Grau als Standard (danach gilt die eigene Wahl)
+(()=>{ if(S.dkCol) return; S.dkCol="mono"; S.bull=DK_MONO.bull; S.bear=DK_MONO.bear; try{ save(); applyLook(); }catch(e){} })();
+setInterval(()=>{ try{ dkColSync(); }catch(e){} }, 1500);
 
 /* ====================== Session 3: Werkzeuge, Strategie, Quant ====================== */
 const dLb = () => liveFrom(books.deribit);
