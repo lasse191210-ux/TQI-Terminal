@@ -17,7 +17,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.5.0/echarts.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/echarts-gl@2.0.9/dist/echarts-gl.min.js" onload="window.__gl=1" onerror="window.__gl=0"></script>
-<script>/* I18N-BEGIN */window.TQI_I18N_V="20261127-201124";
+<script>/* I18N-BEGIN */window.TQI_I18N_V="20261127-201600";
 /* TQI Sprach-Engine: Deutsch ist Standard. Andere Sprachen übersetzen Texte, Attribute und Chart-Beschriftungen zur Laufzeit. */
 (function(){
   var LANGS=[["de","Deutsch"],["en","English"],["es","Español"],["fr","Français"]];
@@ -2784,7 +2784,7 @@ window.addEventListener("beforeunload", saveX);
     const hgt=Math.min(4,Math.abs(v)*4), w=100/N; out+=`<rect x="${i*w+w*0.18}" y="${v>=0?4-hgt:4}" width="${w*0.64}" height="${hgt}" fill="var(${v>=0?"--pos":"--neg"})"/>`; }
   el.innerHTML=out; })();
 /* S3-BEGIN */
-const TQI_BUILD="20261127-201124";
+const TQI_BUILD="20261127-201600";
 /* ====================== Session 3: Infrastruktur ====================== */
 const V3 = {}, R3 = {}, NB3 = new Set();   // Seiten-HTML, Renderer, Seiten ohne Optionskette
 // Legenden- und Tooltip-Marker in der Linienfarbe zeichnen (sonst Palettenfarbe)
@@ -5916,6 +5916,48 @@ qdStops=function(){ const mono = S.skin==="carbon" || S.dkCol==="mono" || S.dkCo
   return {bg, pos:[[0,bg],[0.18,"#2e2e2e"],[0.5,"#8a8a8a"],[0.8,"#d9d9d9"],[1,"#ffffff"]], neg:[[0,bg],[0.18,"#1d1d1d"],[0.5,"#3d3d3d"],[0.8,"#5c5c5c"],[1,"#7a7a7a"]], line:"rgba(255,255,255,.28)", zero:"rgba(255,255,255,.95)"}; };
 document.head.insertAdjacentHTML("beforeend",`<style>html[data-skin="carbon"] #chp-leg .n{color:#9a9a9a!important}html[data-skin="carbon"] #chp-leg .p{color:#ffffff!important}</style>`);
 document.head.insertAdjacentHTML("beforeend",`<style>@media (max-width:900px){.grid12 .gp{min-height:430px}}</style>`);
+
+// ---------- 9) Surfaces auch für Delta, Gamma, Vega, Theta, Vanna, Charm ----------
+const SG_M=[["iv","IV"],["delta","Delta"],["gamma","Gamma"],["vega","Vega"],["theta","Theta"],["vanna","Vanna"],["charm","Charm"]];
+const SG_U={delta:v=>v.toFixed(3),gamma:v=>v.toFixed(2),vega:v=>"$"+fmtNum(v,1),theta:v=>"$"+fmtNum(v,1),vanna:v=>v.toFixed(3),charm:v=>v.toFixed(3)};
+const SG_T={delta:"Delta",gamma:"Gamma (×10⁻⁵)",vega:"Vega $",theta:"Theta $/Tag",vanna:"Vanna",charm:"Charm"};
+function sgVal(b,m){ if(!b||!b.g) return null; const g=b.g; switch(m){ case "delta": return g.delta; case "gamma": return g.gamma*1e5; case "vega": return g.vega; case "theta": return g.theta; case "vanna": return g.vanna; case "charm": return g.charm; } return null; }
+function greekSurf(lb){
+  const m=S.surfG, axis=S.surfAxis||"delta", mode=S.surfMode||"3d", D=liveFrom(books.deribit), exps=expiries(D).filter(e=>dte(e)>=0.5).slice(0,14);
+  let xl, rows;
+  if(axis==="delta"){ xl=SURF_D.map(d=>d[2]);
+    rows=exps.map(e=>{ const L=D.filter(b=>b.exp===e&&b.g&&isFinite(b.g.delta)); return {e,v:SURF_D.map(([cp,d])=>{ const want = cp==="A"? 0.5 : cp==="C"? d : -d, side = cp==="P"?"P":"C"; let best=null;
+      for(const b of L){ if(b.cp!==side) continue; if(!best||Math.abs(b.g.delta-want)<Math.abs(best.g.delta-want)) best=b; } return best&&Math.abs(best.g.delta-want)<0.08? sgVal(best,m) : null; })}; });
+  } else { const ks=[...new Set(D.filter(b=>spot&&b.strike>=spot*0.75&&b.strike<=spot*1.3).map(b=>b.strike))].sort((a,b)=>a-b); xl=ks.map(k=>fmtNum(k));
+    rows=exps.map(e=>{ const mm=new Map(); D.forEach(b=>{ if(b.exp!==e) return; const otm = b.strike>=(b.F||spot)? "C":"P"; if(b.cp===otm) mm.set(b.strike,sgVal(b,m)); }); return {e,v:ks.map(k=>mm.has(k)?mm.get(k):null)}; }); }
+  rows=rows.filter(r=>r.v.filter(v=>v!=null).length>=Math.min(6,xl.length/2));
+  rows.forEach(r=>{ for(let i=0;i<r.v.length;i++) if(r.v[i]==null){ let a=i-1,b=i+1; while(a>=0&&r.v[a]==null)a--; while(b<r.v.length&&r.v[b]==null)b++; r.v[i]= a>=0&&b<r.v.length? r.v[a]+(r.v[b]-r.v[a])*(i-a)/(b-a) : (a>=0?r.v[a]:b<r.v.length?r.v[b]:0); } });
+  const c=ch("c-surf"); if(!c||!rows.length) return; const all=rows.flatMap(r=>r.v), mn=Math.min(...all), mx=Math.max(...all), f=SG_U[m], T=SG_T[m];
+  if(mode==="3d" && window.__gl===1){ const data=[], SX=4, SY=3, nx=xl.length, ny=rows.length, mob=innerWidth<700, at=(j,i)=>rows[j].v[i];
+    for(let fj=0; fj<=(ny-1)*SY; fj++){ const y=fj/SY, j0=Math.floor(y), j1=Math.min(j0+1,ny-1), ty=y-j0;
+      for(let fi=0; fi<=(nx-1)*SX; fi++){ const x=fi/SX, i0=Math.floor(x), i1=Math.min(i0+1,nx-1), tx=x-i0;
+        const v=(at(j0,i0)*(1-tx)+at(j0,i1)*tx)*(1-ty)+(at(j1,i0)*(1-tx)+at(j1,i1)*tx)*ty; data.push([+x.toFixed(3),+y.toFixed(3),+v.toPrecision(5)]); } }
+    const lab={color:css("--muted"),fontSize:mob?9:11}, dist=S.surfDist||(mob?370:200);
+    c.setOption({backgroundColor:"transparent",
+      tooltip:{triggerOn:"mousemove|click",alwaysShowContent:true,formatter:p=>`${xl[Math.round(p.value[0])]||""} · ${rows[Math.round(p.value[1])]?rows[Math.round(p.value[1])].e:""}<br>${T}: <b>${f(+p.value[2])}</b>`},
+      visualMap:{show:true,dimension:2,min:mn,max:mx,calculable:false,right:8,top:mob?6:20,itemHeight:mob?110:180,itemWidth:mob?8:12,text:[f(mx),f(mn)],textStyle:{color:css("--muted"),fontSize:10},inRange:{color:SURF_COL}},
+      xAxis3D:{type:"value",min:0,max:nx-1,interval:axis==="delta"?3:Math.max(1,Math.round(nx/6)),axisLabel:{...lab,formatter:v=>xl[Math.round(v)]||""}},
+      yAxis3D:{type:"value",min:0,max:Math.max(ny-1,1),interval:1,axisLabel:{...lab,formatter:v=>rows[Math.round(v)]?rows[Math.round(v)].e.replace(/(\d+)([A-Z]{3})(\d+)/,(q,d,mo)=>d+" "+mo[0]+mo.slice(1).toLowerCase()):""}},
+      zAxis3D:{type:"value",min:mn,max:mx,axisLabel:{...lab,formatter:v=>f(v)}},
+      grid3D:{boxWidth:130,boxDepth:100,boxHeight:70,axisLine:{lineStyle:{color:css("--line")}},splitLine:{lineStyle:{color:"rgba(255,255,255,.06)"}},axisPointer:{lineStyle:{color:css("--fg")}},
+        viewControl:{alpha:S.surfAlpha??22,beta:S.surfBeta??-35,distance:dist,minDistance:80,maxDistance:500,rotateSensitivity:1.2,zoomSensitivity:1.2,panSensitivity:1},light:{main:{intensity:1.05,alpha:40,beta:20},ambient:{intensity:.45}}},
+      series:[{type:"surface",data,shading:"color",wireframe:{show:true,lineStyle:{color:"rgba(0,0,0,.28)",width:.6}},dataShape:[(ny-1)*SY+1,(nx-1)*SX+1]}]},true); }
+  else gridHeat("c-surf", rows.map(r=>r.e), xl, (e,x,j,i)=>rows[j].v[i], m==="theta"||m==="vanna"||m==="charm"||m==="delta"?"div":"seq", f, T);
+  const n=$("surf-note"); if(n) n.textContent = `${T} je ${axis==="delta"?"Delta (5p … ATM … 5c)":"Strike (unter dem Kurs Puts, darüber Calls)"} und Verfall, Deribit-Kette. Tippen oder Zeigen auf die Fläche zeigt den Wert, er bleibt stehen bis zum nächsten Tippen.`;
+}
+const _renderSurf0=renderSurf;
+renderSurf=function(lb){
+  const f=document.querySelector("#v-surf .form"); if(f && !f.querySelector(".sf-g")) f.insertAdjacentHTML("beforeend",'<span class="seg" role="group" aria-label="Wert">'+SG_M.map(([k,l])=>`<button class="sf-g" data-sg="${k}">${l}</button>`).join("")+'</span>');
+  const g=S.surfG||"iv"; $$(".sf-g").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.sg===g)));
+  if(g==="iv") return _renderSurf0(lb); $$(".sf-m").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.sm===(S.surfMode||"3d")))); $$(".sf-a").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.sa===(S.surfAxis||"delta")))); try{ greekSurf(lb||liveBook()); }catch(e){ console.warn(e); } };
+document.addEventListener("click",e=>{ const b=e.target.closest(".sf-g"); if(!b) return; S.surfG=b.dataset.sg; save(); const c=echarts.getInstanceByDom($("c-surf")); if(c) c.dispose(); render(); });
+// 3D-Flächen: Wert per Tippen anzeigen und stehen lassen; Drehen mit einem Finger (kein Seiten-Scroll im 3D-Feld)
+(function(){ const oi=echarts.init; echarts.init=function(){ const c=oi.apply(this,arguments), os=c.setOption; c.setOption=function(opt){ try{ if(opt&&opt.grid3D&&opt.tooltip&&!Array.isArray(opt.tooltip)){ opt.tooltip.triggerOn=opt.tooltip.triggerOn||"mousemove|click"; opt.tooltip.alwaysShowContent=true; const el=c.getDom(); if(el) el.style.touchAction="none"; } }catch(e){} return os.apply(this,arguments); }; return c; }; })();
 
 /* ====================== Session 3: Werkzeuge, Strategie, Quant ====================== */
 const dLb = () => liveFrom(books.deribit);
