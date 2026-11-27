@@ -17,7 +17,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.5.0/echarts.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/echarts-gl@2.0.9/dist/echarts-gl.min.js" onload="window.__gl=1" onerror="window.__gl=0"></script>
-<script>/* I18N-BEGIN */window.TQI_I18N_V="20261127-122023";
+<script>/* I18N-BEGIN */window.TQI_I18N_V="20261127-122250";
 /* TQI Sprach-Engine: Deutsch ist Standard. Andere Sprachen übersetzen Texte, Attribute und Chart-Beschriftungen zur Laufzeit. */
 (function(){
   var LANGS=[["de","Deutsch"],["en","English"],["es","Español"],["fr","Français"]];
@@ -2784,7 +2784,7 @@ window.addEventListener("beforeunload", saveX);
     const hgt=Math.min(4,Math.abs(v)*4), w=100/N; out+=`<rect x="${i*w+w*0.18}" y="${v>=0?4-hgt:4}" width="${w*0.64}" height="${hgt}" fill="var(${v>=0?"--pos":"--neg"})"/>`; }
   el.innerHTML=out; })();
 /* S3-BEGIN */
-const TQI_BUILD="20261127-122023";
+const TQI_BUILD="20261127-122250";
 /* ====================== Session 3: Infrastruktur ====================== */
 const V3 = {}, R3 = {}, NB3 = new Set();   // Seiten-HTML, Renderer, Seiten ohne Optionskette
 // Legenden- und Tooltip-Marker in der Linienfarbe zeichnen (sonst Palettenfarbe)
@@ -5639,7 +5639,7 @@ gridHeat = function(id, exps, ks, val, kind, fmt, title){
   // Höhe passend zur Zeilenzahl, damit jede Zelle lesbar bleibt
   const want = Math.max(320, Math.min(1400, ks.length*24+70)); if(Math.abs(el.offsetHeight-want)>4){ el.style.height=want+"px"; const c0=echarts.getInstanceByDom(el); if(c0) c0.resize(); }
   const spotK = typeof ks[0]==="number" && spot ? ks.reduce((b,k)=>Math.abs(k-spot)<Math.abs(b-spot)?k:b, ks[0]) : null;
-  const sig = [S.skin, kind, title, exps.join(","), ks.join(","), spotK, data.map(d=>d[2].toPrecision(4)).join(",")].join("|");
+  const sig = [S.skin, css("--bull"), css("--bear"), kind, title, exps.join(","), ks.join(","), spotK, data.map(d=>d[2].toPrecision(4)).join(",")].join("|");
   const c = ch(id); if(!c) return;
   if(GHSIG[id]===sig && c.getOption && c.getOption()) return;
   GHSIG[id]=sig;
@@ -5736,7 +5736,7 @@ function dkBars(elId, lb, g){
   const c=ch(elId); if(!c||!spot) return; const rng=(+S.dkRng||10)/100, mm=new Map();
   for(const b of lb){ if(b.strike<spot*(1-rng)||b.strike>spot*(1+rng)) continue; mm.set(b.strike,(mm.get(b.strike)||0)+exposureOf(b,g)); }
   const ks=[...mm.keys()].sort((a,b)=>a-b); if(!ks.length) return; const o=base(), name=(DK_G.find(x=>x[0]===g)||[g,g])[1];
-  const sig=[S.skin,g,ks.join(","),ks.map(k=>Math.round(mm.get(k)/1e3)).join(","),Math.round(spot/10)].join("|"); if(c.__sig===sig) return; c.__sig=sig;
+  const sig=[S.skin,css("--bull"),css("--bear"),g,ks.join(","),ks.map(k=>Math.round(mm.get(k)/1e3)).join(","),Math.round(spot/10)].join("|"); if(c.__sig===sig) return; c.__sig=sig;
   const si=ks.reduce((b,k,i)=>Math.abs(k-spot)<Math.abs(ks[b]-spot)?i:b,0);
   c.setOption({...o,legend:{show:false},animation:false,grid:{left:62,right:16,top:14,bottom:34},
     tooltip:{...o.tooltip,trigger:"axis",axisPointer:{type:"shadow"},formatter:p=>`Strike ${fmtNum(ks[p[0].dataIndex])}<br>Netto ${name}: <b>${fmtUsd(p[0].value)}</b>`},
@@ -5745,14 +5745,19 @@ function dkBars(elId, lb, g){
     series:[{type:"bar",barCategoryGap:"25%",data:ks.map(k=>({value:Math.round(mm.get(k)),itemStyle:{color:mm.get(k)>=0?css("--bull"):css("--bear")}})),
       markLine:{silent:true,symbol:"none",label:{show:true,formatter:"Spot "+fmtNum(Math.round(spot)),color:css("--muted"),position:"insideEndTop"},lineStyle:{color:css("--fg"),type:"dashed",width:1},data:[{xAxis:si}]}}]},true);
 }
-const dkHead = (key,cls) => '<div class="form">'+seg3("k3",key,DK_G)+'</div>';
+const dkHead = (key,cls) => '<div class="form">'+seg3("k3",key,DK_G)+dkColSeg()+'</div>';
+// Balkenfarben: Grün/Rot oder Weiß/Grau (gilt im ganzen Terminal)
+const DK_MONO={bull:"#f2f2f2",bear:"#7a7a7a"};
+const dkColSeg = () => '<span class="seg" role="group" aria-label="Farben"><button class="dkcol" data-dkc="color">Grün / Rot</button><button class="dkcol" data-dkc="mono">Weiß / Grau</button></span>';
+document.addEventListener("click",e=>{ const b=e.target.closest("button.dkcol"); if(!b) return; if(b.dataset.dkc==="mono"){ S.bull=DK_MONO.bull; S.bear=DK_MONO.bear; } else { delete S.bull; delete S.bear; } save(); applyLook(); for(const k in GHSIG) delete GHSIG[k]; if(typeof IM!=="undefined"&&IM.last) IM.last={}; $$(".chart").forEach(el=>{ const c=echarts.getInstanceByDom(el); if(c) c.__sig=""; }); render(); });
+const dkColSync = () => { const m = S.bull===DK_MONO.bull && S.bear===DK_MONO.bear; $$("button.dkcol").forEach(b=>b.setAttribute("aria-pressed",String((b.dataset.dkc==="mono")===m))); };
 V3.desk = P2("Exposure by Strike","Netto je Strike, alle Verfälle",dkHead("dkA")+'<div class="chart" id="c-dka" style="height:360px"></div>')+
   P2("Interval Map","GEX je Strike im Zeitverlauf",imForm()+'<div class="chart" id="c-dkim" style="height:360px"></div><div class="note" id="dk-imnote"></div>')+
   P2("Exposure by Strike","zweites Greek",dkHead("dkB")+'<div class="chart" id="c-dkb" style="height:360px"></div>')+
-  P2("Net GEX Heat Map","Strike × Verfall, Werte in der Zelle",'<div class="form">'+seg3("k3","dkH",DK_G)+'</div><div class="chart" id="c-dkh" style="height:360px"></div>')+
+  P2("Net GEX Heat Map","Strike × Verfall, Werte in der Zelle",'<div class="form">'+seg3("k3","dkH",DK_G)+dkColSeg()+'</div><div class="chart" id="c-dkh" style="height:360px"></div>')+
   P2("IV-Spikes","DVOL in Echtzeit",'<div class="cards" id="dk-ivs"></div>',"wide");
 R3.desk = (lb) => {
-  if(!S.dkA) S.dkA="gex"; if(!S.dkB) S.dkB="dex"; if(!S.dkH) S.dkH="gex"; sync3();
+  if(!S.dkA) S.dkA="gex"; if(!S.dkB) S.dkB="dex"; if(!S.dkH) S.dkH="gex"; sync3(); dkColSync();
   dkBars("c-dka",lb,S.dkA); dkBars("c-dkb",lb,S.dkB);
   try{ imRender("c-dkim","dk-imnote",lb); }catch(e){}
   const exps=expiries(lb).slice(0,10), rng=0.06, ks=[...new Set(lb.filter(b=>spot&&b.strike>=spot*(1-rng)&&b.strike<=spot*(1+rng)).map(b=>b.strike))].sort((a,b)=>a-b), mm=new Map();
