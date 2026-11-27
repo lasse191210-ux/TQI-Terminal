@@ -17,7 +17,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.5.0/echarts.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/echarts-gl@2.0.9/dist/echarts-gl.min.js" onload="window.__gl=1" onerror="window.__gl=0"></script>
-<script>/* I18N-BEGIN */window.TQI_I18N_V="20261127-192301";
+<script>/* I18N-BEGIN */window.TQI_I18N_V="20261127-195102";
 /* TQI Sprach-Engine: Deutsch ist Standard. Andere Sprachen übersetzen Texte, Attribute und Chart-Beschriftungen zur Laufzeit. */
 (function(){
   var LANGS=[["de","Deutsch"],["en","English"],["es","Español"],["fr","Français"]];
@@ -2357,7 +2357,7 @@ function renderSurf(lb){
   const n=$("surf-note"); if(n) n.textContent = mode==="3d"&&!glOk ? "Die 3D-Bibliothek konnte nicht geladen werden, deshalb wird die Fläche als Heatmap gezeigt." : (axis==="delta"?"Deribit-IV je Delta (5p = 5-Delta-Put … ATM … 5c = 5-Delta-Call) und Verfall.":"Deribit-Optionen außerhalb des Geldes (Puts unter, Calls über dem Forward), linear interpoliert.")+" Drehen mit einem Finger, Zoomen mit zwei Fingern oder mit + / −.";
   const c2=ch("c-smiles"); if(c2) c2.setOption({...o,legend:{type:"scroll",top:4,textStyle:{color:css("--muted"),fontSize:10}},grid:{...o.grid,top:40,right:20},tooltip:{...o.tooltip,valueFormatter:v=>typeof v==="number"?v.toFixed(1)+" %":v},
     xAxis:ax(o,{type:"category",data:xl,name:axis==="delta"?"Delta":"Strike / Forward",nameLocation:"middle",nameGap:24,splitLine:{show:false}}),yAxis:ax(o,{type:"value",scale:true,axisLabel:{...o._axis.axisLabel,formatter:"{value}%"}}),
-    series:rows.slice(0,10).map((r,i)=>({name:r.e,type:"line",data:r.ivs.map(v=>v==null?null:+v.toFixed(2)),showSymbol:false,lineStyle:{width:1.6,color:`hsl(${190+i*16},85%,${62-i*2}%)`}}))},true);
+    series:rows.slice(0,10).map((r,i)=>({name:r.e,type:"line",data:r.ivs.map(v=>v==null?null:+v.toFixed(2)),showSymbol:false,lineStyle:{width:1.6,color:(typeof smileCol==="function"?smileCol(i):`hsl(${190+i*16},85%,${62-i*2}%)`)}}))},true);
 }
 function surfZoom(f){ const c=echarts.getInstanceByDom($("c-surf")); if(!c) return;
   if(f===0){ S.surfDist=0; S.surfAlpha=22; S.surfBeta=-35; }
@@ -2784,7 +2784,7 @@ window.addEventListener("beforeunload", saveX);
     const hgt=Math.min(4,Math.abs(v)*4), w=100/N; out+=`<rect x="${i*w+w*0.18}" y="${v>=0?4-hgt:4}" width="${w*0.64}" height="${hgt}" fill="var(${v>=0?"--pos":"--neg"})"/>`; }
   el.innerHTML=out; })();
 /* S3-BEGIN */
-const TQI_BUILD="20261127-192301";
+const TQI_BUILD="20261127-195102";
 /* ====================== Session 3: Infrastruktur ====================== */
 const V3 = {}, R3 = {}, NB3 = new Set();   // Seiten-HTML, Renderer, Seiten ohne Optionskette
 // Legenden- und Tooltip-Marker in der Linienfarbe zeichnen (sonst Palettenfarbe)
@@ -5637,12 +5637,12 @@ gridHeat = function(id, exps, ks, val, kind, fmt, title){
   exps.forEach((e,j)=>ks.forEach((k,i)=>{ const v=val(e,k,j,i); if(v==null||!isFinite(v)) return; data.push([j,i,v]); mn=Math.min(mn,v); mx=Math.max(mx,v); }));
   if(!data.length) return;                      // letztes Bild stehen lassen
   // Höhe passend zur Zeilenzahl, damit jede Zelle lesbar bleibt
-  const want = Math.max(320, Math.min(1400, ks.length*24+70)); if(Math.abs(el.offsetHeight-want)>4){ el.style.height=want+"px"; const c0=echarts.getInstanceByDom(el); if(c0) c0.resize(); }
+  const want = REMAP? el.offsetHeight : Math.max(320, Math.min(1400, ks.length*24+70)); if(Math.abs(el.offsetHeight-want)>4){ el.style.height=want+"px"; const c0=echarts.getInstanceByDom(el); if(c0) c0.resize(); }
   const spotK = typeof ks[0]==="number" && spot ? ks.reduce((b,k)=>Math.abs(k-spot)<Math.abs(b-spot)?k:b, ks[0]) : null;
   const sig = [S.skin, css("--bull"), css("--bear"), kind, title, exps.join(","), ks.join(","), spotK, data.map(d=>d[2].toPrecision(4)).join(",")].join("|");
   const c = ch(id); if(!c) return;
-  if(GHSIG[id]===sig && c.getOption && c.getOption()) return;
-  GHSIG[id]=sig;
+  if(GHSIG[el.id]===sig && c.getOption && c.getOption()) return;
+  GHSIG[el.id]=sig;
   const o=base(), am=Math.max(Math.abs(mn),Math.abs(mx))||1, kl=ks.map(k=>typeof k==="number"?fmtNum(k):k), spotLbl = spotK!=null? fmtNum(spotK) : null;
   const showLbl = exps.length<=12 && ks.length<=40;
   c.setOption({backgroundColor:"transparent",animation:false,textStyle:o.textStyle,
@@ -5752,22 +5752,7 @@ const dkGlow = () => S.dkCol==="neon";
 const dkColSeg = () => '<span class="seg" role="group" aria-label="Farben"><button class="dkcol" data-dkc="color">Grün / Rot</button><button class="dkcol" data-dkc="mono">Weiß / Grau</button><button class="dkcol" data-dkc="neon">Leuchtend</button></span>';
 document.addEventListener("click",e=>{ const b=e.target.closest("button.dkcol"); if(!b) return; S.dkCol=b.dataset.dkc; if(S.dkCol==="mono"){ S.bull=DK_MONO.bull; S.bear=DK_MONO.bear; } else if(S.dkCol==="neon"){ S.bull=DK_NEON.bull; S.bear=DK_NEON.bear; } else { delete S.bull; delete S.bear; } save(); applyLook(); for(const k in GHSIG) delete GHSIG[k]; if(typeof IM!=="undefined"&&IM.last) IM.last={}; $$(".chart").forEach(el=>{ const c=echarts.getInstanceByDom(el); if(c) c.__sig=""; }); render(); });
 const dkColSync = () => { const m = S.dkCol || (S.bull===DK_MONO.bull? "mono" : "color"); $$("button.dkcol").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.dkc===m))); };
-V3.desk = P2("Exposure by Strike","Netto je Strike, alle Verfälle",dkHead("dkA")+'<div class="chart" id="c-dka" style="height:360px"></div>')+
-  P2("Interval Map","GEX je Strike im Zeitverlauf",imForm()+'<div class="chart" id="c-dkim" style="height:360px"></div><div class="note" id="dk-imnote"></div>')+
-  P2("Exposure by Strike","zweites Greek",dkHead("dkB")+'<div class="chart" id="c-dkb" style="height:360px"></div>')+
-  P2("Net GEX Heat Map","Strike × Verfall, Werte in der Zelle",'<div class="form">'+seg3("k3","dkH",DK_G)+dkColSeg()+'</div><div class="chart" id="c-dkh" style="height:360px"></div>')+
-  P2("IV-Spikes","DVOL in Echtzeit",'<div class="cards" id="dk-ivs"></div>',"wide");
-R3.desk = (lb) => {
-  if(!S.dkA) S.dkA="gex"; if(!S.dkB) S.dkB="dex"; if(!S.dkH) S.dkH="gex"; sync3(); dkColSync();
-  dkBars("c-dka",lb,S.dkA); dkBars("c-dkb",lb,S.dkB);
-  try{ imRender("c-dkim","dk-imnote",lb); }catch(e){}
-  const exps=expiries(lb).slice(0,10), rng=0.06, ks=[...new Set(lb.filter(b=>spot&&b.strike>=spot*(1-rng)&&b.strike<=spot*(1+rng)).map(b=>b.strike))].sort((a,b)=>a-b), mm=new Map();
-  lb.forEach(b=>{ const k=b.exp+"|"+b.strike; mm.set(k,(mm.get(k)||0)+exposureOf(b,S.dkH)); });
-  gridHeat("c-dkh", exps, ks, (e,k)=>{ const v=mm.get(e+"|"+k); return v? v : null; }, "div", fmtUsd, (DK_G.find(x=>x[0]===S.dkH)||["","GEX"])[1]);
-  const el=$("dk-ivs"); if(el){ const h=ivsCards(ivSpikeStats()); if(el.__h!==h){ el.__h=h; el.innerHTML=h; } }
-};
 nav3("Dashboard",[["desk","Desk (4 Fenster)"]],"dashboard");
-document.head.insertAdjacentHTML("beforeend",`<style>#v-desk .chart{min-height:300px}#v-desk .panel .ph h2 small{display:none}@media(min-width:1100px){#v-desk .panel:not(.wide) .chart{height:min(42vh,440px)!important}}</style>`);
 
 // Farbwahl auch in den Einstellungen (gilt überall: Balken, Linien, Flow-Charts, Kennzahlen)
 (()=>{ const d=$("drawer"); if(!d||$("set-dkcol")) return; const h=d.querySelector("h3");
@@ -5776,6 +5761,137 @@ document.head.insertAdjacentHTML("beforeend",`<style>#v-desk .chart{min-height:3
 // einmalig: Weiß/Grau als Standard (danach gilt die eigene Wahl)
 (()=>{ if(S.dkCol) return; S.dkCol="mono"; S.bull=DK_MONO.bull; S.bear=DK_MONO.bear; try{ save(); applyLook(); }catch(e){} })();
 setInterval(()=>{ try{ dkColSync(); }catch(e){} }, 1500);
+
+/* ====================== Desk bearbeitbar, IV-Lage & Alarm, Greek-Cluster, ruhige Charts ====================== */
+
+// ---------- 1) Charts: kein stückweises Nachzeichnen, Tooltip bleibt beim Halten stehen ----------
+(function(){ if(!window.echarts || echarts.__tqiV) return; echarts.__tqiV=1; const oi=echarts.init, touch=("ontouchstart" in window)||navigator.maxTouchPoints>0;
+  const fix=o=>{ if(!o||typeof o!=="object") return;
+    for(const s of (Array.isArray(o.series)?o.series:o.series?[o.series]:[])){ if(s&&typeof s==="object"&&s.progressive===undefined){ s.progressive=0; s.progressiveThreshold=1e9; } }
+    if(o.tooltip && !Array.isArray(o.tooltip) && typeof o.tooltip==="object"){ if(o.tooltip.hideDelay===undefined) o.tooltip.hideDelay = touch? 1500 : 200; if(o.tooltip.confine===undefined) o.tooltip.confine=true; } };
+  echarts.init=function(){ const c=oi.apply(this,arguments), os=c.setOption; c.setOption=function(opt){ try{ fix(opt); }catch(e){} return os.apply(this,arguments); }; return c; };
+  $$(".chart").forEach(el=>{ const c=echarts.getInstanceByDom(el); if(c) c.dispose(); });
+})();
+// Auf dem Handy: waagerecht über den Chart fahren bewegt den Tooltip (Seite scrollt nur senkrecht), beim Loslassen verschwindet er kurz danach
+document.head.insertAdjacentHTML("beforeend",`<style>.chart{touch-action:pan-y}</style>`);
+
+// ---------- 2) Blaue Akzente im Schwarz/Weiß-Template entfernen ----------
+const BLUE0={ven:VEN.deribit.col, spv:SPV.deribit.c, spvp:SPV.deribitp.c, surf:[...SURF_COL]};
+const SURF_GREY=["#141414","#262626","#3a3a3a","#505050","#686868","#828282","#9e9e9e","#bababa","#d6d6d6","#f5f5f5"];
+function smileCol(i){ return S.skin==="carbon"? `hsl(0,0%,${Math.max(35,92-i*6)}%)` : `hsl(${190+i*16},85%,${62-i*2}%)`; }
+function carbonFix(){ const m=S.skin==="carbon"; VEN.deribit.col=m?"#ffffff":BLUE0.ven; SPV.deribit.c=m?"#ffffff":BLUE0.spv; SPV.deribitp.c=m?"#bdbdbd":BLUE0.spvp;
+  SURF_COL.splice(0,SURF_COL.length,...(m?SURF_GREY:BLUE0.surf)); }
+const _applyLookV=applyLook; applyLook=function(){ _applyLookV(); try{ carbonFix(); }catch(e){} };
+carbonFix();
+
+// ---------- 3) IV-Lage einfach erklärt + Alarm ----------
+function ivSummary(lb){
+  const s=ivSpikeStats(), r=[]; let sc=0;
+  const e30=nearestExpTo(lb,30), iv30=e30?atmIv(lb,e30):null, ef=frontExp?frontExp(lb):expiries(lb)[0], ivf=ef?atmIv(lb,ef):null, p=ivPct();
+  if(s&&s.spike){ sc+=45; r.push(["⚡","IV steigt gerade ungewöhnlich schnell",`DVOL ${s.d1>0?"+":""}${s.d1.toFixed(1)} in 1 Std. (${s.z.toFixed(1)} σ). Das ist ein laufender IV-Spike.`]); }
+  else if(s&&s.z!=null&&s.z>=1.5){ sc+=20; r.push(["↑","IV zieht an",`DVOL ${s.d1>0?"+":""}${s.d1.toFixed(1)} in 1 Std. (${s.z.toFixed(1)} σ) – noch kein Spike, aber erhöht.`]); }
+  if(p!=null&&p<20){ sc+=20; r.push(["◔","IV ist sehr niedrig",`IV-Perzentil ${p.toFixed(0)} %. Sehr ruhige IV springt oft plötzlich hoch, wenn der Kurs stark läuft.`]); }
+  if(p!=null&&p>80) r.push(["◕","IV ist schon hoch",`IV-Perzentil ${p.toFixed(0)} %. Optionen sind teuer, ein weiterer Spike ist möglich, oft folgt aber ein Rückgang (IV-Crush).`]);
+  if(iv30&&rv30&&iv30<rv30){ sc+=20; r.push(["!","Optionen billiger als die echte Bewegung",`ATM-IV ${iv30.toFixed(1)} % < realisierte Vola ${rv30.toFixed(1)} %. Der Markt unterschätzt die Bewegung – IV muss oft nachziehen.`]); }
+  if(ivf&&iv30&&ivf>iv30+2){ sc+=15; r.push(["⇄","Kurzfristige IV über langfristiger",`Nächster Verfall ${ivf.toFixed(1)} % vs. 30 Tage ${iv30.toFixed(1)} %. Das zeigt akuten Stress.`]); }
+  const w=e30?wingsAt(lb,e30,0.25):null;
+  if(w&&w.rr<-5){ sc+=10; r.push(["▼","Puts deutlich teurer",`25Δ Skew ${w.rr.toFixed(1)}. Absicherung nach unten ist gefragt.`]); }
+  if(w&&w.rr>5){ sc+=10; r.push(["▲","Calls deutlich teurer",`25Δ Skew +${w.rr.toFixed(1)}. FOMO nach oben.`]); }
+  if(s&&s.d24!=null&&s.d24>=5){ sc+=10; r.push(["↗","IV seit gestern stark gestiegen",`DVOL +${s.d24.toFixed(1)} in 24 Std.`]); }
+  const c=perp1m.c, mv = c&&c.length>61? (c[c.length-1]/c[c.length-61]-1)*100 : null;
+  if(mv!=null&&Math.abs(mv)>=1.5){ sc+=10; r.push(["⇅","Kurs bewegt sich stark",`BTC ${mv>0?"+":""}${mv.toFixed(2)} % in 1 Std. Große Kursbewegungen ziehen IV mit.`]); }
+  if(ef&&dte(ef)<1){ sc+=5; r.push(["⏱","Verfall in weniger als 24 Std.",`${ef}: Rund um den Verfall springt kurzfristige IV oft.`]); }
+  sc=Math.min(100,sc); const lvl = sc>=60? ["hoch","wrn"] : sc>=30? ["mittel",""] : ["niedrig","pos"];
+  return {sc,lvl,r,s};
+}
+const IVHELP = '<details class="ivh"><summary>Was ist IV und was ist ein IV-Spike?</summary><p><b>IV (implizite Volatilität)</b> ist der Preis der Optionen, ausgedrückt als erwartete Schwankung pro Jahr. Hohe IV = Optionen teuer, Markt erwartet große Bewegung.</p><p><b>IV-Spike</b> = IV steigt in kurzer Zeit stark, meist bei plötzlichen Kursbewegungen, News oder Liquidationen. Dann werden Optionen schlagartig teurer, und Händler sichern sich ab.</p><p><b>Für dich als Trader:</b> Ein IV-Spike heißt meist: mehr Bewegung, größere Kerzen, breitere Spannen. Stopps eher weiter, Größe eher kleiner. Fällt IV danach wieder (IV-Crush), beruhigt sich der Markt oft.</p><p><b>DVOL</b> ist der IV-Index von Deribit für BTC (wie der VIX für Aktien).</p></details>';
+function ivSumHtml(lb){ const x=ivSummary(lb);
+  const bar=`<div class="ivbar"><i style="width:${x.sc}%"></i></div>`;
+  return `<div class="ivsum"><div class="ivtop"><div><div class="l">Spike-Risiko</div><div class="v ${x.lvl[1]}">${x.sc} / 100 · ${x.lvl[0]}</div></div>${ivAlarmBtn()}</div>${bar}`+
+    (x.r.length? '<ul class="ivr">'+x.r.map(([i,t,d])=>`<li><span class="ic">${i}</span><div><b>${t}</b><br><span class="mut">${d}</span></div></li>`).join("")+'</ul>' : '<div class="note">Alles ruhig: keine Anzeichen für einen IV-Spike.</div>')+IVHELP+'</div>'; }
+document.head.insertAdjacentHTML("beforeend",`<style>.ivsum{padding:4px 14px 12px}.ivtop{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}.ivtop .l{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}.ivtop .v{font-size:20px;font-weight:700;font-family:var(--f-mono)}.ivbar{height:6px;border-radius:3px;background:var(--panel-2);margin:8px 0 10px;overflow:hidden}.ivbar i{display:block;height:100%;background:var(--fg)}.ivr{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}.ivr li{display:flex;gap:10px;align-items:flex-start;line-height:1.4}.ivr .ic{width:22px;text-align:center;font-weight:700}.ivh{margin-top:12px;border:1px solid var(--line);border-radius:8px;padding:8px 12px;background:var(--panel-2)}.ivh summary{cursor:pointer;font-weight:600}.ivh p{margin:8px 0 2px;line-height:1.5;color:var(--muted)}.ivh b{color:var(--fg)}</style>`);
+
+// Alarm: Browser-Benachrichtigung + Ton bei IV-Spike oder hohem Spike-Risiko
+const ivAlarmBtn = () => `<button class="chip ivalarm" type="button" aria-pressed="${!!S.ivAlarm}">${S.ivAlarm?"🔔 IV-Alarm an":"🔕 IV-Alarm aus"}</button>`;
+document.addEventListener("click",async e=>{ const b=e.target.closest("button.ivalarm"); if(!b) return; S.ivAlarm=!S.ivAlarm; save();
+  if(S.ivAlarm && "Notification" in window && Notification.permission==="default"){ try{ await Notification.requestPermission(); }catch(x){} }
+  if(S.ivAlarm) ivBeep(); $$("button.ivalarm").forEach(x=>{ x.setAttribute("aria-pressed",String(!!S.ivAlarm)); x.textContent=S.ivAlarm?"🔔 IV-Alarm an":"🔕 IV-Alarm aus"; }); });
+function ivBeep(){ try{ const a=new (window.AudioContext||window.webkitAudioContext)(), o=a.createOscillator(), g=a.createGain(); o.connect(g); g.connect(a.destination); o.frequency.value=880; g.gain.setValueAtTime(.0001,a.currentTime); g.gain.exponentialRampToValueAtTime(.2,a.currentTime+.02); g.gain.exponentialRampToValueAtTime(.0001,a.currentTime+.6); o.start(); o.stop(a.currentTime+.62); }catch(e){} }
+const IVA={t:0,risk:0};
+setInterval(()=>{ try{ if(!S.ivAlarm||!book.length) return; const x=ivSummary(liveBook()), now=Date.now();
+  let msg=null; if(x.s&&x.s.spike&&now-IVA.t>30*60e3){ IVA.t=now; msg=`⚡ IV-Spike: DVOL ${x.s.d1>0?"+":""}${x.s.d1.toFixed(1)} in 1 Std.`; }
+  else if(x.sc>=60&&now-IVA.risk>60*60e3){ IVA.risk=now; msg=`IV-Spike möglich: Risiko ${x.sc}/100 – ${x.r[0]?x.r[0][1]:""}`; }
+  if(!msg) return; ivBeep(); const p=$("ivs-pill"); if(p){ p.textContent=msg+" – ansehen"; p.classList.add("on"); }
+  if("Notification" in window && Notification.permission==="granted"){ try{ new Notification("TQI Terminal",{body:msg,icon:"icons/icon-192.png"}); }catch(e){} } }catch(e){} }, 30e3);
+
+V3.ivspike = P2("IV-Lage einfach erklärt","Zusammenfassung: Wie wahrscheinlich ist gerade ein IV-Spike, und warum?",'<div id="ivsum-p"></div>',"wide") + (V3.ivspike||"");
+const _R3ivs=R3.ivspike; R3.ivspike=(lb,lv,list)=>{ const el=$("ivsum-p"); if(el){ const h=ivSumHtml(lb); if(el.__h!==h){ el.__h=h; el.innerHTML=h; } } if(_R3ivs) _R3ivs(lb,lv,list); };
+
+// ---------- 4) Greek-Cluster (Surface für Delta, Gamma, Vanna, Charm …) ----------
+const GS_M=[["delta","Delta"],["gamma","Gamma"],["vega","Vega"],["theta","Theta"],["iv","IV"],["oi","OI"],["gex","GEX"],["dex","DEX"],["vex","Vanna"],["chex","Charm"]];
+const GS_EXPO=new Set(["oi","gex","dex","vex","chex"]);
+const GS_DB=[0.05,0.1,0.15,0.2,0.25,0.3,0.35,0.4,0.45,0.5,0.55,0.6,0.65,0.7,0.75,0.8,0.85,0.9,0.95];
+function gsData(lb){
+  const m=S.gsM||"gex", cp=S.gsCp||"C", axis=GS_EXPO.has(m)?"strike":(S.gsAx||"strike"), D=liveFrom(books.deribit), src=GS_EXPO.has(m)?lb:D;
+  const exps=expiries(src).filter(e=>dte(e)>=0.02).slice(0,12); let xl, val;
+  const per=b=>{ switch(m){ case "delta": return b.g.delta; case "gamma": return b.g.gamma*1e5; case "vega": return b.g.vega; case "theta": return b.g.theta; case "iv": return b.mark_iv; } return null; };
+  if(axis==="strike"){ const rng=(+S.gsRng||15)/100; const ks=[...new Set(src.filter(b=>b.strike>=spot*(1-rng)&&b.strike<=spot*(1+rng)).map(b=>b.strike))].sort((a,b)=>a-b);
+    const mm=new Map();
+    if(GS_EXPO.has(m)) src.forEach(b=>{ const k=b.exp+"|"+b.strike; mm.set(k,(mm.get(k)||0)+(m==="oi"?b.open_interest:exposureOf(b,m))); });
+    else src.forEach(b=>{ if(b.cp!==cp) return; mm.set(b.exp+"|"+b.strike, per(b)); });
+    xl=ks; val=(e,k)=>{ const v=mm.get(e+"|"+k); return v==null||(GS_EXPO.has(m)&&!v)? null : v; };
+  } else { xl=GS_DB.map(d=>(cp==="C"?"C ":"P ")+Math.round(d*100)+"Δ");
+    val=(e,x,j,i)=>{ const d=GS_DB[i]*(cp==="C"?1:-1); let best=null; for(const b of D){ if(b.exp!==e||b.cp!==cp) continue; if(!best||Math.abs(b.g.delta-d)<Math.abs(best.g.delta-d)) best=b; } return best&&Math.abs(best.g.delta-d)<0.06? per(best) : null; }; }
+  const fmt = m==="delta"? v=>v.toFixed(2) : m==="gamma"? v=>v.toFixed(2) : m==="iv"? v=>v.toFixed(1) : m==="oi"? v=>fmtNum(v,1) : (m==="vega"||m==="theta")? v=>"$"+fmtNum(v,0) : fmtUsd;
+  const kind = GS_EXPO.has(m)&&m!=="oi" || m==="theta" ? "div" : "seq", title=(GS_M.find(x=>x[0]===m)||[m,m])[1]+(GS_EXPO.has(m)?"":(cp==="C"?" Calls":" Puts"))+(m==="gamma"?" (×10⁻⁵)":"");
+  return {m,exps,xl,val,fmt,kind,title,axis};
+}
+function gsRender(elId, lb){
+  const g=gsData(lb), el=REMAP? (REMAP[elId]? document.getElementById(REMAP[elId]) : null) : document.getElementById(elId); if(!el) return;
+  if((S.gsView||"2d")==="3d" && window.__gl===1){ const c=ch(elId); if(!c) return; const ny=g.exps.length, nx=g.xl.length, data=[]; let mn=Infinity,mx=-Infinity;
+    for(let j=0;j<ny;j++) for(let i=0;i<nx;i++){ let v=g.val(g.exps[j],g.xl[i],j,i); if(v==null) v=0; mn=Math.min(mn,v); mx=Math.max(mx,v); data.push([i,j,+v.toPrecision(5)]); }
+    const sig=[S.skin,g.title,g.axis,data.length,data.map(d=>d[2]).join(",")].join("|"); if(c.__gs===sig) return; c.__gs=sig; el.style.height="min(70vh,640px)";
+    const lab={color:css("--muted"),fontSize:10}, am=Math.max(Math.abs(mn),Math.abs(mx))||1;
+    c.setOption({backgroundColor:"transparent",tooltip:{formatter:p=>`${g.exps[p.value[1]]} · ${typeof g.xl[p.value[0]]==="number"?fmtNum(g.xl[p.value[0]]):g.xl[p.value[0]]}<br>${g.title}: <b>${g.fmt(p.value[2])}</b>`},
+      visualMap:{show:false,dimension:2,min:g.kind==="div"?-am:mn,max:g.kind==="div"?am:mx,inRange:{color:g.kind==="div"?[css("--bear"),css("--panel-2"),css("--bull")]:SURF_COL}},
+      xAxis3D:{type:"value",min:0,max:nx-1,axisLabel:{...lab,formatter:v=>{ const x=g.xl[Math.round(v)]; return x==null?"":typeof x==="number"?fmtNum(x):x; }}},
+      yAxis3D:{type:"value",min:0,max:Math.max(ny-1,1),interval:1,axisLabel:{...lab,formatter:v=>g.exps[Math.round(v)]||""}},
+      zAxis3D:{type:"value",axisLabel:{...lab,formatter:v=>g.fmt(v)}},
+      grid3D:{boxWidth:130,boxDepth:90,boxHeight:60,axisLine:{lineStyle:{color:css("--line")}},splitLine:{lineStyle:{color:"rgba(255,255,255,.06)"}},viewControl:{alpha:24,beta:-35,distance:innerWidth<700?360:210}},
+      series:[{type:"surface",data,shading:"color",wireframe:{show:true,lineStyle:{color:"rgba(0,0,0,.3)",width:.6}},dataShape:[ny,nx]}]},true); return; }
+  const c0=echarts.getInstanceByDom(el); if(c0&&c0.__gs){ c0.dispose(); }
+  gridHeat(elId, g.exps, g.xl, g.val, g.kind, g.fmt, g.title);
+}
+const gsForm = () => '<div class="form">'+seg3("k3","gsM",GS_M)+'</div><div class="form">'+seg3("k3","gsCp",[["C","Calls"],["P","Puts"]])+seg3("k3","gsAx",[["strike","Strike"],["delta","Delta"]])+seg3("k3","gsView",[["2d","Cluster"],["3d","3D"]])+seg3("k3","gsRng",[[8,"±8 %"],[15,"±15 %"],[25,"±25 %"]])+'</div>';
+V3.gsurf = P2("Greek-Cluster","Strike × Verfall oder Delta × Verfall: Delta, Gamma, Vega, Theta, IV, OI und GEX, DEX, Vanna, Charm ablesen",gsForm()+'<div class="chart" id="c-gsurf" style="height:560px"></div><div class="note" id="gs-note"></div>',"wide");
+R3.gsurf = (lb) => { S.gsM??="gex"; S.gsCp??="C"; S.gsAx??="strike"; S.gsView??="2d"; S.gsRng??=15; sync3(); gsRender("c-gsurf",lb);
+  const n=$("gs-note"); if(n) n.textContent = GS_EXPO.has(S.gsM)? "GEX, DEX, Vanna, Charm und OI: Netto aus Calls und Puts je Strike (alle Börsen), deshalb nur Strike-Achse. Halten (Handy) oder Zeigen (PC) auf eine Zelle zeigt den Wert." : "Greeks und IV je Kontrakt aus der Deribit-Kette. Delta-Achse: 5Δ … 95Δ je Verfall.";
+};
+nav3("Greeks",[["gsurf","Greek-Cluster"]],"heatmaps");
+
+// ---------- 5) Desk = bearbeitbares Dashboard (Panels hinzufügen, entfernen, verschieben) ----------
+PANELS.dkx = {n:"Exposure by Strike (Balken)",cat:"GEX",w:6,h:10,d:"GEX/DEX/Vanna/Charm je Strike, wählbarer Verfall (z. B. 0DTE)",o:[O_G,O_EXA],b:[["c","c-dkx"]],
+  run:x=>{ const e=S.exExp, lb=e&&e!=="all"? x.lb.filter(b=>b.exp===e) : x.lb; dkBars("c-dkx", lb, S.exG||"gex"); }};
+PANELS.dk0 = {n:"0DTE GEX je Strike",cat:"GEX",w:6,h:10,d:"nur der nächste Verfall",o:[O_G],b:[["c","c-dk0"]],
+  run:x=>{ const e=frontExp(x.lb); dkBars("c-dk0", x.lb.filter(b=>b.exp===e), S.exG||"gex"); }};
+PANELS.dkheat = {n:"Net Heat Map (Werte)",cat:"GEX",w:6,h:10,d:"Strike × Verfall mit Werten in jeder Zelle",o:[O_G],b:[["c","c-dkheat"]],
+  run:x=>{ const exps=expiries(x.lb).slice(0,10), ks=[...new Set(x.lb.filter(b=>spot&&b.strike>=spot*0.94&&b.strike<=spot*1.06).map(b=>b.strike))].sort((a,b)=>a-b), g=S.exG||"gex", mm=new Map();
+    x.lb.forEach(b=>{ const k=b.exp+"|"+b.strike; mm.set(k,(mm.get(k)||0)+exposureOf(b,g)); });
+    gridHeat("c-dkheat", exps, ks, (e,k)=>{ const v=mm.get(e+"|"+k); return v||null; }, "div", fmtUsd, (DK_G.find(z=>z[0]===g)||["","GEX"])[1]); }};
+PANELS.ivsum = {n:"IV-Lage einfach erklärt",cat:"Volatilität",w:6,h:11,d:"Spike-Risiko mit Gründen, IV-Alarm",b:[["h","ivsum-x",'style="overflow:auto;height:100%"']],
+  run:x=>{ const el=$("ivsum-x"); if(el){ const h=ivSumHtml(x.lb); if(el.__h!==h){ el.__h=h; el.innerHTML=h; } } }};
+PANELS.ivspk = {n:"IV-Spikes",cat:"Volatilität",w:12,h:4,d:"DVOL in Echtzeit, Z-Wert, Status",b:[["h","ivspk-x",'class="cards" style="padding:8px"']],
+  run:x=>{ const el=$("ivspk-x"); if(el){ const h=ivsCards(ivSpikeStats()); if(el.__h!==h){ el.__h=h; el.innerHTML=h; } } }};
+PANELS.gsurf = {n:"Greek-Cluster",cat:"GEX",w:12,h:12,d:"Delta, Gamma, Vanna, Charm, GEX … je Strike und Verfall",o:[{key:"gsM",type:"seg",vals:GS_M}],b:[["c","c-gsp"]],run:x=>gsRender("c-gsp",x.lb)};
+
+function deskDash(){ let d=S.dashboards.find(x=>x.desk);
+  if(!d){ d={id:"desk"+Date.now().toString(36),name:"Desk",desk:1,panels:[["dkx",0,0,6,10,{exG:"gex",exExp:"all"}],["interval",6,0,6,10],["dkx",0,10,6,10,{exG:"dex",exExp:"all"}],["dkheat",6,10,6,10,{exG:"gex"}],["ivsum",0,20,6,11],["dk0",6,20,6,11,{exG:"gex"}]]
+      .map(([type,x,y,w,h,opts],i)=>({id:"q"+i+Math.random().toString(36).slice(2,6),type,x,y,w,h,opts:opts||{}}))};
+    S.dashboards.unshift(d); save(); }
+  return d; }
+V3.desk = '';
+R3.desk = () => { const d=deskDash(); S.activeDash=d.id; save(); setTimeout(()=>{ go("custom"); try{ mountDash(); }catch(e){} },0); };
+NB3.add("desk");
 
 /* ====================== Session 3: Werkzeuge, Strategie, Quant ====================== */
 const dLb = () => liveFrom(books.deribit);
