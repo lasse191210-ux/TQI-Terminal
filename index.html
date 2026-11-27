@@ -17,7 +17,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.5.0/echarts.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/echarts-gl@2.0.9/dist/echarts-gl.min.js" onload="window.__gl=1" onerror="window.__gl=0"></script>
-<script>/* I18N-BEGIN */window.TQI_I18N_V="20261120-082249";
+<script>/* I18N-BEGIN */window.TQI_I18N_V="20261127-122023";
 /* TQI Sprach-Engine: Deutsch ist Standard. Andere Sprachen übersetzen Texte, Attribute und Chart-Beschriftungen zur Laufzeit. */
 (function(){
   var LANGS=[["de","Deutsch"],["en","English"],["es","Español"],["fr","Français"]];
@@ -2784,7 +2784,7 @@ window.addEventListener("beforeunload", saveX);
     const hgt=Math.min(4,Math.abs(v)*4), w=100/N; out+=`<rect x="${i*w+w*0.18}" y="${v>=0?4-hgt:4}" width="${w*0.64}" height="${hgt}" fill="var(${v>=0?"--pos":"--neg"})"/>`; }
   el.innerHTML=out; })();
 /* S3-BEGIN */
-const TQI_BUILD="20261120-082249";
+const TQI_BUILD="20261127-122023";
 /* ====================== Session 3: Infrastruktur ====================== */
 const V3 = {}, R3 = {}, NB3 = new Set();   // Seiten-HTML, Renderer, Seiten ohne Optionskette
 // Legenden- und Tooltip-Marker in der Linienfarbe zeichnen (sonst Palettenfarbe)
@@ -5621,6 +5621,148 @@ R3.skew = (lb) => {
   const n2=$("sk-tsnote"); if(n2) n2.textContent = pts.length? `${pts.length} Tage gespeichert seit ${new Date(pts[0][0]).toISOString().slice(0,10)}. Heute: ${live!=null?(live>0?"+":"")+live.toFixed(2):"–"} (${live>0?"Puts teurer":"Calls teurer"}).` : "";
 };
 
+/* ====================== Desk (4 Fenster), IV-Spikes, ruhige Heatmaps ====================== */
+
+// ---------- kurze Zahlen wie bei Quant Data: 157.11 M, -70.36 K ----------
+const fmtQ = v => { if(v==null||!isFinite(v)) return ""; const a=Math.abs(v), s=v<0?"-":"";
+  if(a>=1e9) return s+(a/1e9).toFixed(2)+" B"; if(a>=1e6) return s+(a/1e6).toFixed(2)+" M"; if(a>=1e3) return s+(a/1e3).toFixed(2)+" K"; return s+a.toFixed(a>=100?0:a>=10?1:2); };
+
+// ---------- 1) Heatmaps: nicht mehr verschwinden/flackern ----------
+// Vorher: bei kurz leeren Daten wurde die Heatmap gelöscht und bei jedem Render komplett neu aufgebaut.
+// Jetzt: leere Zwischenstände werden ignoriert (letztes Bild bleibt), neu gezeichnet wird nur, wenn sich Werte ändern.
+const GHSIG = {};
+gridHeat = function(id, exps, ks, val, kind, fmt, title){
+  const el = REMAP? (REMAP[id]? document.getElementById(REMAP[id]) : null) : document.getElementById(id); if(!el) return;
+  const data=[]; let mn=Infinity, mx=-Infinity;
+  exps.forEach((e,j)=>ks.forEach((k,i)=>{ const v=val(e,k,j,i); if(v==null||!isFinite(v)) return; data.push([j,i,v]); mn=Math.min(mn,v); mx=Math.max(mx,v); }));
+  if(!data.length) return;                      // letztes Bild stehen lassen
+  // Höhe passend zur Zeilenzahl, damit jede Zelle lesbar bleibt
+  const want = Math.max(320, Math.min(1400, ks.length*24+70)); if(Math.abs(el.offsetHeight-want)>4){ el.style.height=want+"px"; const c0=echarts.getInstanceByDom(el); if(c0) c0.resize(); }
+  const spotK = typeof ks[0]==="number" && spot ? ks.reduce((b,k)=>Math.abs(k-spot)<Math.abs(b-spot)?k:b, ks[0]) : null;
+  const sig = [S.skin, kind, title, exps.join(","), ks.join(","), spotK, data.map(d=>d[2].toPrecision(4)).join(",")].join("|");
+  const c = ch(id); if(!c) return;
+  if(GHSIG[id]===sig && c.getOption && c.getOption()) return;
+  GHSIG[id]=sig;
+  const o=base(), am=Math.max(Math.abs(mn),Math.abs(mx))||1, kl=ks.map(k=>typeof k==="number"?fmtNum(k):k), spotLbl = spotK!=null? fmtNum(spotK) : null;
+  const showLbl = exps.length<=12 && ks.length<=40;
+  c.setOption({backgroundColor:"transparent",animation:false,textStyle:o.textStyle,
+    tooltip:{...o.tooltip,trigger:"item",formatter:p=>`${exps[p.value[0]]} · ${kl[p.value[1]]}<br>${title}: <b>${fmt(p.value[2])}</b>`},
+    grid:{left:66,right:14,top:8,bottom:kind==="seq"?84:30},
+    xAxis:ax(o,{type:"category",data:exps,position:"bottom",splitLine:{show:false},axisLabel:{...o._axis.axisLabel,fontWeight:600}}),
+    yAxis:ax(o,{type:"category",data:kl,splitLine:{show:false},axisLabel:{...o._axis.axisLabel,fontWeight:600,
+      color:v=> v===spotLbl? css("--accent") : o._axis.axisLabel.color, formatter:v=> v===spotLbl? "▶ "+v : v}}),
+    visualMap: kind==="seq"? {...seqMap(mn,mx),inRange:{color:[css("--panel-2"),css("--heat"),css("--fg")]}} : divMap(am),
+    series:[{type:"heatmap",data:kind==="seq"? data.map(d=>{ const t=(d[2]-mn)/((mx-mn)||1); return {value:d,label:{color:t>0.42?"#111111":"#f2f2f2",textBorderWidth:0}}; }) : data,itemStyle:{borderColor:css("--bg"),borderWidth:1.5},emphasis:{itemStyle:{borderColor:css("--fg"),borderWidth:1}},
+      label:{show:showLbl,fontSize:10,fontWeight:600,fontFamily:"IBM Plex Mono, monospace",color:css("--fg"),textBorderColor:"rgba(0,0,0,.55)",textBorderWidth:2,
+        formatter:p=> kind==="seq" || /IV|Delta|Gamma/.test(title) ? fmt(p.value[2]).replace("$","") : fmtQ(p.value[2])}}]},true);
+};
+
+// ---------- 2) IV-Spikes ----------
+const IVS = { last:0, banner:0 };
+// DVOL-Änderungen: 1h, 15 Min., 24h, Z-Wert der 1h-Änderung gegenüber den letzten 30 Tagen
+function ivSpikeStats(){
+  const m=dvolMin, h=dvolHour; if(!m.length && !h.length) return null;
+  const nowV = m.length? m[m.length-1][4] : h[h.length-1][4], nowT = m.length? m[m.length-1][0] : h[h.length-1][0];
+  const at = (arr, ms) => { const t=nowT-ms; let r=null; for(const x of arr){ if(x[0]<=t) r=x[4]; else break; } return r; };
+  const v15=at(m,15*60e3), v60=at(m,60*60e3) ?? at(h,3600e3), v24=at(h,24*3600e3);
+  const ch1=[]; for(let i=1;i<h.length;i++) ch1.push(h[i][4]-h[i-1][4]);
+  const sd = ch1.length>20? Math.sqrt(ch1.reduce((a,b)=>a+b*b,0)/ch1.length) : null;
+  const d1 = v60!=null? nowV-v60 : null, z = sd&&d1!=null? d1/sd : null;
+  const spike = z!=null && (z>=2.5 || (d1!=null && d1>=3)), crush = z!=null && z<=-2.5;
+  // Spikes der letzten 30 Tage (stündlich)
+  const hist=[]; if(sd) for(let i=1;i<h.length;i++){ const d=h[i][4]-h[i-1][4]; if(Math.abs(d/sd)>=2.5) hist.push({t:h[i][0],v:h[i][4],d,z:d/sd}); }
+  return {nowV,nowT,d15:v15!=null?nowV-v15:null,d1,d24:v24!=null?nowV-v24:null,sd,z,spike,crush,hist};
+}
+// IV-Sprünge je Strike gegenüber dem Snapshot von vor ~1 Stunde
+function ivStrikeJumps(lb, hours){
+  const ref = refSnap(snaps, hours); if(!ref || !ref.gr || !ref.gr.iv) return {ref:null,rows:[]};
+  const ki=new Map(ref.ks.map((k,i)=>[k,i])), ei=new Map(ref.exps.map((e,i)=>[e,i])), cur=new Map();
+  for(const b of lb){ if(b.venue!=="deribit"||!(b.mark_iv>0)) continue; const k=b.exp+"|"+b.strike, c=cur.get(k)||{s:0,n:0,e:b.exp,k:b.strike}; c.s+=b.mark_iv; c.n++; cur.set(k,c); }
+  const rows=[]; for(const c of cur.values()){ const j=ei.get(c.e), i=ki.get(c.k); if(j==null||i==null) continue; const p=ref.gr.iv[j]&&ref.gr.iv[j][i]; if(!(p>0)) continue; const now=c.s/c.n; rows.push({e:c.e,k:c.k,now,prev:p,d:now-p}); }
+  const ad=rows.map(r=>Math.abs(r.d)).sort((a,b)=>a-b), med=ad.length? ad[Math.floor(ad.length/2)] : 0, thr=Math.max(3, med*4);
+  rows.forEach(r=>r.spike=Math.abs(r.d)>=thr); rows.sort((a,b)=>Math.abs(b.d)-Math.abs(a.d));
+  return {ref,rows,thr};
+}
+const ivsCards = s => !s? '<div class="note">Lade DVOL-Daten …</div>' :
+  cardH("DVOL",s.nowV.toFixed(1),"jetzt")+
+  cardH("Δ 15 Min.",s.d15!=null?(s.d15>0?"+":"")+s.d15.toFixed(2):"–","Vola-Punkte",s.d15>1.5?"wrn":"")+
+  cardH("Δ 1 Std.",s.d1!=null?(s.d1>0?"+":"")+s.d1.toFixed(2):"–","Vola-Punkte",s.spike?"wrn":s.crush?"pos":"")+
+  cardH("Z-Wert 1 Std.",s.z!=null?(s.z>0?"+":"")+s.z.toFixed(1)+" σ":"–","gegenüber 30 Tagen",Math.abs(s.z||0)>=2.5?"wrn":"")+
+  cardH("Δ 24 Std.",s.d24!=null?(s.d24>0?"+":"")+s.d24.toFixed(2):"–","Vola-Punkte")+
+  cardH("Status", s.spike?"⚡ IV-SPIKE":s.crush?"IV-Crush":"ruhig", s.spike?"Optionen werden schnell teurer":s.crush?"Optionen werden schnell billiger":"keine ungewöhnliche Bewegung", s.spike?"wrn":s.crush?"pos":"");
+
+V3.ivspike = P2("IV-Spikes","DVOL-Sprünge in Echtzeit erkennen: Z-Wert der 1-Stunden-Änderung gegenüber den letzten 30 Tagen",'<div class="cards" id="ivs-cards"></div>',"wide")+
+  P2("DVOL mit Spikes","30 Tage stündlich, Punkte = Spike (|Z| ≥ 2,5)",'<div class="chart tall" id="c-ivs"></div>',"wide")+
+  P2("IV-Sprünge je Strike","Mark-IV jetzt gegenüber vor 1 Stunde (Deribit), größte Änderungen zuerst",'<div id="ivs-t"></div><div class="note" id="ivs-note"></div>',"wide")+
+  P2("ATM-IV je Verfall","jetzt gegenüber 1 Std. und 24 Std.",'<div id="ivs-atm"></div>',"wide");
+
+R3.ivspike = (lb) => {
+  const s=ivSpikeStats(), el=$("ivs-cards"); if(el){ const h=ivsCards(s); if(el.__h!==h){ el.__h=h; el.innerHTML=h; } }
+  const o=base(), c=ch("c-ivs");
+  if(c && dvolHour.length){ const sd=s&&s.sd, d=dvolHour.map(x=>[x[0],x[4]]), dd=[]; for(let i=1;i<dvolHour.length;i++) dd.push([dvolHour[i][0],+(dvolHour[i][4]-dvolHour[i-1][4]).toFixed(2)]);
+    c.setOption({...o,legend:{show:false},tooltip:{...o.tooltip,trigger:"axis"},
+      grid:[{left:50,right:20,top:16,height:"58%"},{left:50,right:20,top:"74%",bottom:28}],
+      xAxis:[ax(o,{type:"time",gridIndex:0,splitLine:{show:false},axisLabel:{show:false}}),ax(o,{type:"time",gridIndex:1,splitLine:{show:false}})],
+      yAxis:[ax(o,{type:"value",gridIndex:0,scale:true,name:"DVOL"}),ax(o,{type:"value",gridIndex:1,name:"Δ 1h",splitNumber:2})],
+      series:[{name:"DVOL",type:"line",data:d,showSymbol:false,lineStyle:{color:css("--fg"),width:1.6},
+          markPoint:{symbol:"circle",symbolSize:9,label:{show:false},data:(s?s.hist:[]).map(x=>({coord:[x.t,x.v],itemStyle:{color:x.d>0?css("--warn"):css("--muted")}}))}},
+        {name:"Δ 1h",type:"bar",xAxisIndex:1,yAxisIndex:1,data:dd.map(([t,v])=>({value:[t,v],itemStyle:{color:sd&&Math.abs(v/sd)>=2.5?css("--warn"):"rgba(160,160,160,.45)"}})),barMaxWidth:4}]},true); }
+  const J=ivStrikeJumps(lb,1), t=$("ivs-t"); J.rows=J.rows.filter(r=>Math.abs(r.d)>=0.1);
+  if(t){ const rows=J.rows.slice(0,15).map(r=>`<tr><td class="l">${r.e}</td><td>${fmtNum(r.k)}</td><td>${r.now.toFixed(1)} %</td><td>${r.prev.toFixed(1)} %</td><td class="${r.spike?"wrn":""}">${(r.d>0?"+":"")+r.d.toFixed(1)}${r.spike?" ⚡":""}</td></tr>`);
+    const h=rows.length? tbl3(["Verfall","Strike","IV jetzt","IV vor 1 Std.","Δ"],rows) : (J.ref? '<div class="note">Keine nennenswerten IV-Änderungen in der letzten Stunde.</div>' : '<div class="note">Sobald ein Snapshot von vor einer Stunde vorliegt, erscheinen hier die Sprünge (Snapshots alle 5 Min.).</div>');
+    if(t.__h!==h){ t.__h=h; t.innerHTML=h; } }
+  const n=$("ivs-note"); if(n) n.textContent = J.ref? `Vergleich mit ${fmtDT(J.ref.t)}. ⚡ = Sprung ab ${J.thr.toFixed(1)} Vola-Punkten (mind. 3 oder 4 × die typische Änderung).` : "";
+  const a=$("ivs-atm");
+  if(a){ const r1=refSnap(snaps,1), r24=refSnap(snaps,24), exps=expiries(lb).slice(0,10);
+    const rows=exps.map(e=>{ const v=atmIv(lb,e); if(!v) return ""; const p1=r1&&r1.atm&&r1.atm[e], p24=r24&&r24.atm&&r24.atm[e], d1=p1!=null?v-p1:null, d24=p24!=null?v-p24:null;
+      return `<tr><td class="l">${e}</td><td>${dte(e).toFixed(1)}</td><td>${v.toFixed(1)} %</td><td class="${d1!=null&&Math.abs(d1)>=2?"wrn":""}">${d1!=null?(Math.abs(d1)<0.005?"0.00":(d1>0?"+":"")+d1.toFixed(2)):"–"}</td><td>${d24!=null?(Math.abs(d24)<0.005?"0.00":(d24>0?"+":"")+d24.toFixed(2)):"–"}</td></tr>`; }).filter(Boolean);
+    const h=tbl3(["Verfall","DTE","ATM-IV","Δ 1 Std.","Δ 24 Std."],rows); if(a.__h!==h){ a.__h=h; a.innerHTML=h; } }
+};
+nav3("Volatilität",[["ivspike","IV-Spikes"]],"skew");
+
+// Hinweis oben, wenn gerade ein IV-Spike läuft (höchstens alle 30 Minuten neu)
+document.head.insertAdjacentHTML("beforeend",`<style>#ivs-pill{position:fixed;top:64px;left:50%;transform:translateX(-50%);z-index:60;background:var(--panel);color:var(--fg);border:1px solid var(--warn);border-radius:999px;padding:7px 16px;font-weight:700;font-size:13px;cursor:pointer;box-shadow:0 6px 24px rgba(0,0,0,.45);display:none}#ivs-pill.on{display:block}</style>`);
+document.body.insertAdjacentHTML("beforeend",'<button id="ivs-pill" type="button"></button>');
+$("ivs-pill").addEventListener("click",()=>{ $("ivs-pill").classList.remove("on"); go("ivspike"); });
+setInterval(()=>{ try{ const s=ivSpikeStats(); if(!s) return; const p=$("ivs-pill"), now=Date.now();
+  if(s.spike && now-IVS.banner>30*60e3){ IVS.banner=now; p.textContent=`⚡ IV-Spike: DVOL ${s.d1>0?"+":""}${s.d1.toFixed(1)} in 1 Std. (${s.z.toFixed(1)} σ) – ansehen`; p.classList.add("on"); setTimeout(()=>p.classList.remove("on"),10*60e3); }
+  if(!s.spike) p.classList.remove("on"); }catch(e){} }, 30e3);
+// DVOL-Minutenwerte öfter holen, damit Spikes schnell auffallen (sonst nur alle 5 Min.)
+setInterval(async()=>{ try{ if(!(ws&&ws.readyState===1)) return; const now=Date.now(); const a=await rpc("public/get_volatility_index_data",{currency:S.cur,start_timestamp:now-24*3600e3,end_timestamp:now,resolution:"60"}); if(a&&a.data&&a.data.length) dvolMin=a.data; }catch(e){} }, 60e3);
+
+// ---------- 3) Desk: vier Fenster wie bei Quant Data ----------
+const DK_G=[["gex","GEX"],["dex","DEX"],["vex","Vanna"],["chex","Charm"]];
+function dkBars(elId, lb, g){
+  const c=ch(elId); if(!c||!spot) return; const rng=(+S.dkRng||10)/100, mm=new Map();
+  for(const b of lb){ if(b.strike<spot*(1-rng)||b.strike>spot*(1+rng)) continue; mm.set(b.strike,(mm.get(b.strike)||0)+exposureOf(b,g)); }
+  const ks=[...mm.keys()].sort((a,b)=>a-b); if(!ks.length) return; const o=base(), name=(DK_G.find(x=>x[0]===g)||[g,g])[1];
+  const sig=[S.skin,g,ks.join(","),ks.map(k=>Math.round(mm.get(k)/1e3)).join(","),Math.round(spot/10)].join("|"); if(c.__sig===sig) return; c.__sig=sig;
+  const si=ks.reduce((b,k,i)=>Math.abs(k-spot)<Math.abs(ks[b]-spot)?i:b,0);
+  c.setOption({...o,legend:{show:false},animation:false,grid:{left:62,right:16,top:14,bottom:34},
+    tooltip:{...o.tooltip,trigger:"axis",axisPointer:{type:"shadow"},formatter:p=>`Strike ${fmtNum(ks[p[0].dataIndex])}<br>Netto ${name}: <b>${fmtUsd(p[0].value)}</b>`},
+    xAxis:ax(o,{type:"category",data:ks.map(k=>fmtNum(k)),splitLine:{show:false}}),
+    yAxis:ax(o,{type:"value",axisLabel:{...o._axis.axisLabel,formatter:v=>fmtQ(v)}}),
+    series:[{type:"bar",barCategoryGap:"25%",data:ks.map(k=>({value:Math.round(mm.get(k)),itemStyle:{color:mm.get(k)>=0?css("--bull"):css("--bear")}})),
+      markLine:{silent:true,symbol:"none",label:{show:true,formatter:"Spot "+fmtNum(Math.round(spot)),color:css("--muted"),position:"insideEndTop"},lineStyle:{color:css("--fg"),type:"dashed",width:1},data:[{xAxis:si}]}}]},true);
+}
+const dkHead = (key,cls) => '<div class="form">'+seg3("k3",key,DK_G)+'</div>';
+V3.desk = P2("Exposure by Strike","Netto je Strike, alle Verfälle",dkHead("dkA")+'<div class="chart" id="c-dka" style="height:360px"></div>')+
+  P2("Interval Map","GEX je Strike im Zeitverlauf",imForm()+'<div class="chart" id="c-dkim" style="height:360px"></div><div class="note" id="dk-imnote"></div>')+
+  P2("Exposure by Strike","zweites Greek",dkHead("dkB")+'<div class="chart" id="c-dkb" style="height:360px"></div>')+
+  P2("Net GEX Heat Map","Strike × Verfall, Werte in der Zelle",'<div class="form">'+seg3("k3","dkH",DK_G)+'</div><div class="chart" id="c-dkh" style="height:360px"></div>')+
+  P2("IV-Spikes","DVOL in Echtzeit",'<div class="cards" id="dk-ivs"></div>',"wide");
+R3.desk = (lb) => {
+  if(!S.dkA) S.dkA="gex"; if(!S.dkB) S.dkB="dex"; if(!S.dkH) S.dkH="gex"; sync3();
+  dkBars("c-dka",lb,S.dkA); dkBars("c-dkb",lb,S.dkB);
+  try{ imRender("c-dkim","dk-imnote",lb); }catch(e){}
+  const exps=expiries(lb).slice(0,10), rng=0.06, ks=[...new Set(lb.filter(b=>spot&&b.strike>=spot*(1-rng)&&b.strike<=spot*(1+rng)).map(b=>b.strike))].sort((a,b)=>a-b), mm=new Map();
+  lb.forEach(b=>{ const k=b.exp+"|"+b.strike; mm.set(k,(mm.get(k)||0)+exposureOf(b,S.dkH)); });
+  gridHeat("c-dkh", exps, ks, (e,k)=>{ const v=mm.get(e+"|"+k); return v? v : null; }, "div", fmtUsd, (DK_G.find(x=>x[0]===S.dkH)||["","GEX"])[1]);
+  const el=$("dk-ivs"); if(el){ const h=ivsCards(ivSpikeStats()); if(el.__h!==h){ el.__h=h; el.innerHTML=h; } }
+};
+nav3("Dashboard",[["desk","Desk (4 Fenster)"]],"dashboard");
+document.head.insertAdjacentHTML("beforeend",`<style>#v-desk .chart{min-height:300px}#v-desk .panel .ph h2 small{display:none}@media(min-width:1100px){#v-desk .panel:not(.wide) .chart{height:min(42vh,440px)!important}}</style>`);
+
 /* ====================== Session 3: Werkzeuge, Strategie, Quant ====================== */
 const dLb = () => liveFrom(books.deribit);
 const expSel = (id,lb,key,def=7) => { const ex=expiries(lb); if(!S[key]||!ex.includes(S[key])) S[key]=nearestExpTo(lb,def)||ex[0]; fillOne(id,ex,S[key]); return S[key]; };
@@ -5930,6 +6072,10 @@ document.addEventListener("change",e=>{ if(e.target.id!=="set-lang") return; S.l
 
 /* ====================== Design-Templates, Vorschau-Kacheln ohne Namen, eigener Farb-Editor ====================== */
 const THEMES=[
+ {id:"carbon",light:0,
+  v:{bg:"#000000",panel:"#0b0b0b","panel-2":"#141414",line:"#262626",fg:"#f2f2f2",muted:"#a3a3a3",accent:"#ffffff",bull:"#4ade80",bear:"#f87171",warn:"#d4d4d4","on-accent":"#000000",edge:"rgba(255,255,255,.18)",glow:"rgba(255,255,255,.04)","big-buy":"#ffffff","big-sell":"#8a8a8a",heat:"#bdbdbd"},
+  body:"var(--bg)",
+  pal:["#ffffff","#bdbdbd","#7a7a7a","#4ade80","#f87171","#d4d4d4"]},
  {id:"midnight",light:0,
   v:{bg:"#0b1120",panel:"#111a2e","panel-2":"#16213a",line:"#1f2b46",fg:"#e6ecf7",muted:"#8391ad",accent:"#38bdf8",bull:"#22c55e",bear:"#ef4444",warn:"#f59e0b","on-accent":"#04111f",edge:"rgba(56,189,248,.28)",glow:"rgba(56,189,248,.10)","big-buy":"#f472b6","big-sell":"#a78bfa",heat:"#3b82f6"},
   body:"radial-gradient(1100px 520px at 10% -8%,rgba(56,189,248,.10),transparent 60%),var(--bg)",
@@ -5997,6 +6143,9 @@ details.custd summary{cursor:pointer;color:var(--fg);font-size:12.5px;padding:6p
 })();
 const _applyLook0=applyLook; applyLook=function(){ const r=document.documentElement, c=S.cust||{}; for(const [k] of CUST_KEYS){ if(c[k]) r.style.setProperty("--"+k,c[k]); else r.style.removeProperty("--"+k); } _applyLook0();
   for(const [k] of CUST_KEYS){ const el=document.getElementById("cc-"+k); if(el) el.value=hex3(c[k]||css("--"+k)); } OFC.t=0; };
+
+// Schwarz/Weiß/Hellgrau ("carbon") einmalig als Standard setzen; danach gilt die eigene Auswahl in den Einstellungen
+(()=>{ if(S.carbonSet) return; S.carbonSet=1; S.skin="carbon"; try{ save(); applyLook(); }catch(e){} })();
 
 /* S3-END */
 applyOrder(); applyLook();
