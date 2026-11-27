@@ -17,7 +17,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.5.0/echarts.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/echarts-gl@2.0.9/dist/echarts-gl.min.js" onload="window.__gl=1" onerror="window.__gl=0"></script>
-<script>/* I18N-BEGIN */window.TQI_I18N_V="20261127-195102";
+<script>/* I18N-BEGIN */window.TQI_I18N_V="20261127-200540";
 /* TQI Sprach-Engine: Deutsch ist Standard. Andere Sprachen übersetzen Texte, Attribute und Chart-Beschriftungen zur Laufzeit. */
 (function(){
   var LANGS=[["de","Deutsch"],["en","English"],["es","Español"],["fr","Français"]];
@@ -2784,7 +2784,7 @@ window.addEventListener("beforeunload", saveX);
     const hgt=Math.min(4,Math.abs(v)*4), w=100/N; out+=`<rect x="${i*w+w*0.18}" y="${v>=0?4-hgt:4}" width="${w*0.64}" height="${hgt}" fill="var(${v>=0?"--pos":"--neg"})"/>`; }
   el.innerHTML=out; })();
 /* S3-BEGIN */
-const TQI_BUILD="20261127-195102";
+const TQI_BUILD="20261127-200540";
 /* ====================== Session 3: Infrastruktur ====================== */
 const V3 = {}, R3 = {}, NB3 = new Set();   // Seiten-HTML, Renderer, Seiten ohne Optionskette
 // Legenden- und Tooltip-Marker in der Linienfarbe zeichnen (sonst Palettenfarbe)
@@ -5892,6 +5892,21 @@ function deskDash(){ let d=S.dashboards.find(x=>x.desk);
 V3.desk = '';
 R3.desk = () => { const d=deskDash(); S.activeDash=d.id; save(); setTimeout(()=>{ go("custom"); try{ mountDash(); }catch(e){} },0); };
 NB3.add("desk");
+
+// ---------- 6) Desk im Querformat für den PC: 3 × 3 Fenster auf einen Bildschirm ----------
+const DESK_V2=[["dkx",0,0,4,6,{exG:"gex",exExp:"all"}],["interval",4,0,4,6],["dkheat",8,0,4,6,{exG:"gex"}],
+  ["dkx",0,6,4,6,{exG:"dex",exExp:"all"}],["dk0",4,6,4,6,{exG:"gex"}],["ivsum",8,6,4,6],
+  ["drift",0,12,4,6],["zdte",4,12,4,6],["skewm",8,12,4,6]];
+(()=>{ const d=(S.dashboards||[]).find(x=>x.desk); if(!d || S.deskV===2) return; S.deskV=2;
+  d.panels=DESK_V2.map(([type,x,y,w,h,opts],i)=>({id:"r"+i+Math.random().toString(36).slice(2,6),type,x,y,w,h,opts:opts||{}})); save(); })();
+const _deskDash0=deskDash; deskDash=function(){ const had=(S.dashboards||[]).some(x=>x.desk), d=_deskDash0();
+  if(!had){ S.deskV=2; d.panels=DESK_V2.map(([type,x,y,w,h,opts],i)=>({id:"r"+i+Math.random().toString(36).slice(2,6),type,x,y,w,h,opts:opts||{}})); save(); } return d; };
+// Auf dem Desk am PC: Kennzahlen-Leiste oben ausblenden, Ränder kleiner, damit mehr auf den Bildschirm passt
+setInterval(()=>{ const on = S.view==="custom" && (curDash()||{}).desk && innerWidth>=1100; document.documentElement.classList.toggle("deskwide",!!on); }, 500);
+document.head.insertAdjacentHTML("beforeend",`<style>html.deskwide #kpis{display:none}html.deskwide .gp .ph{padding-top:4px;padding-bottom:4px;min-height:0}html.deskwide .gp .ph h2{font-size:12px}html.deskwide .gp .pseg button,html.deskwide .gp .pexp{font-size:11px;padding:2px 6px}</style>`);
+
+// ---------- 7) Restliches Blau weg: eigene Akzentfarbe / eigene Farben aus früheren Einstellungen zurücksetzen ----------
+(()=>{ if(S.carbon2) return; S.carbon2=1; if(S.skin==="carbon"){ delete S.accent; S.cust={}; try{ save(); applyLook(); }catch(e){} } })();
 
 /* ====================== Session 3: Werkzeuge, Strategie, Quant ====================== */
 const dLb = () => liveFrom(books.deribit);
